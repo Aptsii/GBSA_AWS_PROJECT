@@ -27,7 +27,7 @@ map one-to-one to Lane A/B/C/D and run in four worktrees.
 **Purpose**: Create the shared monorepo skeleton without implementing domain behavior.
 
 - [X] T001 Integration — Define JavaScript workspaces and root scripts in `package.json`
-- [ ] T002 [P] Integration — Define the locked Python workspace, FastAPI and test dependencies in `pyproject.toml`
+- [X] T002 [P] Integration — Define the locked Python workspace, FastAPI and test dependencies in `pyproject.toml`
 - [ ] T003 [P] Integration — Define local PostgreSQL, DynamoDB, S3/SQS emulation and search services in `compose.yaml`
 - [ ] T004 Integration — Add the documented bootstrap, generation and test entry points to `Makefile`
 - [ ] T005 [P] Integration — Document safe local configuration with no credentials in `.env.example`

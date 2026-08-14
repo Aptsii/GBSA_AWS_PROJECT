@@ -1,0 +1,72 @@
+[build-system]
+requires = ["hatchling==1.32.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "interview-evidence-platform"
+version = "0.1.0"
+description = "Tenant-safe, evidence-first structured interview platform"
+readme = "README.md"
+requires-python = ">=3.12,<3.15"
+dependencies = [
+  "alembic>=1.19.1,<2",
+  "asyncpg>=0.31.0,<0.32",
+  "boto3>=1.43.71,<2",
+  "email-validator>=2.3.0,<3",
+  "fastapi>=0.141.1,<0.142",
+  "httpx>=0.28.1,<0.29",
+  "jsonschema>=4.26.0,<5",
+  "opentelemetry-api>=1.44.0,<2",
+  "opentelemetry-instrumentation-fastapi>=0.65b0,<0.66",
+  "opentelemetry-sdk>=1.44.0,<2",
+  "psycopg[binary,pool]>=3.3.4,<4",
+  "pydantic>=2.13.4,<3",
+  "pydantic-settings>=2.15.0,<3",
+  "pyjwt>=2.13.0,<3",
+  "pyyaml>=6.0.3,<7",
+  "sqlalchemy>=2.0.52,<2.1",
+  "structlog>=26.1.0,<27",
+  "uvicorn[standard]>=0.52.3,<0.53",
+]
+
+[dependency-groups]
+dev = [
+  "mypy>=2.3.0,<3",
+  "pytest>=9.1.1,<10",
+  "pytest-asyncio>=1.4.0,<2",
+  "pytest-cov>=7.1.0,<8",
+  "ruff>=0.16.3,<0.17",
+  "types-pyyaml>=6.0.12.20260724",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["backend/src/interview_evidence"]
+
+[tool.uv]
+default-groups = ["dev"]
+
+[tool.pytest.ini_options]
+addopts = "--strict-config --strict-markers"
+asyncio_mode = "auto"
+pythonpath = ["backend/src", "."]
+testpaths = ["backend/tests", "tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["packages/contracts/generated"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "ASYNC", "S", "T20", "RUF"]
+ignore = ["S101"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**/*.py" = ["S101", "S105", "S106"]
+"tests/**/*.py" = ["S101", "S105", "S106"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+mypy_path = ["backend/src", "."]
+packages = ["interview_evidence"]
+exclude = ["packages/contracts/generated"]
