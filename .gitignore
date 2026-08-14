@@ -1,0 +1,40 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+
+# JavaScript
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+*.tfplan
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/
+
+# Agent-local material: commit installed Spec Kit skills only
+.agents/*
+!.agents/skills/
+!.agents/skills/**

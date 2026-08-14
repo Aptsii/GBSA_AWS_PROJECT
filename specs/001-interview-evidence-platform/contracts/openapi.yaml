@@ -1,0 +1,1331 @@
+openapi: 3.1.0
+info:
+  title: Interview Evidence Platform API
+  version: 1.0.0
+  description: |
+    Contract baseline for the Korean-language pilot. All company routes enforce the company_id
+    from the authenticated principal. Applicant routes enforce the invitation-scoped session
+    cookie; neither API accepts company_id from an untrusted request body.
+servers:
+  - url: /v1
+tags:
+  - name: Company
+  - name: Hiring
+  - name: Applicant Access
+  - name: Submission
+  - name: Interview
+  - name: Reporting
+  - name: Privacy
+paths:
+  /me:
+    get:
+      operationId: getCurrentCompanyUser
+      x-owner-lane: A
+      tags: [Company]
+      security:
+        - CompanyBearer: []
+      responses:
+        "200":
+          description: Authenticated company user and tenant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyUserView"
+        default:
+          $ref: "#/components/responses/Error"
+
+  /positions:
+    get:
+      operationId: listPositions
+      x-owner-lane: A
+      tags: [Hiring]
+      security:
+        - CompanyBearer: []
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Tenant-scoped positions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PositionPage"
+        default:
+          $ref: "#/components/responses/Error"
+    post:
+      operationId: createPosition
+      x-owner-lane: A
+      tags: [Hiring]
+      security:
+        - CompanyBearer: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PositionCreate"
+      responses:
+        "201":
+          description: Position created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Position"
+        default:
+          $ref: "#/components/responses/Error"
+
+  /positions/{position_id}/competency-model-versions:
+    post:
+      operationId: createCompetencyModelVersion
+      x-owner-lane: A
+      tags: [Hiring]
+      security:
+        - CompanyBearer: []
+      parameters:
+        - $ref: "#/components/parameters/PositionId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompetencyModelVersionCreate"
+      responses:
+        "201":
+          description: Immutable draft version created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompetencyModelVersion"
+        default:
+          $ref: "#/components/responses/Error"
+
+  /competency-model-versions/{version_id}/publish:
+    post:
+      operationId: publishCompetencyModelVersion
+      x-owner-lane: A
+      tags: [Hiring]
+      security:
+        - CompanyBearer: []
+      parameters:
+        - $ref: "#/components/parameters/VersionId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/IfMatchVersion"
+      responses:
+        "200":
+          description: Published immutable criterion version
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompetencyModelVersion"
+        default:
+          $ref: "#/components/responses/Error"
+
+  /campaigns:
+    post:
+      operationId: createCampaign
+      x-owner-lane: A
+      tags: [Hiring]
+      security:
+        - CompanyBearer: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CampaignCreate"
+      responses:
+        "201":
+          description: Campaign created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Campaign"
+        default:
+          $ref: "#/components/responses/Error"
+
+  /campaigns/{campaign_id}/publish:
+    post:
+      operationId: publishCampaign
+      x-owner-lane: A
+      tags: [Hiring]
+      security:
+        - CompanyBearer: []
+      parameters:
+        - $ref: "#/components/parameters/CampaignId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/IfMatchVersion"
+      responses:
+        "200":
+          description: Published campaign
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Campaign"
+        default:
+          $ref: "#/components/responses/Error"
+
+  /campaigns/{campaign_id}/invitations:
+    get:
+      operationId: listInvitations
+      x-owner-lane: A
+      tags: [Hiring]
+      security:
+        - CompanyBearer: []
+      parameters:
+        - $ref: "#/components/parameters/CampaignId"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Invitations and progress projections
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvitationPage"
+        default:
+          $ref: "#/components/responses/Error"
+    post:
+      operationId: createInvitations
+      x-owner-lane: A
+      tags: [Hiring]
+      security:
+        - CompanyBearer: []
+      parameters:
+        - $ref: "#/components/parameters/CampaignId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InvitationBatchCreate"
+      responses:
+        "202":
+          description: Invitations accepted for issuance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvitationBatchResult"
+        default:
+          $ref: "#/components/responses/Error"
+
+  /applicant/access/exchange:
+    post:
+      operationId: exchangeApplicantInvitationToken
+      x-owner-lane: A
+      tags: [Applicant Access]
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApplicantTokenExchange"
+      responses:
+        "204":
+          description: |
+            Scoped, expiring HttpOnly session cookie set. Raw invitation token is not returned.
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+        default:
+          $ref: "#/components/responses/Error"
+
+  /applicant/identity-verifications:
+    post:
+      operationId: verifyApplicantIdentity
+      x-owner-lane: A
+      tags: [Applicant Access]
+      security:
+        - ApplicantSession: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApplicantIdentityVerification"
+      responses:
+        "200":
+          description: Verified applicant access state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicantAccessState"
+        default:
+          $ref: "#/components/responses/Error"
+
+  /applicant/consents:
+    post:
+      operationId: recordApplicantConsent
+      x-owner-lane: A
+      tags: [Applicant Access]
+      security:
+        - ApplicantSession: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConsentCreate"
+      responses:
+        "201":
+          description: Immutable consent record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentView"
+        default:
+          $ref: "#/components/responses/Error"
+
+  /applicant/submissions/upload-intents:
+    post:
+      operationId: createSubmissionUploadIntent
+      x-owner-lane: B
+      tags: [Submission]
+      security:
+        - ApplicantSession: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadIntentCreate"
+      responses:
+        "201":
+          description: Scoped short-lived upload intent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadIntent"
+        default:
+          $ref: "#/components/responses/Error"
+
+  /applicant/submissions:
+    get:
+      operationId: listApplicantSubmissions
+      x-owner-lane: B
+      tags: [Submission]
+      security:
+        - ApplicantSession: []
+      responses:
+        "200":
+          description: Current applicant submission statuses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SubmissionView"
+        default:
+          $ref: "#/components/responses/Error"
+    post:
+      operationId: registerApplicantSubmission
+      x-owner-lane: B
+      tags: [Submission]
+      security:
+        - ApplicantSession: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmissionCreate"
+      responses:
+        "202":
+          description: Submission accepted for analysis
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubmissionView"
+        default:
+          $ref: "#/components/responses/Error"
+
+  /applicant/analysis-status:
+    get:
+      operationId: getApplicantAnalysisStatus
+      x-owner-lane: B
+      tags: [Submission]
+      security:
+        - ApplicantSession: []
+      responses:
+        "200":
+          description: Aggregate analysis and strategy readiness
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalysisReadiness"
+        default:
+          $ref: "#/components/responses/Error"
+
+  /applicant/equipment-checks:
+    post:
+      operationId: recordEquipmentCheck
+      x-owner-lane: C
+      tags: [Interview]
+      security:
+        - ApplicantSession: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EquipmentCheckCreate"
+      responses:
+        "201":
+          description: Equipment readiness record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EquipmentCheck"
+        default:
+          $ref: "#/components/responses/Error"
+
+  /applicant/interview-sessions:
+    post:
+      operationId: createInterviewSession
+      x-owner-lane: C
+      tags: [Interview]
+      security:
+        - ApplicantSession: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InterviewSessionCreate"
+      responses:
+        "201":
+          description: Server-authoritative interview session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InterviewSessionView"
+        default:
+          $ref: "#/components/responses/Error"
+
+  /applicant/interview-sessions/{session_id}/resume:
+    get:
+      operationId: getInterviewResumeSnapshot
+      x-owner-lane: C
+      tags: [Interview]
+      security:
+        - ApplicantSession: []
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "200":
+          description: Authoritative recovery snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InterviewResumeSnapshot"
+        default:
+          $ref: "#/components/responses/Error"
+
+  /applicant/interview-sessions/{session_id}/media-upload-intents:
+    post:
+      operationId: createRecordingUploadIntent
+      x-owner-lane: C
+      tags: [Interview]
+      security:
+        - ApplicantSession: []
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecordingUploadIntentCreate"
+      responses:
+        "201":
+          description: Scoped recording chunk upload intent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadIntent"
+        default:
+          $ref: "#/components/responses/Error"
+
+  /interview-sessions/{session_id}/report:
+    get:
+      operationId: getInterviewReport
+      x-owner-lane: D
+      tags: [Reporting]
+      security:
+        - CompanyBearer: []
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "200":
+          description: AI original plus human review projection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportView"
+        "202":
+          description: Report is still being generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProcessingStatus"
+        default:
+          $ref: "#/components/responses/Error"
+
+  /interview-sessions/{session_id}/timeline:
+    get:
+      operationId: getInterviewTimeline
+      x-owner-lane: D
+      tags: [Reporting]
+      security:
+        - CompanyBearer: []
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+        - name: query
+          in: query
+          schema:
+            type: string
+            maxLength: 200
+      responses:
+        "200":
+          description: Timeline entries and signed playback locator
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TimelineView"
+        default:
+          $ref: "#/components/responses/Error"
+
+  /reports/{report_id}/items/{report_item_id}/reviews:
+    post:
+      operationId: createHumanAssessmentReview
+      x-owner-lane: D
+      tags: [Reporting]
+      security:
+        - CompanyBearer: []
+      parameters:
+        - $ref: "#/components/parameters/ReportId"
+        - $ref: "#/components/parameters/ReportItemId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HumanAssessmentReviewCreate"
+      responses:
+        "201":
+          description: Append-only human assessment review
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HumanReviewView"
+        default:
+          $ref: "#/components/responses/Error"
+
+  /interview-sessions/{session_id}/review-artifacts:
+    post:
+      operationId: createReviewArtifact
+      x-owner-lane: D
+      tags: [Reporting]
+      security:
+        - CompanyBearer: []
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewArtifactCreate"
+      responses:
+        "201":
+          description: Note or bookmark created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HumanReviewView"
+        default:
+          $ref: "#/components/responses/Error"
+
+  /invitations/{invitation_id}/final-decisions:
+    post:
+      operationId: recordHumanFinalDecision
+      x-owner-lane: D
+      tags: [Reporting]
+      security:
+        - CompanyBearer: []
+      parameters:
+        - $ref: "#/components/parameters/InvitationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FinalDecisionCreate"
+      responses:
+        "201":
+          description: Human-authored final decision record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HumanReviewView"
+        default:
+          $ref: "#/components/responses/Error"
+
+  /privacy/deletion-requests:
+    post:
+      operationId: createDeletionRequest
+      x-owner-lane: D
+      tags: [Privacy]
+      security:
+        - CompanyBearer: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeletionRequestCreate"
+      responses:
+        "202":
+          description: Deletion manifest accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeletionStatus"
+        default:
+          $ref: "#/components/responses/Error"
+
+  /privacy/deletion-requests/{deletion_request_id}:
+    get:
+      operationId: getDeletionRequest
+      x-owner-lane: D
+      tags: [Privacy]
+      security:
+        - CompanyBearer: []
+      parameters:
+        - name: deletion_request_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Per-store deletion and verification state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeletionStatus"
+        default:
+          $ref: "#/components/responses/Error"
+
+components:
+  securitySchemes:
+    CompanyBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    ApplicantSession:
+      type: apiKey
+      in: cookie
+      name: iep_applicant_session
+
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 16
+        maxLength: 128
+    IfMatchVersion:
+      name: If-Match-Version
+      in: header
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    Cursor:
+      name: cursor
+      in: query
+      schema:
+        type: string
+        maxLength: 512
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 50
+    PositionId:
+      name: position_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    VersionId:
+      name: version_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    CampaignId:
+      name: campaign_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    InvitationId:
+      name: invitation_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    SessionId:
+      name: session_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ReportId:
+      name: report_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ReportItemId:
+      name: report_item_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    Error:
+      description: Structured error response
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+
+  schemas:
+    ErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required: [type, title, status, code, request_id, retryable]
+      properties:
+        type:
+          type: string
+          format: uri-reference
+        title:
+          type: string
+        status:
+          type: integer
+        code:
+          type: string
+        detail:
+          type: string
+        request_id:
+          type: string
+          format: uuid
+        retryable:
+          type: boolean
+        current_version:
+          type: integer
+        errors:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [field, code]
+            properties:
+              field:
+                type: string
+              code:
+                type: string
+
+    CompanyUserView:
+      type: object
+      additionalProperties: false
+      required: [company_user_id, company_id, email, status]
+      properties:
+        company_user_id: {type: string, format: uuid}
+        company_id: {type: string, format: uuid}
+        email: {type: string, format: email}
+        status: {type: string, enum: [invited, active, disabled]}
+
+    PositionCreate:
+      type: object
+      additionalProperties: false
+      required: [title, description]
+      properties:
+        title: {type: string, minLength: 1, maxLength: 200}
+        description: {type: string, minLength: 1, maxLength: 20000}
+
+    Position:
+      unevaluatedProperties: false
+      allOf:
+        - $ref: "#/components/schemas/PositionCreate"
+        - type: object
+          required: [position_id, status, row_version, created_at]
+          properties:
+            position_id: {type: string, format: uuid}
+            status: {type: string, enum: [draft, active, closed]}
+            row_version: {type: integer, minimum: 1}
+            created_at: {type: string, format: date-time}
+
+    PositionPage:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: {$ref: "#/components/schemas/Position"}
+        next_cursor: {type: [string, "null"]}
+
+    EvaluationCriterionInput:
+      type: object
+      additionalProperties: false
+      required:
+        [code, name, description, weight, good_evidence, weak_evidence, abstain_guidance, required]
+      properties:
+        code: {type: string, pattern: "^[A-Z0-9_-]{2,40}$"}
+        name: {type: string, minLength: 1, maxLength: 200}
+        description: {type: string, minLength: 1, maxLength: 4000}
+        weight: {type: number, minimum: 0}
+        good_evidence: {type: object}
+        weak_evidence: {type: object}
+        abstain_guidance: {type: string, minLength: 1}
+        common_questions:
+          type: array
+          items: {type: string}
+        required: {type: boolean}
+
+    CompetencyModelVersionCreate:
+      type: object
+      additionalProperties: false
+      required:
+        [criteria, prohibited_topics, interview_duration_minutes, persona_definition]
+      properties:
+        criteria:
+          type: array
+          minItems: 1
+          items: {$ref: "#/components/schemas/EvaluationCriterionInput"}
+        prohibited_topics:
+          type: array
+          items: {type: string}
+        interview_duration_minutes: {type: integer, minimum: 10, maximum: 120}
+        persona_definition: {type: object}
+
+    CompetencyModelVersion:
+      unevaluatedProperties: false
+      allOf:
+        - $ref: "#/components/schemas/CompetencyModelVersionCreate"
+        - type: object
+          required:
+            [competency_model_version_id, position_id, version_number, status, row_version]
+          properties:
+            competency_model_version_id: {type: string, format: uuid}
+            position_id: {type: string, format: uuid}
+            version_number: {type: integer, minimum: 1}
+            status: {type: string, enum: [draft, published, retired]}
+            row_version: {type: integer, minimum: 1}
+            published_at: {type: [string, "null"], format: date-time}
+
+    CampaignCreate:
+      type: object
+      additionalProperties: false
+      required: [position_id, competency_model_version_id, name, candidate_instructions]
+      properties:
+        position_id: {type: string, format: uuid}
+        competency_model_version_id: {type: string, format: uuid}
+        name: {type: string, minLength: 1, maxLength: 200}
+        candidate_instructions: {type: string, minLength: 1, maxLength: 10000}
+
+    Campaign:
+      unevaluatedProperties: false
+      allOf:
+        - $ref: "#/components/schemas/CampaignCreate"
+        - type: object
+          required: [campaign_id, status, row_version]
+          properties:
+            campaign_id: {type: string, format: uuid}
+            status: {type: string, enum: [draft, published, closed]}
+            row_version: {type: integer, minimum: 1}
+            published_at: {type: [string, "null"], format: date-time}
+
+    InvitationBatchCreate:
+      type: object
+      additionalProperties: false
+      required: [applicants, expires_at]
+      properties:
+        applicants:
+          type: array
+          minItems: 1
+          maxItems: 1000
+          items:
+            type: object
+            additionalProperties: false
+            required: [email, display_name]
+            properties:
+              email: {type: string, format: email}
+              display_name: {type: string, minLength: 1, maxLength: 200}
+        expires_at: {type: string, format: date-time}
+
+    InvitationView:
+      type: object
+      additionalProperties: false
+      required: [invitation_id, campaign_id, applicant_email, status, expires_at, row_version]
+      properties:
+        invitation_id: {type: string, format: uuid}
+        campaign_id: {type: string, format: uuid}
+        applicant_email: {type: string, format: email}
+        status:
+          type: string
+          enum:
+            [invited, identity_verified, consented, materials_submitted, analyzing, ready,
+             interviewing, interrupted, completed, reviewed, expired, revoked, deleted]
+        expires_at: {type: string, format: date-time}
+        row_version: {type: integer, minimum: 1}
+        analysis_status: {type: [string, "null"]}
+        interview_status: {type: [string, "null"]}
+        report_status: {type: [string, "null"]}
+
+    InvitationPage:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: {$ref: "#/components/schemas/InvitationView"}
+        next_cursor: {type: [string, "null"]}
+
+    InvitationBatchResult:
+      type: object
+      additionalProperties: false
+      required: [accepted_count, rejected_count, invitations]
+      properties:
+        accepted_count: {type: integer, minimum: 0}
+        rejected_count: {type: integer, minimum: 0}
+        invitations:
+          type: array
+          items: {$ref: "#/components/schemas/InvitationView"}
+
+    ApplicantTokenExchange:
+      type: object
+      additionalProperties: false
+      required: [invitation_token]
+      properties:
+        invitation_token: {type: string, minLength: 32, maxLength: 4096}
+
+    ApplicantIdentityVerification:
+      type: object
+      additionalProperties: false
+      required: [display_name, verification_value]
+      properties:
+        display_name: {type: string, minLength: 1, maxLength: 200}
+        verification_value: {type: string, minLength: 1, maxLength: 500}
+
+    ApplicantAccessState:
+      type: object
+      additionalProperties: false
+      required: [invitation_id, state, expires_at, required_actions]
+      properties:
+        invitation_id: {type: string, format: uuid}
+        state: {type: string}
+        expires_at: {type: string, format: date-time}
+        required_actions:
+          type: array
+          items: {type: string}
+
+    ConsentCreate:
+      type: object
+      additionalProperties: false
+      required: [policy_version, accepted_purposes, consent_content_digest]
+      properties:
+        policy_version: {type: string}
+        accepted_purposes:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            enum: [document_analysis, recording, ai_assessment]
+        consent_content_digest: {type: string, pattern: "^[a-f0-9]{64}$"}
+
+    ConsentView:
+      type: object
+      additionalProperties: false
+      required:
+        [consent_record_id, policy_version, accepted_purposes, retention_days, accepted_at]
+      properties:
+        consent_record_id: {type: string, format: uuid}
+        policy_version: {type: string}
+        accepted_purposes:
+          type: array
+          items: {type: string}
+        retention_days: {type: integer, minimum: 1}
+        accepted_at: {type: string, format: date-time}
+
+    UploadIntentCreate:
+      type: object
+      additionalProperties: false
+      required: [source_type, filename, media_type, byte_size, sha256]
+      properties:
+        source_type:
+          type: string
+          enum: [cover_letter, resume, pdf]
+        filename: {type: string, minLength: 1, maxLength: 255}
+        media_type: {type: string}
+        byte_size: {type: integer, minimum: 1}
+        sha256: {type: string, pattern: "^[a-f0-9]{64}$"}
+
+    UploadIntent:
+      type: object
+      additionalProperties: false
+      required: [upload_id, method, url, required_headers, expires_at]
+      properties:
+        upload_id: {type: string, format: uuid}
+        method: {type: string, enum: [PUT]}
+        url: {type: string, format: uri}
+        required_headers: {type: object}
+        expires_at: {type: string, format: date-time}
+
+    SubmissionCreate:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [source_type, upload_id]
+          properties:
+            source_type:
+              type: string
+              enum: [cover_letter, resume, pdf]
+            upload_id: {type: string, format: uuid}
+        - type: object
+          additionalProperties: false
+          required: [source_type, public_url]
+          properties:
+            source_type:
+              type: string
+              enum: [public_git, public_url]
+            public_url: {type: string, format: uri}
+            candidate_identity_inputs: {type: object}
+
+    SubmissionView:
+      type: object
+      additionalProperties: false
+      required: [submission_id, source_type, status, created_at]
+      properties:
+        submission_id: {type: string, format: uuid}
+        source_type: {type: string}
+        status:
+          type: string
+          enum: [received, validating, analyzing, ready, partial, failed, deleted]
+        failure_code: {type: [string, "null"]}
+        impact_summary: {type: [string, "null"]}
+        created_at: {type: string, format: date-time}
+
+    AnalysisReadiness:
+      type: object
+      additionalProperties: false
+      required: [overall_status, submissions, interview_ready]
+      properties:
+        overall_status: {type: string, enum: [waiting, analyzing, ready, partial, failed]}
+        submissions:
+          type: array
+          items: {$ref: "#/components/schemas/SubmissionView"}
+        interview_ready: {type: boolean}
+        strategy_id: {type: [string, "null"], format: uuid}
+        strategy_version: {type: [integer, "null"]}
+        impact_summary: {type: [string, "null"]}
+
+    EquipmentCheckCreate:
+      type: object
+      additionalProperties: false
+      required: [camera, microphone, network]
+      properties:
+        camera: {$ref: "#/components/schemas/EquipmentComponent"}
+        microphone: {$ref: "#/components/schemas/EquipmentComponent"}
+        network: {$ref: "#/components/schemas/EquipmentComponent"}
+
+    EquipmentComponent:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status: {type: string, enum: [ready, warning, failed]}
+        sanitized_code: {type: [string, "null"]}
+
+    EquipmentCheck:
+      unevaluatedProperties: false
+      allOf:
+        - $ref: "#/components/schemas/EquipmentCheckCreate"
+        - type: object
+          required: [equipment_check_id, overall_status, checked_at]
+          properties:
+            equipment_check_id: {type: string, format: uuid}
+            overall_status: {type: string, enum: [ready, warning, failed]}
+            checked_at: {type: string, format: date-time}
+
+    InterviewSessionCreate:
+      type: object
+      additionalProperties: false
+      required: [equipment_check_id, strategy_id, acknowledged_partial_analysis]
+      properties:
+        equipment_check_id: {type: string, format: uuid}
+        strategy_id: {type: string, format: uuid}
+        acknowledged_partial_analysis: {type: boolean}
+
+    InterviewSessionView:
+      type: object
+      additionalProperties: false
+      required:
+        [interview_session_id, state, session_sequence, websocket_path, protocol_version]
+      properties:
+        interview_session_id: {type: string, format: uuid}
+        state:
+          type: string
+          enum:
+            [preparing, in_progress, awaiting_answer, preparing_question, paused,
+             completed, report_generating, reviewable]
+        session_sequence: {type: integer, minimum: 0}
+        websocket_path: {type: string}
+        protocol_version: {type: string, const: "1.0"}
+
+    InterviewResumeSnapshot:
+      type: object
+      additionalProperties: false
+      required:
+        [interview_session_id, state, server_sequence, last_verified_recording_chunk_sequence]
+      properties:
+        interview_session_id: {type: string, format: uuid}
+        state: {type: string}
+        server_sequence: {type: integer, minimum: 0}
+        last_final_turn_id: {type: [string, "null"], format: uuid}
+        pending_turn: {type: [object, "null"]}
+        last_verified_recording_chunk_sequence: {type: integer, minimum: 0}
+        degraded_modes:
+          type: array
+          items: {type: string}
+
+    RecordingUploadIntentCreate:
+      type: object
+      additionalProperties: false
+      required: [chunk_sequence, byte_size, sha256, session_start_ms, session_end_ms]
+      properties:
+        chunk_sequence: {type: integer, minimum: 0}
+        byte_size: {type: integer, minimum: 1}
+        sha256: {type: string, pattern: "^[a-f0-9]{64}$"}
+        session_start_ms: {type: integer, minimum: 0}
+        session_end_ms: {type: integer, minimum: 1}
+
+    AssessmentState:
+      type: string
+      enum: [confirmed, partially_confirmed, insufficient_evidence, needs_follow_up]
+
+    EvidenceView:
+      type: object
+      additionalProperties: false
+      required:
+        [evidence_id, answer_turn_id, transcript_segment_id, video_start_ms,
+         video_end_ms, observation, rationale, sufficiency]
+      properties:
+        evidence_id: {type: string, format: uuid}
+        answer_turn_id: {type: string, format: uuid}
+        transcript_segment_id: {type: string, format: uuid}
+        video_start_ms: {type: integer, minimum: 0}
+        video_end_ms: {type: integer, minimum: 1}
+        observation: {type: string}
+        rationale: {type: string}
+        sufficiency: {type: string, enum: [direct, supporting, weak]}
+
+    ReportItemView:
+      type: object
+      additionalProperties: false
+      required:
+        [report_item_id, criterion_id, assessment_state, observation, rationale,
+         evidence, uncertainty]
+      properties:
+        report_item_id: {type: string, format: uuid}
+        criterion_id: {type: string, format: uuid}
+        assessment_state: {$ref: "#/components/schemas/AssessmentState"}
+        observation: {type: string}
+        rationale: {type: string}
+        uncertainty: {type: string}
+        follow_up_question: {type: [string, "null"]}
+        evidence:
+          type: array
+          items: {$ref: "#/components/schemas/EvidenceView"}
+
+    ReportView:
+      type: object
+      additionalProperties: false
+      required:
+        [report_id, report_version, status, summary, items, ai_original_immutable]
+      properties:
+        report_id: {type: string, format: uuid}
+        report_version: {type: integer, minimum: 1}
+        status: {type: string, enum: [generating, ready, partial, failed]}
+        summary: {type: string}
+        items:
+          type: array
+          items: {$ref: "#/components/schemas/ReportItemView"}
+        ai_original_immutable: {type: boolean, const: true}
+        human_reviews:
+          type: array
+          items: {$ref: "#/components/schemas/HumanReviewView"}
+
+    TimelineView:
+      type: object
+      additionalProperties: false
+      required: [entries, playback]
+      properties:
+        entries:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [entry_id, entry_type, start_ms, end_ms]
+            properties:
+              entry_id: {type: string, format: uuid}
+              entry_type: {type: string, enum: [question, answer, event, evidence]}
+              start_ms: {type: integer, minimum: 0}
+              end_ms: {type: integer, minimum: 0}
+              text: {type: [string, "null"]}
+              technical_failure: {type: boolean, default: false}
+        playback:
+          type: object
+          additionalProperties: false
+          required: [url, expires_at, status]
+          properties:
+            url: {type: [string, "null"], format: uri}
+            expires_at: {type: [string, "null"], format: date-time}
+            status: {type: string, enum: [ready, partial, processing, unavailable]}
+
+    HumanAssessmentReviewCreate:
+      type: object
+      additionalProperties: false
+      required: [assessment_state, reason]
+      properties:
+        assessment_state: {$ref: "#/components/schemas/AssessmentState"}
+        reason: {type: string, minLength: 1, maxLength: 5000}
+
+    ReviewArtifactCreate:
+      type: object
+      additionalProperties: false
+      required: [review_type, target_id, value]
+      properties:
+        review_type: {type: string, enum: [note, bookmark]}
+        target_id: {type: string, format: uuid}
+        value: {type: string, minLength: 1, maxLength: 10000}
+
+    FinalDecisionCreate:
+      type: object
+      additionalProperties: false
+      required: [decision, reason]
+      properties:
+        decision: {type: string, enum: [advance, reject, hold, withdrawn]}
+        reason: {type: string, minLength: 1, maxLength: 5000}
+
+    HumanReviewView:
+      type: object
+      additionalProperties: false
+      required: [human_review_id, review_type, created_by, created_at]
+      properties:
+        human_review_id: {type: string, format: uuid}
+        review_type:
+          type: string
+          enum: [assessment_override, note, bookmark, final_decision]
+        created_by: {type: string, format: uuid}
+        created_at: {type: string, format: date-time}
+
+    DeletionRequestCreate:
+      type: object
+      additionalProperties: false
+      required: [scope_type, scope_id, reason]
+      properties:
+        scope_type: {type: string, enum: [invitation, applicant]}
+        scope_id: {type: string, format: uuid}
+        reason: {type: string, minLength: 1, maxLength: 2000}
+
+    DeletionTargetView:
+      type: object
+      additionalProperties: false
+      required: [target_id, owner_lane, store, target_type, status, attempts]
+      properties:
+        target_id: {type: string, format: uuid}
+        owner_lane: {type: string, enum: [A, B, C, D]}
+        store: {type: string, enum: [aurora, dynamodb, s3, opensearch]}
+        target_type: {type: string}
+        status:
+          type: string
+          enum: [pending, deleting, retrying, failed, verified_absent]
+        attempts: {type: integer, minimum: 0}
+        verified_at: {type: [string, "null"], format: date-time}
+        error_code: {type: [string, "null"]}
+
+    DeletionStatus:
+      type: object
+      additionalProperties: false
+      required:
+        [deletion_request_id, manifest_id, status, expected_targets, verified_targets, targets]
+      properties:
+        deletion_request_id: {type: string, format: uuid}
+        manifest_id: {type: string, format: uuid}
+        status:
+          type: string
+          enum:
+            [requested, enumerating, deleting, verifying, retrying,
+             partially_completed, completed]
+        expected_targets: {type: integer, minimum: 0}
+        verified_targets: {type: integer, minimum: 0}
+        targets:
+          type: array
+          items: {$ref: "#/components/schemas/DeletionTargetView"}
+
+    ProcessingStatus:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status: {type: string, enum: [queued, running, partial, failed]}
+        retryable: {type: boolean, default: false}
+        message: {type: [string, "null"]}
