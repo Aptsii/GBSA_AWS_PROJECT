@@ -30,7 +30,7 @@ map one-to-one to Lane A/B/C/D and run in four worktrees.
 - [X] T002 [P] Integration — Define the locked Python workspace, FastAPI and test dependencies in `pyproject.toml`
 - [X] T003 [P] Integration — Define local PostgreSQL, DynamoDB, S3/SQS emulation and search services in `compose.yaml`
 - [ ] T004 Integration — Add the documented bootstrap, generation and test entry points to `Makefile`
-- [ ] T005 [P] Integration — Document safe local configuration with no credentials in `.env.example`
+- [X] T005 [P] Integration — Document safe local configuration with no credentials in `.env.example`
 - [ ] T006 [P] Integration — Scaffold the company Vite application and feature slots in `apps/company-console/package.json`
 - [ ] T007 [P] Integration — Scaffold the applicant Vite application and feature slots in `apps/applicant-interview/package.json`
 - [ ] T008 [P] Integration — Scaffold the Python package and API/worker entry points in `backend/src/interview_evidence/__init__.py`
