@@ -28,7 +28,7 @@ map one-to-one to Lane A/B/C/D and run in four worktrees.
 
 - [X] T001 Integration — Define JavaScript workspaces and root scripts in `package.json`
 - [X] T002 [P] Integration — Define the locked Python workspace, FastAPI and test dependencies in `pyproject.toml`
-- [ ] T003 [P] Integration — Define local PostgreSQL, DynamoDB, S3/SQS emulation and search services in `compose.yaml`
+- [X] T003 [P] Integration — Define local PostgreSQL, DynamoDB, S3/SQS emulation and search services in `compose.yaml`
 - [ ] T004 Integration — Add the documented bootstrap, generation and test entry points to `Makefile`
 - [ ] T005 [P] Integration — Document safe local configuration with no credentials in `.env.example`
 - [ ] T006 [P] Integration — Scaffold the company Vite application and feature slots in `apps/company-console/package.json`

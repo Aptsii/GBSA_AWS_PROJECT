@@ -1,0 +1,65 @@
+name: interview-evidence-platform
+
+services:
+  postgres:
+    image: postgres:17.11-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-interview_evidence}
+      POSTGRES_USER: ${POSTGRES_USER:-interview}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-interview_local}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  localstack:
+    image: localstack/localstack:2026.07.3
+    environment:
+      SERVICES: s3,sqs
+      AWS_DEFAULT_REGION: ${AWS_REGION:-ap-northeast-2}
+      DEBUG: ${LOCALSTACK_DEBUG:-0}
+    ports:
+      - "${LOCALSTACK_PORT:-4566}:4566"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:4566/_localstack/health >/dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - localstack-data:/var/lib/localstack
+
+  dynamodb:
+    image: amazon/dynamodb-local:3.3.1
+    command: ["-jar", "DynamoDBLocal.jar", "-sharedDb", "-dbPath", "/home/dynamodblocal/data"]
+    ports:
+      - "${DYNAMODB_PORT:-8000}:8000"
+    volumes:
+      - dynamodb-data:/home/dynamodblocal/data
+
+  opensearch:
+    image: opensearchproject/opensearch:2.19.6
+    environment:
+      discovery.type: single-node
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+      DISABLE_SECURITY_PLUGIN: "true"
+      OPENSEARCH_JAVA_OPTS: ${OPENSEARCH_JAVA_OPTS:--Xms512m -Xmx512m}
+    ports:
+      - "${OPENSEARCH_PORT:-9200}:9200"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200/_cluster/health >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+
+volumes:
+  postgres-data:
+  localstack-data:
+  dynamodb-data:
+  opensearch-data:
