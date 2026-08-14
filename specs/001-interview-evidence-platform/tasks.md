@@ -34,7 +34,7 @@ map one-to-one to Lane A/B/C/D and run in four worktrees.
 - [X] T006 [P] Integration — Scaffold the company Vite application and feature slots in `apps/company-console/package.json`
 - [ ] T007 [P] Integration — Scaffold the applicant Vite application and feature slots in `apps/applicant-interview/package.json`
 - [ ] T008 [P] Integration — Scaffold the Python package and API/worker entry points in `backend/src/interview_evidence/__init__.py`
-- [ ] T009 [P] Lane A — Create the approved Terraform directory roots in `infra/README.md` (PD-26, QG-16)
+- [X] T009 [P] Lane A — Create the approved Terraform directory roots in `infra/README.md` (PD-26, QG-16)
 - [ ] T010 [P] Integration — Create shared end-to-end, fixture, regression and load test roots in `tests/README.md`
 - [ ] T011 [P] Integration — Configure editor, Markdown, Python, TypeScript and Terraform formatting in `.editorconfig`
 - [ ] T012 [P] Integration — Add API and worker container build targets in `backend/Containerfile`
