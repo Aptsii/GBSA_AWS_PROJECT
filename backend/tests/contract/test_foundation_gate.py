@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -88,6 +89,18 @@ def test_ci_runs_contract_boundary_and_migration_gates() -> None:
 
     for command in ("make test-contract", "make boundaries-check", "make migration-check"):
         assert command in workflow
+
+
+def test_ci_node_runtime_satisfies_the_package_manager_minimum() -> None:
+    manifest = json.loads((REPOSITORY_ROOT / "package.json").read_text(encoding="utf-8"))
+    workflow = (REPOSITORY_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    minimum = tuple(int(part) for part in manifest["engines"]["node"].removeprefix(">=").split("."))
+    match = re.search(r'^\s*NODE_VERSION:\s*"([0-9]+(?:\.[0-9]+){2})"$', workflow, re.M)
+
+    assert minimum >= (22, 13, 0)
+    assert match is not None
+    runtime = tuple(int(part) for part in match.group(1).split("."))
+    assert runtime >= minimum
 
 
 def test_contract_workspace_participates_in_root_typechecking() -> None:
