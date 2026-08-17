@@ -37,9 +37,7 @@ class _LiveSubmissionContracts:
     ) -> dict[str, object]:
         return self.strategy.snapshot()
 
-    def retrieve_context(
-        self, context: TenantContext, **arguments: object
-    ) -> dict[str, object]:
+    def retrieve_context(self, context: TenantContext, **arguments: object) -> dict[str, object]:
         result = self.retriever.retrieve(
             context,
             RetrievalQuery(
@@ -107,9 +105,7 @@ def test_lane_b_strategy_and_retrieval_feed_lane_c_session() -> None:
                 }
             ],
         },
-        verification_points=(
-            {"criterion_id": CRITERION_ID, "prompt": "복구 판단 근거 확인"},
-        ),
+        verification_points=({"criterion_id": CRITERION_ID, "prompt": "복구 판단 근거 확인"},),
         source_references=(source,),
         duration_minutes=30,
         model_config_version="strategy-v1",

@@ -49,9 +49,7 @@ def _settings() -> Settings:
         applicant_session_secret=SecretStr("local-e2e-applicant-session-secret"),
         company_jwt_issuer=AnyHttpUrl("https://identity.local.invalid/"),
         company_jwt_audience="interview-evidence-api",
-        company_jwks_url=AnyHttpUrl(
-            "https://identity.local.invalid/.well-known/jwks.json"
-        ),
+        company_jwks_url=AnyHttpUrl("https://identity.local.invalid/.well-known/jwks.json"),
         applicant_session_ttl_seconds=7_200,
         invitation_public_base_url=AnyHttpUrl("http://localhost:5174/"),
         invitation_email_template="invitation-v1",
@@ -181,9 +179,7 @@ def test_company_to_human_decision_uses_production_runtime_and_local_services(
                 ),
                 201,
             )
-            criterion_version_id = str(
-                criterion_version["competency_model_version_id"]
-            )
+            criterion_version_id = str(criterion_version["competency_model_version_id"])
             published_version = _assert_response(
                 client.post(
                     f"/v1/competency-model-versions/{criterion_version_id}/publish",
@@ -234,8 +230,8 @@ def test_company_to_human_decision_uses_production_runtime_and_local_services(
             invitation = invitation_values[0]
             assert isinstance(invitation, dict)
             invitation_id = str(invitation["invitation_id"])
-            raw_invitation_token = (
-                runtimes.company.hiring_service.get_test_delivery_token(invitation_id)
+            raw_invitation_token = runtimes.company.hiring_service.get_test_delivery_token(
+                invitation_id
             )
 
             exchange = client.post(
@@ -390,8 +386,7 @@ def test_company_to_human_decision_uses_production_runtime_and_local_services(
             submission_items = persisted_submissions.json()
             assert isinstance(submission_items, list)
             assert any(
-                isinstance(item, dict)
-                and item.get("submission_id") == submission["submission_id"]
+                isinstance(item, dict) and item.get("submission_id") == submission["submission_id"]
                 for item in submission_items
             )
             assert resume["interview_session_id"] == session_id

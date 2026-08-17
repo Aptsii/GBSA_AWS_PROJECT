@@ -45,13 +45,17 @@ async function requestPlayback(
   } catch (error) {
     document.body.dataset.status = "failed";
     document.body.dataset.error =
-      error instanceof Error ? error.message : "unknown playback retrieval error";
+      error instanceof Error
+        ? error.message
+        : "unknown playback retrieval error";
     throw error;
   }
 }
 
 function recordMeasurement(measurement: PlaybackStartMeasurement) {
-  document.body.dataset.status = measurement.withinThreshold ? "passed" : "failed";
+  document.body.dataset.status = measurement.withinThreshold
+    ? "passed"
+    : "failed";
   document.body.dataset.elapsedMs = String(measurement.elapsedMs);
   document.body.dataset.seekOffsetMs = String(measurement.seekOffsetMs);
 }

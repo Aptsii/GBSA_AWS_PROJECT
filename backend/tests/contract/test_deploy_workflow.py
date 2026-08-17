@@ -39,8 +39,7 @@ def test_deploy_workflow_resolves_every_environment_state_root() -> None:
     makefile = MAKEFILE.read_text(encoding="utf-8")
 
     assert (
-        'root="infra/environments/${{ inputs.environment }}/${{ inputs.state_root }}"'
-        in workflow
+        'root="infra/environments/${{ inputs.environment }}/${{ inputs.state_root }}"' in workflow
     )
     assert 'if [[ "${{ inputs.environment }}" == "dev" ]]' not in workflow
     for environment in ("dev", "stage", "prod"):
@@ -60,6 +59,6 @@ def test_deploy_workflow_registers_digest_tasks_and_gates_rollout_on_migration()
     assert "aws ecs wait tasks-stopped" in workflow
     assert "exitCode" in workflow
     assert "migration task failed" in workflow
-    assert "--task-definition \"${{ needs.migrate.outputs.api-task-definition }}\"" in workflow
-    assert "--task-definition \"${{ needs.migrate.outputs.worker-task-definition }}\"" in workflow
+    assert '--task-definition "${{ needs.migrate.outputs.api-task-definition }}"' in workflow
+    assert '--task-definition "${{ needs.migrate.outputs.worker-task-definition }}"' in workflow
     assert "aws ecs wait services-stable" in workflow

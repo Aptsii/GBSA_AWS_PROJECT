@@ -157,9 +157,7 @@ def _run_session(
             transcript_confidence=0.99,
             criterion_id=fixture.criterion_id,
             criterion_name="문제 해결",
-            remaining_criteria=(
-                {"criterion_id": str(fixture.criterion_id), "name": "문제 해결"},
-            ),
+            remaining_criteria=({"criterion_id": str(fixture.criterion_id), "name": "문제 해결"},),
             idempotency_key=f"load-answer-{session_number:04d}-{answer_number:06d}",
             last_recording_chunk_sequence=answer_number,
         )

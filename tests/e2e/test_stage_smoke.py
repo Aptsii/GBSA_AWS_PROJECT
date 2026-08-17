@@ -355,9 +355,9 @@ def _assert_data_services_private_and_ready(config: StageSmokeConfig) -> None:
     assert queue.get("KmsMasterKeyId")
 
     rds = boto3.client("rds", region_name=config.region)
-    cluster = rds.describe_db_clusters(DBClusterIdentifier=config.aurora_cluster_id)[
-        "DBClusters"
-    ][0]
+    cluster = rds.describe_db_clusters(DBClusterIdentifier=config.aurora_cluster_id)["DBClusters"][
+        0
+    ]
     assert cluster["Status"] == "available"
     assert cluster["StorageEncrypted"] is True
     instance_ids = [member["DBInstanceIdentifier"] for member in cluster["DBClusterMembers"]]

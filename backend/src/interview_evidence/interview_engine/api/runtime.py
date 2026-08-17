@@ -100,8 +100,7 @@ class SQLAlchemyInterviewRouteService:
             "state": interview_session.state.value,
             "session_sequence": interview_session.session_sequence,
             "websocket_path": (
-                f"/v1/applicant/interview-sessions/"
-                f"{interview_session.interview_session_id}/stream"
+                f"/v1/applicant/interview-sessions/{interview_session.interview_session_id}/stream"
             ),
             "protocol_version": "1.0",
         }

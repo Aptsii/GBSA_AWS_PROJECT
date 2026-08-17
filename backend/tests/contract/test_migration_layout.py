@@ -63,9 +63,7 @@ def test_alembic_config_declares_each_lane_version_location() -> None:
 
 def test_merge_revision_joins_the_current_lane_heads() -> None:
     merge_revision = _load_revision(MERGE_REVISION)
-    lane_heads = tuple(
-        _lane_migration_head(VERSIONS_ROOT / lane) for lane in LANES
-    )
+    lane_heads = tuple(_lane_migration_head(VERSIONS_ROOT / lane) for lane in LANES)
 
     assert merge_revision.revision == "m_001"
     assert merge_revision.down_revision == lane_heads

@@ -45,7 +45,9 @@ export function TimelineView({
   now = () => performance.now(),
   wallClockNow = () => new Date().getTime(),
 }: TimelineViewProps) {
-  const [activePlayback, setActivePlayback] = useState<ActivePlayback | null>(null);
+  const [activePlayback, setActivePlayback] = useState<ActivePlayback | null>(
+    null,
+  );
   const [playbackStatus, setPlaybackStatus] = useState<string | null>(null);
   const playbackStartedAt = useRef<number | null>(null);
 
@@ -58,7 +60,11 @@ export function TimelineView({
     try {
       const reference = await requestPlayback(entry);
       const expiresAt = Date.parse(reference.expiresAt);
-      if (!reference.url || !Number.isFinite(expiresAt) || expiresAt <= wallClockNow()) {
+      if (
+        !reference.url ||
+        !Number.isFinite(expiresAt) ||
+        expiresAt <= wallClockNow()
+      ) {
         throw new Error("invalid playback reference");
       }
       setActivePlayback({ entry, reference });

@@ -140,9 +140,9 @@ def test_lane_a_invitation_and_consent_authorize_lane_b_submission() -> None:
             applicants=[{"email": "candidate@example.com", "display_name": "지원자"}],
             expires_at=NOW + timedelta(days=7),
         )[0]
-        _, principal = ApplicantSessionAdapter(
-            repository, clock=clock, id_generator=ids
-        ).exchange(hiring.get_test_delivery_token(invitation.invitation_id))
+        _, principal = ApplicantSessionAdapter(repository, clock=clock, id_generator=ids).exchange(
+            hiring.get_test_delivery_token(invitation.invitation_id)
+        )
         applicant_context = principal.to_tenant_context(
             request_id=str(ids.new()), trace_id="integration-a-to-b-applicant"
         )

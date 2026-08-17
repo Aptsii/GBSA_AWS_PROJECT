@@ -135,9 +135,7 @@ def _seek(fixture: SeekFixture) -> SeekResult:
     )
     timeline = TimelineService().project(fixture.segments, fixture.asset)
     entry = next(
-        item
-        for item in timeline
-        if item.entry_id == str(fixture.evidence.transcript_segment_id)
+        item for item in timeline if item.entry_id == str(fixture.evidence.transcript_segment_id)
     )
     if not entry.media_available:
         raise AssertionError("selected Evidence does not have an available media range")

@@ -39,7 +39,4 @@ def test_application_services_wait_for_healthy_dependencies() -> None:
             "service_healthy"
         }
     assert services["company-console"]["depends_on"]["api"]["condition"] == "service_healthy"
-    assert (
-        services["applicant-interview"]["depends_on"]["api"]["condition"]
-        == "service_healthy"
-    )
+    assert services["applicant-interview"]["depends_on"]["api"]["condition"] == "service_healthy"

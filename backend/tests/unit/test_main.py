@@ -116,9 +116,10 @@ def test_production_factory_mounts_every_contract_route_and_fails_closed() -> No
     client = TestClient(app)
     assert client.get("/v1/me").status_code == 401
     assert client.get("/v1/applicant/submissions").status_code == 401
-    assert client.get(
-        "/v1/interview-sessions/018f2000-0000-7000-8000-000000000310/report"
-    ).status_code == 401
+    assert (
+        client.get("/v1/interview-sessions/018f2000-0000-7000-8000-000000000310/report").status_code
+        == 401
+    )
     headers = {
         "Authorization": "Bearer production-runtime-company-token",
         "Idempotency-Key": "production-runtime-position-0001",

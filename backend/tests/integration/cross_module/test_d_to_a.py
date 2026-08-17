@@ -38,9 +38,7 @@ class _LiveReportingContracts:
     deletion: DeletionService
     manifest: DeletionManifest | None = None
 
-    def get_report(
-        self, context: TenantContext, **arguments: object
-    ) -> dict[str, object]:
+    def get_report(self, context: TenantContext, **arguments: object) -> dict[str, object]:
         ensure_company_scope(context, self.report.company_id)
         assert OpaqueId(arguments["session_id"]) == self.report.interview_session_id
         item = self.report.items[0]
@@ -77,9 +75,7 @@ class _LiveReportingContracts:
             "human_decision_status": decision,
         }
 
-    def request_deletion(
-        self, context: TenantContext, **arguments: object
-    ) -> dict[str, object]:
+    def request_deletion(self, context: TenantContext, **arguments: object) -> dict[str, object]:
         request = self.deletion.request(
             context,
             ApplicantScope(COMPANY_ID, APPLICANT_ID, self.invitation_id),
@@ -92,13 +88,9 @@ class _LiveReportingContracts:
                 ("s3", "evidence_media", str(self.report.items[0].evidence[0].evidence_id)),
             ),
         )
-        return self.get_deletion_status(
-            context, deletion_request_id=request.deletion_request_id
-        )
+        return self.get_deletion_status(context, deletion_request_id=request.deletion_request_id)
 
-    def get_deletion_status(
-        self, context: TenantContext, **arguments: object
-    ) -> dict[str, object]:
+    def get_deletion_status(self, context: TenantContext, **arguments: object) -> dict[str, object]:
         ensure_company_scope(context, COMPANY_ID)
         assert self.manifest is not None
         assert OpaqueId(arguments["deletion_request_id"]) == self.manifest.deletion_request_id
