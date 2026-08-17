@@ -442,3 +442,8 @@ additional degraded modes or richer review UI.
 - [ ] T201 [P] Lane D — Measure Evidence selection through actual browser media playback start, including signed playback retrieval and the two-second threshold, per SC-012 (partial)
 - [ ] T202 Integration — Add versioned production metrics and tests for stage latency, retries, reconciliation lag, queue age and degraded-mode use at API and worker boundaries per FR-051, plan operational design and Constitution V (missing)
 - [ ] T203 Integration — Correct `validation-report.md` to show the convergence findings as unresolved until T193-T202 pass, then rerun every affected FR/SC/QG gate and record the final result per T191 (contradicts)
+
+## Phase 9: Convergence
+
+- [ ] T204 CRITICAL Lane D — Scope SQLAlchemy human-review idempotency replay and database uniqueness by `company_id`, with a migration and cross-company same-key regression test, per FR-005, SC-014 and Constitution II (contradicts)
+- [ ] T205 Integration — Align the versioned EMF metric namespace and queue-age unit with the deployed Terraform alarm contract, and add a cross-layer contract test per FR-051 and plan operational design (contradicts)
