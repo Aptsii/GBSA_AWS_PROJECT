@@ -3,11 +3,12 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Literal
 
 from interview_evidence.shared.errors import ErrorCode, SafeApplicationError
-from interview_evidence.shared.ids import OpaqueId
+from interview_evidence.shared.ids import Clock, OpaqueId, SystemClock, UUID7Generator
+from interview_evidence.shared.messaging.outbox import AggregateRef, InMemoryOutbox, OutboxEvent
 from interview_evidence.shared.tenant import ApplicantScope, TenantContext, ensure_applicant_scope
 
 
@@ -33,15 +34,39 @@ class AnalysisJob:
 class AnalysisOutcome:
     status: Literal["ready", "partial", "failed"]
     impact_code: str | None = None
+    analysis_id: OpaqueId | None = None
+
+    def __post_init__(self) -> None:
+        if self.analysis_id is not None:
+            object.__setattr__(self, "analysis_id", OpaqueId(self.analysis_id))
 
 
 class AnalysisJobHandler:
-    __slots__ = ("_attempts", "_digests", "_dlq", "_max_attempts", "_results")
+    __slots__ = (
+        "_attempts",
+        "_clock",
+        "_digests",
+        "_dlq",
+        "_id_generator",
+        "_max_attempts",
+        "_outbox",
+        "_results",
+    )
 
-    def __init__(self, *, max_attempts: int = 3) -> None:
+    def __init__(
+        self,
+        *,
+        max_attempts: int = 3,
+        clock: Clock | None = None,
+        id_generator: UUID7Generator | None = None,
+        outbox: InMemoryOutbox | None = None,
+    ) -> None:
         if max_attempts < 1:
             raise ValueError("max attempts must be positive")
         self._max_attempts = max_attempts
+        self._clock = clock or SystemClock()
+        self._id_generator = id_generator or UUID7Generator(self._clock)
+        self._outbox = outbox or InMemoryOutbox()
         self._attempts: dict[tuple[OpaqueId, str], int] = {}
         self._digests: dict[tuple[OpaqueId, str], str] = {}
         self._results: dict[tuple[OpaqueId, str], AnalysisOutcome] = {}
@@ -53,6 +78,9 @@ class AnalysisJobHandler:
 
     def attempts_for(self, job: AnalysisJob) -> int:
         return self._attempts.get((job.company_id, job.idempotency_key), 0)
+
+    def pending_events(self, context: TenantContext) -> tuple[OutboxEvent, ...]:
+        return self._outbox.pending(context)
 
     def handle(
         self,
@@ -84,7 +112,35 @@ class AnalysisJobHandler:
             outcome = AnalysisOutcome(status="failed", impact_code=f"{prefix}{error.code.value}")
             if retryable:
                 self._dlq.add(key)
+        if outcome.analysis_id is None:
+            outcome = replace(outcome, analysis_id=self._id_generator.new())
         self._results[key] = outcome
+        self._outbox.add(
+            context,
+            OutboxEvent(
+                event_id=self._id_generator.new(),
+                company_id=job.company_id,
+                event_type="submission.analysis_completed",
+                event_version=1,
+                aggregate=AggregateRef(
+                    aggregate_type="submission",
+                    aggregate_id=job.submission_id,
+                    version=job.analysis_version,
+                ),
+                idempotency_key=job.idempotency_key,
+                occurred_at=self._clock.now(),
+                trace_id=context.trace_id,
+                correlation_id=context.request_id,
+                causation_id=None,
+                payload={
+                    "invitation_id": str(job.scope.invitation_id),
+                    "submission_id": str(job.submission_id),
+                    "analysis_id": str(outcome.analysis_id),
+                    "status": outcome.status,
+                    "impact_code": outcome.impact_code,
+                },
+            ),
+        )
         return outcome
 
     @staticmethod

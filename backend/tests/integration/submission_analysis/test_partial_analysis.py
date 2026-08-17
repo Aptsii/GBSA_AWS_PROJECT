@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from interview_evidence.shared.errors import ErrorCode, SafeApplicationError
 from interview_evidence.shared.tenant import ApplicantScope, TenantContext
 from interview_evidence.workers.analysis.handlers import (
@@ -9,6 +8,7 @@ from interview_evidence.workers.analysis.handlers import (
     AnalysisJobHandler,
     AnalysisOutcome,
 )
+
 from tests.fixtures.shared.factories import (
     APPLICANT_ID,
     COMPANY_ID,
@@ -47,6 +47,16 @@ def test_partial_analysis_is_successful_and_replayed_idempotently() -> None:
     assert first == replay
     assert first.status == "partial"
     assert calls == 1
+    events = handler.pending_events(_context())
+    assert len(events) == 1
+    assert events[0].event_type == "submission.analysis_completed"
+    assert set(events[0].payload) == {
+        "invitation_id",
+        "submission_id",
+        "analysis_id",
+        "status",
+        "impact_code",
+    }
 
 
 def test_retryable_failure_moves_to_dlq_after_bounded_attempts() -> None:
