@@ -10,6 +10,7 @@ from interview_evidence.shared.ids import FixedClock
 from interview_evidence.shared.metrics import (
     InMemoryMetricSink,
     MetricName,
+    MetricUnit,
     OperationalMetrics,
 )
 from interview_evidence.shared.persistence import ProcessedMessageRow
@@ -188,7 +189,8 @@ def test_worker_boundary_records_queue_reconciliation_degraded_and_stage_metrics
     _worker(sqs, handler, factory, metrics).run_once()
 
     by_name = {metric.name: metric for metric in sink.metrics}
-    assert by_name[MetricName.QUEUE_AGE].value == 2_000
+    assert by_name[MetricName.QUEUE_AGE].value == 2.0
+    assert by_name[MetricName.QUEUE_AGE].unit is MetricUnit.SECONDS
     assert by_name[MetricName.RECONCILIATION_LAG].value == 5_000
     assert by_name[MetricName.DEGRADED_MODE].mode == "search_fallback"
     assert by_name[MetricName.STAGE_LATENCY].operation_version == "event-v1"

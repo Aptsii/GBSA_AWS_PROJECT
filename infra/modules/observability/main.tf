@@ -96,6 +96,7 @@ resource "aws_cloudwatch_metric_alarm" "queue_age" {
   alarm_description   = "Background queue age exceeds the interview recovery objective"
   namespace           = "InterviewEvidence"
   metric_name         = "QueueAgeSeconds"
+  unit                = "Seconds"
   statistic           = "Maximum"
   period              = 60
   evaluation_periods  = 5

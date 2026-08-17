@@ -14,7 +14,7 @@ from typing import Protocol, TextIO
 from interview_evidence.shared.ids import Clock, SystemClock
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-METRIC_NAMESPACE = "InterviewEvidencePlatform"
+METRIC_NAMESPACE = "InterviewEvidence"
 METRIC_SCHEMA_VERSION = "1.0"
 _MAX_CAPTURED_RESPONSE_BYTES = 65_536
 _SAFE_DIMENSION = re.compile(r"^[a-z0-9][a-z0-9_.:-]{0,127}$")
@@ -24,7 +24,7 @@ class MetricName(StrEnum):
     STAGE_LATENCY = "StageLatencyMilliseconds"
     RETRY = "RetryCount"
     RECONCILIATION_LAG = "ReconciliationLagMilliseconds"
-    QUEUE_AGE = "QueueAgeMilliseconds"
+    QUEUE_AGE = "QueueAgeSeconds"
     DEGRADED_MODE = "DegradedModeCount"
 
 
@@ -36,6 +36,7 @@ class MetricBoundary(StrEnum):
 class MetricUnit(StrEnum):
     COUNT = "Count"
     MILLISECONDS = "Milliseconds"
+    SECONDS = "Seconds"
 
 
 @dataclass(frozen=True, slots=True)
@@ -185,8 +186,8 @@ class OperationalMetrics:
     ) -> None:
         self._emit(
             MetricName.QUEUE_AGE,
-            age_ms,
-            MetricUnit.MILLISECONDS,
+            age_ms / 1_000,
+            MetricUnit.SECONDS,
             MetricBoundary.WORKER,
             stage,
             operation_version,
@@ -260,8 +261,10 @@ def extract_operational_signals(value: object) -> OperationalSignals:
                     if nested != "none" and _safe_dimension(nested):
                         degraded_modes.append(nested)
                     continue
-                if key == "degraded_modes" and isinstance(nested, Sequence) and not isinstance(
-                    nested, (str, bytes, bytearray)
+                if (
+                    key == "degraded_modes"
+                    and isinstance(nested, Sequence)
+                    and not isinstance(nested, (str, bytes, bytearray))
                 ):
                     for mode in nested:
                         if isinstance(mode, str) and mode != "none" and _safe_dimension(mode):
@@ -388,13 +391,11 @@ def _api_stage(scope: Scope) -> str:
     if "/interview-sessions" in route_path:
         return "interview"
     if any(
-        marker in route_path
-        for marker in ("/reports", "/review", "/privacy", "/final-decisions")
+        marker in route_path for marker in ("/reports", "/review", "/privacy", "/final-decisions")
     ):
         return "review"
     if any(
-        marker in route_path
-        for marker in ("/positions", "/criteria", "/campaigns", "/invitations")
+        marker in route_path for marker in ("/positions", "/criteria", "/campaigns", "/invitations")
     ):
         return "hiring"
     return "api"
