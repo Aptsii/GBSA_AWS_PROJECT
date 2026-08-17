@@ -63,8 +63,19 @@ class OutboxEventRow(Base):
 class ProcessedMessageRow(Base):
     __tablename__ = "processed_messages"
     __table_args__ = (
-        UniqueConstraint("company_id", "consumer_name", "event_id", "event_version"),
-        UniqueConstraint("company_id", "consumer_name", "idempotency_key"),
+        UniqueConstraint(
+            "company_id",
+            "consumer_name",
+            "event_id",
+            "event_version",
+            name="uq_processed_messages_event",
+        ),
+        UniqueConstraint(
+            "company_id",
+            "consumer_name",
+            "idempotency_key",
+            name="uq_processed_messages_idempotency",
+        ),
     )
 
     company_id: Mapped[str] = mapped_column(String(36), primary_key=True)
@@ -294,6 +305,44 @@ class SQLAlchemyProcessedMessageStore:
         self._session.add(row)
         self._session.flush()
         return _processed_message(row)
+
+    def find(
+        self,
+        context: TenantContext,
+        *,
+        consumer_name: str,
+        event_id: str | OpaqueId,
+        event_version: int,
+        idempotency_key: str,
+    ) -> ProcessedMessage | None:
+        checked = require_tenant_context(context)
+        checked_event_id = OpaqueId(event_id)
+        by_event = self._session.scalar(
+            select(ProcessedMessageRow).where(
+                ProcessedMessageRow.company_id == str(checked.company_id),
+                ProcessedMessageRow.consumer_name == consumer_name,
+                ProcessedMessageRow.event_id == str(checked_event_id),
+                ProcessedMessageRow.event_version == event_version,
+            )
+        )
+        by_idempotency = self._session.scalar(
+            select(ProcessedMessageRow).where(
+                ProcessedMessageRow.company_id == str(checked.company_id),
+                ProcessedMessageRow.consumer_name == consumer_name,
+                ProcessedMessageRow.idempotency_key == idempotency_key,
+            )
+        )
+        existing = by_event or by_idempotency
+        if existing is None:
+            return None
+        message = _processed_message(existing)
+        if (
+            message.event_id != checked_event_id
+            or message.event_version != event_version
+            or message.idempotency_key != idempotency_key
+        ):
+            raise SafeApplicationError(ErrorCode.IDEMPOTENCY_CONFLICT)
+        return message
 
 
 class SQLAlchemyAuditEventStore:

@@ -193,6 +193,7 @@ def test_worker_registry_contains_every_async_pipeline_handler() -> None:
         "media.postprocess_requested",
         "report.generation_requested",
     }
+    assert all(callable(getattr(handler, "handle_event", None)) for handler in registry.values())
 
 
 def test_inbound_trace_context_reaches_outbound_carriers() -> None:

@@ -218,11 +218,19 @@ def validate_merge_topology(config: Config) -> list[str]:
         else:
             lane_heads.append(heads[0])
 
-    merge_revisions = [
+    integration_revisions = [
         revision for revision in revisions if revision.revision.startswith(MERGE_PREFIX)
     ]
+    merge_revisions = [
+        revision
+        for revision in integration_revisions
+        if len(revision._normalized_down_revisions) == len(LANE_PREFIXES)
+    ]
     if len(merge_revisions) != 1:
-        errors.append(f"expected exactly one merge revision, found {len(merge_revisions)}")
+        errors.append(
+            "expected exactly one lane-join merge revision, "
+            f"found {len(merge_revisions)}"
+        )
         return errors
 
     merge_revision = merge_revisions[0]
@@ -234,9 +242,9 @@ def validate_merge_topology(config: Config) -> list[str]:
         )
 
     heads = sorted(script.get_heads())
-    if heads != [merge_revision.revision]:
+    if len(heads) != 1 or not heads[0].startswith(MERGE_PREFIX):
         errors.append(
-            f"expected the merge revision to be the single final head, found {heads!r}"
+            f"expected one Integration-owned final head, found {heads!r}"
         )
     return errors
 
@@ -252,7 +260,15 @@ def check(config_path: Path) -> list[str]:
         if lane == MERGE_LANE:
             for path in sorted(location.glob("*.py")):
                 if path.name != "__init__.py":
-                    errors.extend(validate_merge_revision(path))
+                    try:
+                        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+                    except (OSError, SyntaxError) as error:
+                        errors.append(f"{path}: cannot parse migration: {error}")
+                        continue
+                    if isinstance(_literal_assignment(tree, "down_revision"), tuple):
+                        errors.extend(validate_merge_revision(path))
+                    else:
+                        errors.extend(validate_revision(path, MERGE_LANE, MERGE_PREFIX))
             continue
         prefix = LANE_PREFIXES.get(lane)
         if prefix is None:

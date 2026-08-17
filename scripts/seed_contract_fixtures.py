@@ -25,6 +25,7 @@ INVITATION_ID = "018f2000-0000-7000-8000-000000000210"
 BUCKET_NAME = "iep-local-contract-fixtures"
 STATE_BUCKET_NAME = "iep-local-terraform-state"
 QUEUE_NAME = "iep-local-contract-events"
+DLQ_NAME = "iep-local-contract-events-dlq"
 TABLE_NAME = "iep-local-contract-hot-view"
 INDEX_NAME = "iep-local-contract-search"
 
@@ -74,9 +75,11 @@ def _seed_s3() -> str:
     return key
 
 
-def _seed_sqs() -> str:
+def _seed_sqs() -> tuple[str, str]:
     sqs = _aws_client("sqs", endpoint_url=AWS_ENDPOINT)
-    return sqs.create_queue(QueueName=QUEUE_NAME)["QueueUrl"]
+    dlq_url = sqs.create_queue(QueueName=DLQ_NAME)["QueueUrl"]
+    queue_url = sqs.create_queue(QueueName=QUEUE_NAME)["QueueUrl"]
+    return queue_url, dlq_url
 
 
 def _seed_dynamodb() -> None:
@@ -134,7 +137,7 @@ def _seed_opensearch() -> None:
 
 def main() -> int:
     object_key = _seed_s3()
-    queue_url = _seed_sqs()
+    queue_url, dlq_url = _seed_sqs()
     _seed_dynamodb()
     _seed_opensearch()
     result = {
@@ -146,6 +149,7 @@ def main() -> int:
         "object_key": object_key,
         "opensearch_index": INDEX_NAME,
         "queue_name": queue_url.rsplit("/", 1)[-1],
+        "queue_dlq_name": dlq_url.rsplit("/", 1)[-1],
         "status": "seeded",
         "terraform_state_bucket": STATE_BUCKET_NAME,
     }

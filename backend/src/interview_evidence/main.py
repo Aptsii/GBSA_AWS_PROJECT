@@ -63,7 +63,11 @@ from interview_evidence.shared.runtime import (
     RequestSessionRegistry,
 )
 from interview_evidence.shared.security.principals import CompanyAuthenticator
-from interview_evidence.shared.tenant import ApplicantScope, TenantContext
+from interview_evidence.shared.tenant import (
+    ApplicantScope,
+    TenantContext,
+    ensure_company_scope,
+)
 from interview_evidence.submission_analysis.api.applicant_routes import (
     ApplicantRouteRuntime as SubmissionRouteRuntime,
 )
@@ -77,6 +81,43 @@ from interview_evidence.workers.reporting.report import ReportGenerator
 
 _REQUEST_IDS = UUID7Generator()
 _SAFE_TRACE_ID = re.compile(r"^[A-Za-z0-9_.:-]{1,128}$")
+
+
+@dataclass(frozen=True, slots=True)
+class RegisteredWorkerHandler:
+    implementation: object
+    required_payload_fields: tuple[str, ...]
+    direct_handle: bool = False
+
+    def handle_event(
+        self,
+        context: TenantContext,
+        event: object,
+    ) -> Mapping[str, object]:
+        company_id = getattr(event, "company_id", None)
+        event_id = getattr(event, "event_id", None)
+        payload = getattr(event, "payload", None)
+        if company_id is None or event_id is None:
+            raise SafeApplicationError(ErrorCode.INVALID_REQUEST)
+        ensure_company_scope(context, OpaqueId(str(company_id)))
+        if not isinstance(payload, Mapping):
+            raise SafeApplicationError(ErrorCode.INVALID_REQUEST)
+        for field in self.required_payload_fields:
+            if field not in payload:
+                raise SafeApplicationError(ErrorCode.INVALID_REQUEST)
+        if self.direct_handle:
+            handler = getattr(self.implementation, "handle", None)
+            as_mapping = getattr(event, "as_mapping", None)
+            if not callable(handler) or not callable(as_mapping):
+                raise SafeApplicationError(ErrorCode.INTERNAL_ERROR)
+            result = handler(as_mapping())
+            if not isinstance(result, Mapping):
+                raise SafeApplicationError(ErrorCode.INTERNAL_ERROR)
+            return result
+        return {
+            "event_id": str(OpaqueId(str(event_id))),
+            "status": "queued",
+        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -111,10 +152,23 @@ def create_application_routers(runtimes: ApplicationRuntimes) -> tuple[APIRouter
 def create_worker_registry() -> Mapping[str, object]:
     return MappingProxyType(
         {
-            "invitation.email_requested": create_invitation_email_handler(),
-            "submission.analysis_requested": AnalysisJobHandler(),
-            "media.postprocess_requested": MediaProcessor(),
-            "report.generation_requested": ReportGenerator(),
+            "invitation.email_requested": RegisteredWorkerHandler(
+                create_invitation_email_handler(),
+                ("invitation_id", "link_resolution_id"),
+                direct_handle=True,
+            ),
+            "submission.analysis_requested": RegisteredWorkerHandler(
+                AnalysisJobHandler(),
+                ("submission_id", "analysis_version", "source_type"),
+            ),
+            "media.postprocess_requested": RegisteredWorkerHandler(
+                MediaProcessor(),
+                ("session_id", "ordered_chunk_set_id", "output_profile_version"),
+            ),
+            "report.generation_requested": RegisteredWorkerHandler(
+                ReportGenerator(),
+                ("session_id", "report_version", "criterion_version_id"),
+            ),
         }
     )
 

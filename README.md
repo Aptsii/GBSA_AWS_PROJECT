@@ -48,7 +48,9 @@ The Compose stack supplies PostgreSQL, S3/SQS emulation, DynamoDB, and OpenSearc
 builds request-scoped SQLAlchemy transactions, configured authentication/session adapters, S3
 storage, and every versioned `/v1` router. Both image targets and all four async worker handlers are
 registered. The worker entrypoint stays alive until `SIGINT` or `SIGTERM`, and its Compose health
-check rejects an empty handler registry.
+check rejects an empty handler registry. Queue consumers validate the v1 envelope, enforce tenant
+scope, record durable duplicate outcomes, use bounded visibility retries, and acknowledge only
+after success or DLQ transfer.
 
 Common checks:
 

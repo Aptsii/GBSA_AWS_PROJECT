@@ -7,7 +7,10 @@ from logging.config import fileConfig
 
 from alembic import context
 from interview_evidence.shared.database import metadata
+from interview_evidence.shared import persistence as shared_persistence
 from sqlalchemy import MetaData, engine_from_config, pool
+
+del shared_persistence
 
 DOMAIN_PACKAGES = (
     "interview_evidence.company_management.domain",

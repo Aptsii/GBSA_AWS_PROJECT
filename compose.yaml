@@ -87,6 +87,11 @@ services:
       IEP_SIGNED_URL_TTL_SECONDS: "900"
       IEP_DEFAULT_RETENTION_DAYS: "30"
       IEP_OBJECT_STORAGE_BUCKET: iep-local-contract-fixtures
+      IEP_EVENT_QUEUE_URL: http://localstack:4566/000000000000/iep-local-contract-events
+      IEP_EVENT_DLQ_URL: http://localstack:4566/000000000000/iep-local-contract-events-dlq
+      IEP_WORKER_MAX_ATTEMPTS: "5"
+      IEP_WORKER_WAIT_TIME_SECONDS: "5"
+      IEP_WORKER_VISIBILITY_TIMEOUT_SECONDS: "30"
       AWS_ENDPOINT_URL: http://localstack:4566
       AWS_ACCESS_KEY_ID: test
       AWS_SECRET_ACCESS_KEY: test
@@ -136,6 +141,11 @@ services:
       IEP_SIGNED_URL_TTL_SECONDS: "900"
       IEP_DEFAULT_RETENTION_DAYS: "30"
       IEP_OBJECT_STORAGE_BUCKET: iep-local-contract-fixtures
+      IEP_EVENT_QUEUE_URL: http://localstack:4566/000000000000/iep-local-contract-events
+      IEP_EVENT_DLQ_URL: http://localstack:4566/000000000000/iep-local-contract-events-dlq
+      IEP_WORKER_MAX_ATTEMPTS: "5"
+      IEP_WORKER_WAIT_TIME_SECONDS: "5"
+      IEP_WORKER_VISIBILITY_TIMEOUT_SECONDS: "30"
       AWS_ENDPOINT_URL: http://localstack:4566
       AWS_ACCESS_KEY_ID: test
       AWS_SECRET_ACCESS_KEY: test

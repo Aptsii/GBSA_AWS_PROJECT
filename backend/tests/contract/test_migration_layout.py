@@ -14,6 +14,7 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 ALEMBIC_CONFIG = REPOSITORY_ROOT / "backend" / "alembic.ini"
 VERSIONS_ROOT = REPOSITORY_ROOT / "backend" / "alembic" / "versions"
 MERGE_REVISION = VERSIONS_ROOT / "merge" / "m_001_lane_merge.py"
+INTEGRATION_REVISION = VERSIONS_ROOT / "merge" / "m_002_shared_runtime.py"
 LANES = {
     "company": "a_000_foundation.py",
     "submission": "b_000_foundation.py",
@@ -71,6 +72,16 @@ def test_merge_revision_joins_the_current_lane_heads() -> None:
     assert merge_revision.branch_labels is None
     assert callable(merge_revision.upgrade)
     assert callable(merge_revision.downgrade)
+
+
+def test_integration_runtime_revision_follows_the_lane_merge() -> None:
+    integration_revision = _load_revision(INTEGRATION_REVISION)
+
+    assert integration_revision.revision == "m_002"
+    assert integration_revision.down_revision == "m_001"
+    assert integration_revision.branch_labels is None
+    assert callable(integration_revision.upgrade)
+    assert callable(integration_revision.downgrade)
 
 
 def test_each_lane_starts_with_one_reversible_labeled_head() -> None:
