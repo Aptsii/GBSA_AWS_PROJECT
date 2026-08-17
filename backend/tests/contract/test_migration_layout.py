@@ -29,6 +29,26 @@ def _load_revision(path: Path) -> ModuleType:
     return module
 
 
+def _lane_migration_head(version_directory: Path) -> str:
+    revisions: dict[str, str | None] = {}
+    for path in version_directory.glob("*.py"):
+        revision = _load_revision(path)
+        if isinstance(revision.revision, str) and (
+            revision.down_revision is None or isinstance(revision.down_revision, str)
+        ):
+            revisions[revision.revision] = revision.down_revision
+    parents = {parent for parent in revisions.values() if parent is not None}
+    heads = set(revisions) - parents
+    assert len(heads) == 1
+    return heads.pop()
+
+
+def _next_lane_revision(current_head: str) -> str:
+    prefix, separator, raw_number = current_head.rpartition("_")
+    assert separator and raw_number.isdigit()
+    return f"{prefix}_{int(raw_number) + 1:03d}"
+
+
 def test_alembic_config_declares_each_lane_version_location() -> None:
     config = Config(str(ALEMBIC_CONFIG))
     locations = set(config.get_version_locations_list())
@@ -90,12 +110,15 @@ def test_migration_gate_discovers_a_new_valid_lane_head(tmp_path: Path) -> None:
         "    id: Mapped[int] = mapped_column(primary_key=True)\n",
         encoding="utf-8",
     )
-    (temporary_backend / "alembic" / "versions" / "company" / "a_001_next.py").write_text(
+    company_versions = temporary_backend / "alembic" / "versions" / "company"
+    current_head = _lane_migration_head(company_versions)
+    next_revision = _next_lane_revision(current_head)
+    (company_versions / f"{next_revision}_next.py").write_text(
         '"""Test-only successor revision."""\n'
         "import sqlalchemy as sa\n"
         "from alembic import op\n"
-        'revision = "a_001"\n'
-        'down_revision = "a_000"\n'
+        f'revision = "{next_revision}"\n'
+        f'down_revision = "{current_head}"\n'
         "branch_labels = None\n"
         "depends_on = None\n"
         "def upgrade():\n"
@@ -117,7 +140,7 @@ def test_migration_gate_discovers_a_new_valid_lane_head(tmp_path: Path) -> None:
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "a_001" in result.stdout
+    assert next_revision in result.stdout
 
 
 def _run_temporary_migration_gate(tmp_path: Path) -> tuple[Path, dict[str, str]]:
