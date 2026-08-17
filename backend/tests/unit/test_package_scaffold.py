@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import os
+import select
 import subprocess
 import sys
-import time
 
 import interview_evidence
 
@@ -45,7 +45,11 @@ def test_worker_entrypoint_stays_alive_until_shutdown_signal() -> None:
         env=environment,
     )
     try:
-        time.sleep(1)
+        assert process.stderr is not None
+        ready, _, _ = select.select([process.stderr], [], [], 10)
+        assert ready
+        first_stderr_line = process.stderr.readline().strip()
+        assert first_stderr_line == "Worker receive failed; retrying."
         assert process.poll() is None
         process.terminate()
         stdout, stderr = process.communicate(timeout=5)
@@ -56,5 +60,4 @@ def test_worker_entrypoint_stays_alive_until_shutdown_signal() -> None:
 
     assert process.returncode == 0
     assert stdout == ""
-    assert stderr.splitlines()
-    assert set(stderr.splitlines()) == {"Worker receive failed; retrying."}
+    assert set([first_stderr_line, *stderr.splitlines()]) == {"Worker receive failed; retrying."}
