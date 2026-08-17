@@ -141,7 +141,14 @@ test-lane-b:
 demo-lane-b:
 	$(UV) run pytest backend/tests/integration/submission_analysis/test_lane_b_quickstart.py -q
 
-test-lane-c demo-lane-c test-lane-d demo-lane-d:
+test-lane-c:
+	$(UV) run pytest backend/tests/contract/interview_engine backend/tests/unit/interview_engine backend/tests/integration/interview_engine
+	$(PNPM) --filter @iep/applicant-interview test -- src/features/interview/__tests__
+
+demo-lane-c:
+	$(UV) run pytest backend/tests/integration/interview_engine/test_lane_c_quickstart.py -q
+
+test-lane-d demo-lane-d:
 	$(not_ready)
 
 test-integration test-e2e-thin test-recovery test-tenant-isolation:
