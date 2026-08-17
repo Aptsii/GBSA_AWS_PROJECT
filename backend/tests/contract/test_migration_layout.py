@@ -87,21 +87,14 @@ def test_migration_gate_discovers_a_new_valid_lane_head(tmp_path: Path) -> None:
     shutil.copytree(REPOSITORY_ROOT / "backend" / "alembic", temporary_backend / "alembic")
     shutil.copy2(ALEMBIC_CONFIG, temporary_backend / "alembic.ini")
     temporary_package = temporary_backend / "src" / "interview_evidence"
-    shared_package = temporary_package / "shared"
-    domain_package = temporary_package / "company_management" / "domain"
-    shared_package.mkdir(parents=True)
-    domain_package.mkdir(parents=True)
-    for init_file in (
-        temporary_package / "__init__.py",
-        shared_package / "__init__.py",
-        domain_package.parent / "__init__.py",
-        domain_package / "__init__.py",
-    ):
-        init_file.write_text("", encoding="utf-8")
-    shutil.copy2(
-        REPOSITORY_ROOT / "backend" / "src" / "interview_evidence" / "shared" / "database.py",
-        shared_package / "database.py",
+    shutil.copytree(
+        REPOSITORY_ROOT / "backend" / "src" / "interview_evidence",
+        temporary_package,
     )
+    domain_package = temporary_package / "company_management" / "domain"
+    domain_package.mkdir(parents=True, exist_ok=True)
+    (domain_package.parent / "__init__.py").touch()
+    (domain_package / "__init__.py").touch()
     (domain_package / "sample.py").write_text(
         "from sqlalchemy.orm import Mapped, mapped_column\n"
         "from interview_evidence.shared.database import Base\n"
