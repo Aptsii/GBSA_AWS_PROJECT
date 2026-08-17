@@ -74,12 +74,15 @@ class SubmissionApplicationService:
         scope = arguments["scope"]
         if not isinstance(context, TenantContext) or not isinstance(scope, ApplicantScope):
             raise TypeError("tenant context and applicant scope are required")
+        byte_size = arguments["byte_size"]
+        if not isinstance(byte_size, int):
+            raise TypeError("byte_size must be an integer")
         self._authorization.authorize(context, scope)
         checked = self._validator.validate_upload(
             source_type=str(arguments["source_type"]),
             filename=str(arguments["filename"]),
             media_type=str(arguments["media_type"]),
-            byte_size=int(arguments["byte_size"]),
+            byte_size=byte_size,
             sha256=str(arguments["sha256"]),
         )
         idempotency_key = str(arguments["idempotency_key"])

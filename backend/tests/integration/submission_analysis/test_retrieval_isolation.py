@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from interview_evidence.shared.tenant import ApplicantScope, TenantContext, TenantScopeViolation
 from interview_evidence.submission_analysis.adapters.search import (
     InMemorySubmissionSearch,
@@ -12,6 +11,7 @@ from interview_evidence.submission_analysis.application.retrieval import (
     RetrievalQuery,
 )
 from interview_evidence.submission_analysis.domain.source import SourceLocation, SourceReference
+
 from tests.fixtures.shared.factories import (
     APPLICANT_ID,
     COMPANY_ID,

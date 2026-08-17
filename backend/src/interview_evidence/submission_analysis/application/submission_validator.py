@@ -4,6 +4,7 @@ import ipaddress
 import re
 from dataclasses import dataclass
 from pathlib import PurePath
+from typing import ClassVar
 from urllib.parse import parse_qsl, urlsplit, urlunsplit
 
 from interview_evidence.submission_analysis.domain.submission import SourceType
@@ -25,7 +26,7 @@ class ValidatedUpload:
 class SubmissionValidator:
     __slots__ = ("_max_file_bytes",)
 
-    _ALLOWED_MEDIA = {
+    _ALLOWED_MEDIA: ClassVar[dict[SourceType, set[str]]] = {
         SourceType.COVER_LETTER: {"text/plain", "text/markdown", "application/pdf"},
         SourceType.RESUME: {"text/plain", "text/markdown", "application/pdf"},
         SourceType.PDF: {"application/pdf"},

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from interview_evidence.shared.aws_clients.ports import (
     ObjectRef,
@@ -24,7 +24,7 @@ class UploadIntentRecord:
     expected_byte_size: int
     expected_sha256: str
     object_ref: ObjectRef
-    expires_at: object
+    expires_at: datetime
     uploaded: bool = False
 
 

@@ -10,6 +10,7 @@ from interview_evidence.submission_analysis.application.retrieval import (
     RetrievalQuery,
 )
 from interview_evidence.submission_analysis.domain.source import SourceLocation, SourceReference
+
 from tests.fixtures.shared.factories import (
     APPLICANT_ID,
     COMPANY_ID,

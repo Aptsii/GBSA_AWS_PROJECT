@@ -3,12 +3,12 @@ from __future__ import annotations
 from copy import deepcopy
 
 import pytest
-
 from interview_evidence.shared.errors import ErrorCode, SafeApplicationError
 from interview_evidence.shared.tenant import ApplicantScope, TenantContext
 from interview_evidence.submission_analysis.application.authorization import (
     SubmissionAuthorizationGate,
 )
+
 from tests.fixtures.shared.factories import (
     APPLICANT_ID,
     COMPANY_ID,

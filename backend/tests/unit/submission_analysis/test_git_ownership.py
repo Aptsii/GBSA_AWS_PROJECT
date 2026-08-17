@@ -31,8 +31,16 @@ def test_commit_analysis_uses_multiple_identity_signals_and_never_name_only() ->
 
 
 def test_code_unit_expands_symbol_and_discovers_related_tests() -> None:
-    source = """def retry_payment(attempts: int) -> bool:\n    if attempts > 3:\n        return False\n    return True\n"""
-    test_source = """from payment import retry_payment\n\ndef test_retry_payment():\n    assert retry_payment(1)\n"""
+    source = """def retry_payment(attempts: int) -> bool:
+    if attempts > 3:
+        return False
+    return True
+"""
+    test_source = """from payment import retry_payment
+
+def test_retry_payment():
+    assert retry_payment(1)
+"""
 
     units = CodeUnitAnalyzer().analyze(
         path="src/payment.py",

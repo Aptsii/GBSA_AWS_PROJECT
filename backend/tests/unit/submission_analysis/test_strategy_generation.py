@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-import pytest
+from datetime import UTC, datetime
 
+import pytest
 from interview_evidence.shared.ids import FixedClock, UUID7Generator
 from interview_evidence.shared.tenant import ApplicantScope, TenantContext
 from interview_evidence.submission_analysis.application.strategy_service import StrategyService
 from interview_evidence.submission_analysis.domain.source import SourceLocation, SourceReference
+
 from tests.fixtures.shared.factories import (
     APPLICANT_ID,
     COMPANY_ID,
@@ -14,7 +16,6 @@ from tests.fixtures.shared.factories import (
     make_criterion_snapshot,
     make_tenant_context,
 )
-from datetime import UTC, datetime
 
 
 def _context() -> TenantContext:

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Mapping
 
 from interview_evidence.submission_analysis.domain.git_analysis import (
     GitCommitAnalysis,
@@ -35,8 +35,8 @@ class CommitAnalyzer:
         *,
         candidate_identity_inputs: Mapping[str, object],
     ) -> GitCommitAnalysis:
-        emails = {str(value).casefold() for value in candidate_identity_inputs.get("emails", [])}
-        names = {str(value).casefold() for value in candidate_identity_inputs.get("names", [])}
+        emails = self._identity_values(candidate_identity_inputs.get("emails"))
+        names = self._identity_values(candidate_identity_inputs.get("names"))
         email_match = commit.author_email.casefold() in emails
         name_match = commit.author_name.casefold() in names
         confidence = min(1.0, (0.75 if email_match else 0.0) + (0.2 if name_match else 0.0))
@@ -60,3 +60,9 @@ class CommitAnalyzer:
             ownership_confidence=confidence,
             ownership_class=ownership_class,
         )
+
+    @staticmethod
+    def _identity_values(value: object) -> set[str]:
+        if not isinstance(value, list | tuple | set | frozenset):
+            return set()
+        return {str(item).casefold() for item in value}

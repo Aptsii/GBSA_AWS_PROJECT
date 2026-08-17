@@ -19,7 +19,7 @@ class CodeUnitAnalyzer:
     ) -> tuple[CandidateCodeUnit, ...]:
         language = self._language(path)
         symbols = self._python_symbols(source) if language == "python" else ()
-        relevant = [item for item in symbols if self._overlaps(item[1], changed_lines)]
+        relevant = tuple(item for item in symbols if self._overlaps(item[1], changed_lines))
         if not relevant:
             relevant = ((PurePosixPath(path).stem, (changed_lines[0], changed_lines[1])),)
         units: list[CandidateCodeUnit] = []
