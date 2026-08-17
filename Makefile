@@ -13,8 +13,12 @@ TERRAFORM_ROOTS := \
 	infra/environments/dev/foundation \
 	infra/environments/dev/data-ai \
 	infra/environments/dev/application \
-	infra/environments/stage \
-	infra/environments/prod
+	infra/environments/stage/foundation \
+	infra/environments/stage/data-ai \
+	infra/environments/stage/application \
+	infra/environments/prod/foundation \
+	infra/environments/prod/data-ai \
+	infra/environments/prod/application
 DEV_TERRAFORM_ROOTS := \
 	infra/environments/dev/foundation \
 	infra/environments/dev/data-ai \
