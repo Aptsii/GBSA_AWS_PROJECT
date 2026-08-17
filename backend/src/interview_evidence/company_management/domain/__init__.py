@@ -1,0 +1,1 @@
+"""Company-management domain models."""
