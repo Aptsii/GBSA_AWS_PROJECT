@@ -44,10 +44,11 @@ make bootstrap
 make compose-up
 ```
 
-The Compose stack supplies PostgreSQL, S3/SQS emulation, DynamoDB, and OpenSearch. The API
-composition root, both image targets, and all four async worker handlers are registered. The worker
-entrypoint stays alive until `SIGINT` or `SIGTERM`, and its Compose health check rejects an empty
-handler registry.
+The Compose stack supplies PostgreSQL, S3/SQS emulation, DynamoDB, and OpenSearch. The API factory
+builds request-scoped SQLAlchemy transactions, configured authentication/session adapters, S3
+storage, and every versioned `/v1` router. Both image targets and all four async worker handlers are
+registered. The worker entrypoint stays alive until `SIGINT` or `SIGTERM`, and its Compose health
+check rejects an empty handler registry.
 
 Common checks:
 

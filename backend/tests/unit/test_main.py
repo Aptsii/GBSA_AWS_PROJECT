@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 
 import pytest
 import structlog
@@ -12,9 +13,18 @@ from interview_evidence.main import (
     create_application_routers,
     create_worker_registry,
 )
+from interview_evidence.shared.aws_clients.ports import FakeObjectStorage
+from interview_evidence.shared.config import RuntimeEnvironment, Settings
+from interview_evidence.shared.database import metadata
 from interview_evidence.shared.errors import ErrorCode, SafeApplicationError
+from interview_evidence.shared.ids import FixedClock, OpaqueId
 from interview_evidence.shared.observability import inject_trace_context
+from interview_evidence.shared.security.principals import CompanyPrincipal, FakeCompanyAuthenticator
 from pydantic import BaseModel, Field
+from sqlalchemy import create_engine
+from sqlalchemy.pool import StaticPool
+
+NOW = datetime(2026, 8, 17, 9, 0, tzinfo=UTC)
 
 
 class ValidationRequest(BaseModel):
@@ -22,12 +32,106 @@ class ValidationRequest(BaseModel):
 
 
 def test_health_endpoints_are_available_without_domain_imports() -> None:
-    app = create_app()
+    app = create_app(routers=())
     client = TestClient(app)
 
     assert client.get("/health/live").json() == {"status": "ok"}
     assert client.get("/health/ready").json() == {"status": "ready"}
     assert app.version == "1.0.0"
+
+
+def test_production_factory_mounts_every_contract_route_and_fails_closed() -> None:
+    settings = Settings(
+        environment=RuntimeEnvironment.TEST,
+        database_url="sqlite+pysqlite:///:memory:",
+        applicant_session_secret="test-applicant-session-secret",
+        company_jwt_issuer="https://identity.example.test/",
+        company_jwt_audience="interview-evidence-api",
+        company_jwks_url="https://identity.example.test/.well-known/jwks.json",
+        applicant_session_ttl_seconds=3_600,
+        invitation_public_base_url="https://applicant.example.test/",
+        invitation_email_template="invitation-v1",
+        default_retention_days=30,
+        signed_url_ttl_seconds=900,
+    )
+    engine = create_engine(
+        settings.database_url.get_secret_value(),
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    metadata.create_all(engine)
+    authenticator = FakeCompanyAuthenticator(FixedClock(NOW))
+    authenticator.register(
+        "production-runtime-company-token",
+        CompanyPrincipal(
+            company_id=OpaqueId("018f2000-0000-7000-8000-000000000100"),
+            company_user_id=OpaqueId("018f2000-0000-7000-8000-000000000101"),
+            identity_subject="runtime-owner@example.test",
+            roles=frozenset({"hiring_admin"}),
+            issued_at=NOW,
+            expires_at=datetime(2026, 8, 17, 10, 0, tzinfo=UTC),
+        ),
+    )
+    app = create_app(
+        settings=settings,
+        engine=engine,
+        object_storage=FakeObjectStorage(),
+        company_authenticator=authenticator,
+    )
+    paths = app.openapi()["paths"]
+
+    expected_paths = {
+        "/v1/me",
+        "/v1/positions",
+        "/v1/positions/{position_id}/competency-model-versions",
+        "/v1/competency-model-versions/{version_id}/publish",
+        "/v1/campaigns",
+        "/v1/campaigns/{campaign_id}/publish",
+        "/v1/campaigns/{campaign_id}/invitations",
+        "/v1/applicant/access/exchange",
+        "/v1/applicant/identity-verifications",
+        "/v1/applicant/consents",
+        "/v1/applicant/submissions/upload-intents",
+        "/v1/applicant/submissions",
+        "/v1/applicant/analysis-status",
+        "/v1/applicant/equipment-checks",
+        "/v1/applicant/interview-sessions",
+        "/v1/applicant/interview-sessions/{session_id}/resume",
+        "/v1/applicant/interview-sessions/{session_id}/media-upload-intents",
+        "/v1/interview-sessions/{session_id}/report",
+        "/v1/interview-sessions/{session_id}/timeline",
+        "/v1/reports/{report_id}/items/{report_item_id}/reviews",
+        "/v1/interview-sessions/{session_id}/review-artifacts",
+        "/v1/invitations/{invitation_id}/final-decisions",
+        "/v1/privacy/deletion-requests",
+        "/v1/privacy/deletion-requests/{deletion_request_id}",
+    }
+    assert expected_paths <= set(paths)
+
+    client = TestClient(app)
+    assert client.get("/v1/me").status_code == 401
+    assert client.get("/v1/applicant/submissions").status_code == 401
+    assert client.get(
+        "/v1/interview-sessions/018f2000-0000-7000-8000-000000000310/report"
+    ).status_code == 401
+    headers = {
+        "Authorization": "Bearer production-runtime-company-token",
+        "Idempotency-Key": "production-runtime-position-0001",
+    }
+    created = client.post(
+        "/v1/positions",
+        headers=headers,
+        json={"title": "플랫폼 엔지니어", "description": "런타임 트랜잭션을 검증합니다."},
+    )
+    assert created.status_code == 201
+    listed = client.get(
+        "/v1/positions",
+        headers={"Authorization": "Bearer production-runtime-company-token"},
+    )
+    assert listed.status_code == 200
+    assert listed.json()["items"][0]["position_id"] == created.json()["position_id"]
+    metadata.drop_all(engine)
+    engine.dispose()
 
 
 def test_public_router_can_be_composed_explicitly() -> None:
@@ -133,7 +237,7 @@ def test_app_creation_activates_fail_closed_structured_logging(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     structlog.reset_defaults()
-    create_app()
+    create_app(routers=())
 
     assert structlog.is_configured()
     structlog.get_logger().info(

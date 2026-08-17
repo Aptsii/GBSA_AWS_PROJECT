@@ -47,6 +47,10 @@ class Settings(BaseSettings):
     default_retention_days: int = Field(ge=1, le=3_650)
     signed_url_ttl_seconds: int = Field(ge=60, le=3_600)
     event_queue_url: SecretStr | None = None
+    object_storage_bucket: str = Field(
+        default="iep-local-contract-fixtures",
+        pattern=r"^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$",
+    )
 
     @model_validator(mode="after")
     def validate_regions(self) -> Settings:
