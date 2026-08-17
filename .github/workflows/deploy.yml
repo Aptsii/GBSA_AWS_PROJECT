@@ -1,0 +1,175 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Protected deployment environment
+        required: true
+        type: choice
+        options: [dev, stage, prod]
+      state_root:
+        description: Terraform state root to plan and apply
+        required: true
+        type: choice
+        options: [foundation, data-ai, application]
+      image_digest:
+        description: Immutable API and worker image digest
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-${{ inputs.environment }}-${{ inputs.state_root }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ap-northeast-2
+  TERRAFORM_VERSION: 1.10.5
+  UV_VERSION: 0.10.9
+  NODE_VERSION: 22.13.1
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      terraform-root: ${{ steps.root.outputs.path }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+      - uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - id: root
+        name: Resolve Terraform root
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ inputs.environment }}" == "dev" ]]; then
+            root="infra/environments/dev/${{ inputs.state_root }}"
+          else
+            root="infra/environments/${{ inputs.environment }}"
+          fi
+          printf 'path=%s\n' "$root" >> "$GITHUB_OUTPUT"
+      - name: Terraform init
+        working-directory: ${{ steps.root.outputs.path }}
+        run: >-
+          terraform init -input=false
+          -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+      - name: Terraform plan
+        working-directory: ${{ steps.root.outputs.path }}
+        run: terraform plan -input=false -out=tfplan
+      - uses: actions/upload-artifact@v6
+        with:
+          name: terraform-plan-${{ inputs.environment }}-${{ inputs.state_root }}
+          path: ${{ steps.root.outputs.path }}/tfplan
+          if-no-files-found: error
+          retention-days: 7
+
+  apply:
+    needs: plan
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+      - uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - uses: actions/download-artifact@v7
+        with:
+          name: terraform-plan-${{ inputs.environment }}-${{ inputs.state_root }}
+          path: ${{ needs.plan.outputs.terraform-root }}
+      - name: Terraform init
+        working-directory: ${{ needs.plan.outputs.terraform-root }}
+        run: >-
+          terraform init -input=false
+          -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+      - name: Apply reviewed saved plan
+        working-directory: ${{ needs.plan.outputs.terraform-root }}
+        run: terraform apply -input=false tfplan
+
+  migrate:
+    needs: apply
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Run Alembic migration task
+        shell: bash
+        run: |
+          set -euo pipefail
+          aws ecs run-task \
+            --cluster "${{ vars.ECS_CLUSTER }}" \
+            --task-definition "${{ vars.MIGRATION_TASK_DEFINITION }}" \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[${{ vars.PRIVATE_SUBNETS }}],securityGroups=[${{ vars.WORKER_SECURITY_GROUP }}],assignPublicIp=DISABLED}" \
+            --overrides '{"containerOverrides":[{"name":"worker","command":["uv","run","alembic","-c","backend/alembic.ini","upgrade","heads"]}]}' \
+            --query 'tasks[0].taskArn' \
+            --output text
+
+  deploy-ecs:
+    needs: migrate
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Deploy immutable image digest
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'Deploying image digest %s\n' '${{ inputs.image_digest }}'
+          aws ecs update-service \
+            --cluster "${{ vars.ECS_CLUSTER }}" \
+            --service "${{ vars.API_SERVICE }}" \
+            --force-new-deployment
+          aws ecs update-service \
+            --cluster "${{ vars.ECS_CLUSTER }}" \
+            --service "${{ vars.WORKER_SERVICE }}" \
+            --force-new-deployment
+
+  deploy-frontends:
+    needs: deploy-ecs
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @iep/company-console build
+      - run: pnpm --filter @iep/applicant-interview build
+      - name: Publish private-origin assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          aws s3 sync apps/company-console/dist "s3://${{ vars.COMPANY_SITE_BUCKET }}" --delete
+          aws s3 sync apps/applicant-interview/dist "s3://${{ vars.APPLICANT_SITE_BUCKET }}" --delete
+          aws cloudfront create-invalidation \
+            --distribution-id "${{ vars.COMPANY_DISTRIBUTION_ID }}" \
+            --paths '/*'
+          aws cloudfront create-invalidation \
+            --distribution-id "${{ vars.APPLICANT_DISTRIBUTION_ID }}" \
+            --paths '/*'
