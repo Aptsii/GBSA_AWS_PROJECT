@@ -222,7 +222,10 @@ class SQLAlchemyReportingRouteService:
         idempotency_key: str,
     ) -> dict[str, object]:
         existing = self._session.scalar(
-            select(HumanReviewRow).where(HumanReviewRow.idempotency_key == idempotency_key)
+            select(HumanReviewRow).where(
+                HumanReviewRow.company_id == str(context.company_id),
+                HumanReviewRow.idempotency_key == idempotency_key,
+            )
         )
         if existing is not None:
             ensure_company_scope(context, existing.company_id)
