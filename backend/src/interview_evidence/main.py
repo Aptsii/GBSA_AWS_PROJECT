@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
+from dataclasses import dataclass
+from types import MappingProxyType
 
 from fastapi import APIRouter, FastAPI
 from fastapi.exceptions import RequestValidationError
@@ -12,6 +14,31 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.requests import Request
 from starlette.responses import Response
 
+from interview_evidence.company_management.api.applicant_routes import (
+    ApplicantRouteRuntime as CompanyApplicantRouteRuntime,
+)
+from interview_evidence.company_management.api.applicant_routes import (
+    create_applicant_router as create_company_applicant_router,
+)
+from interview_evidence.company_management.api.company_routes import (
+    CompanyRouteRuntime,
+    create_company_router,
+)
+from interview_evidence.company_management.workers.invitation_email import (
+    InvitationEmailHandler,
+)
+from interview_evidence.interview_engine.api.applicant_routes import (
+    ApplicantInterviewRouteRuntime,
+    create_applicant_interview_router,
+)
+from interview_evidence.interview_engine.api.websocket import (
+    WebSocketRuntime,
+    create_websocket_router,
+)
+from interview_evidence.reporting.api.company_routes import (
+    ReportingRouteRuntime,
+    create_reporting_router,
+)
 from interview_evidence.shared.errors import (
     ErrorCode,
     FieldError,
@@ -19,8 +46,49 @@ from interview_evidence.shared.errors import (
 )
 from interview_evidence.shared.ids import OpaqueId, UUID7Generator
 from interview_evidence.shared.observability import configure_structured_logging
+from interview_evidence.submission_analysis.api.applicant_routes import (
+    ApplicantRouteRuntime as SubmissionRouteRuntime,
+)
+from interview_evidence.submission_analysis.api.applicant_routes import (
+    create_applicant_router as create_submission_router,
+)
+from interview_evidence.workers.analysis.handlers import AnalysisJobHandler
+from interview_evidence.workers.reporting.media import MediaProcessor
+from interview_evidence.workers.reporting.report import ReportGenerator
 
 _REQUEST_IDS = UUID7Generator()
+
+
+@dataclass(frozen=True, slots=True)
+class ApplicationRuntimes:
+    company: CompanyRouteRuntime
+    company_applicant: CompanyApplicantRouteRuntime
+    submission: SubmissionRouteRuntime
+    interview: ApplicantInterviewRouteRuntime
+    interview_websocket: WebSocketRuntime
+    reporting: ReportingRouteRuntime
+
+
+def create_application_routers(runtimes: ApplicationRuntimes) -> tuple[APIRouter, ...]:
+    return (
+        create_company_router(runtimes.company),
+        create_company_applicant_router(runtimes.company_applicant),
+        create_submission_router(runtimes.submission),
+        create_applicant_interview_router(runtimes.interview),
+        create_websocket_router(runtimes.interview_websocket),
+        create_reporting_router(runtimes.reporting),
+    )
+
+
+def create_worker_registry() -> Mapping[str, object]:
+    return MappingProxyType(
+        {
+            "invitation.email_requested": InvitationEmailHandler(),
+            "submission.analysis_requested": AnalysisJobHandler(),
+            "media.postprocess_requested": MediaProcessor(),
+            "report.generation_requested": ReportGenerator(),
+        }
+    )
 
 
 def _request_id(request: Request) -> OpaqueId:

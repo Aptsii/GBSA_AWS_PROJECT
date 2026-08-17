@@ -6,7 +6,12 @@ import pytest
 import structlog
 from fastapi import APIRouter
 from fastapi.testclient import TestClient
-from interview_evidence.main import create_app
+from interview_evidence.main import (
+    ApplicationRuntimes,
+    create_app,
+    create_application_routers,
+    create_worker_registry,
+)
 from interview_evidence.shared.errors import ErrorCode, SafeApplicationError
 from interview_evidence.shared.observability import inject_trace_context
 from pydantic import BaseModel, Field
@@ -36,6 +41,54 @@ def test_public_router_can_be_composed_explicitly() -> None:
 
     assert client.get("/v1/example").json() == {"ok": True}
     assert client.get("/example").status_code == 404
+
+
+def test_application_runtime_bundle_wires_every_lane_router(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import interview_evidence.main as main_module
+
+    factory_names = (
+        "create_company_router",
+        "create_company_applicant_router",
+        "create_submission_router",
+        "create_applicant_interview_router",
+        "create_websocket_router",
+        "create_reporting_router",
+    )
+    for index, factory_name in enumerate(factory_names, start=1):
+        router = APIRouter()
+
+        @router.get(f"/fragment-{index}")
+        def fragment(index: int = index) -> dict[str, int]:
+            return {"fragment": index}
+
+        monkeypatch.setattr(main_module, factory_name, lambda _runtime, router=router: router)
+
+    runtimes = ApplicationRuntimes(
+        company=object(),
+        company_applicant=object(),
+        submission=object(),
+        interview=object(),
+        interview_websocket=object(),
+        reporting=object(),
+    )
+    client = TestClient(create_app(create_application_routers(runtimes)))
+
+    assert [client.get(f"/v1/fragment-{index}").status_code for index in range(1, 7)] == [
+        200,
+    ] * 6
+
+
+def test_worker_registry_contains_every_async_pipeline_handler() -> None:
+    registry = create_worker_registry()
+
+    assert set(registry) == {
+        "invitation.email_requested",
+        "submission.analysis_requested",
+        "media.postprocess_requested",
+        "report.generation_requested",
+    }
 
 
 def test_inbound_trace_context_reaches_outbound_carriers() -> None:
