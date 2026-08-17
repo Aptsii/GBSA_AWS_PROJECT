@@ -14,7 +14,8 @@ describe("지원 자료 제출 여정", () => {
             id: "submission-1",
             label: "portfolio.pdf",
             status: "partial",
-            impactSummary: "PDF 한 페이지를 읽지 못했지만 면접 준비는 가능합니다.",
+            impactSummary:
+              "PDF 한 페이지를 읽지 못했지만 면접 준비는 가능합니다.",
           },
         ]}
       />,

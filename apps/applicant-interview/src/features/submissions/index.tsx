@@ -51,7 +51,9 @@ export function SubmissionJourney({
     <section aria-labelledby="submission-title">
       <p>면접 준비 자료</p>
       <h1 id="submission-title">지원 자료 제출</h1>
-      <p>제출 자료는 질문 준비에만 사용되며 그 자체가 평가 근거가 되지 않습니다.</p>
+      <p>
+        제출 자료는 질문 준비에만 사용되며 그 자체가 평가 근거가 되지 않습니다.
+      </p>
 
       <form onSubmit={submitFile}>
         <label htmlFor="submission-file">문서 파일</label>
