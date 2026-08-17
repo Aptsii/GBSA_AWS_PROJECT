@@ -26,20 +26,20 @@ map one-to-one to Lane A/B/C/D and run in four worktrees.
 
 **Purpose**: Create the shared monorepo skeleton without implementing domain behavior.
 
-- [X] T001 Integration — Define JavaScript workspaces and root scripts in `package.json`
-- [X] T002 [P] Integration — Define the locked Python workspace, FastAPI and test dependencies in `pyproject.toml`
-- [X] T003 [P] Integration — Define local PostgreSQL, DynamoDB, S3/SQS emulation and search services in `compose.yaml`
-- [X] T004 Integration — Add the documented bootstrap, generation and test entry points to `Makefile`
-- [X] T005 [P] Integration — Document safe local configuration with no credentials in `.env.example`
-- [X] T006 [P] Integration — Scaffold the company Vite application and feature slots in `apps/company-console/package.json`
-- [X] T007 [P] Integration — Scaffold the applicant Vite application and feature slots in `apps/applicant-interview/package.json`
-- [X] T008 [P] Integration — Scaffold the Python package and API/worker entry points in `backend/src/interview_evidence/__init__.py`
+- [X] T001 Integration — Define JavaScript workspaces and root scripts in `package.json` (QG-11)
+- [X] T002 [P] Integration — Define the locked Python workspace, FastAPI and test dependencies in `pyproject.toml` (QG-11, QG-16)
+- [X] T003 [P] Integration — Define local PostgreSQL, DynamoDB, S3/SQS emulation and search services in `compose.yaml` (QG-11)
+- [X] T004 Integration — Add the documented bootstrap, generation and test entry points to `Makefile` (QG-01, QG-11)
+- [X] T005 [P] Integration — Document safe local configuration with no credentials in `.env.example` (FR-049, QG-11)
+- [X] T006 [P] Integration — Scaffold the company Vite application and feature slots in `apps/company-console/package.json` (QG-01)
+- [X] T007 [P] Integration — Scaffold the applicant Vite application and feature slots in `apps/applicant-interview/package.json` (QG-01)
+- [X] T008 [P] Integration — Scaffold the Python package and API/worker entry points in `backend/src/interview_evidence/__init__.py` (QG-01, QG-11)
 - [X] T009 [P] Lane A — Create the approved Terraform directory roots in `infra/README.md` (PD-26, QG-16)
-- [X] T010 [P] Integration — Create shared end-to-end, fixture, regression and load test roots in `tests/README.md`
-- [X] T011 [P] Integration — Configure editor, Markdown, Python, TypeScript and Terraform formatting in `.editorconfig`
-- [X] T012 [P] Integration — Add API and worker container build targets in `backend/Containerfile`
-- [X] T013 Integration — Document directory ownership and local setup in `README.md`
-- [X] T014 Integration — Add baseline format, type, unit and artifact-drift jobs in `.github/workflows/ci.yml`
+- [X] T010 [P] Integration — Create shared end-to-end, fixture, regression and load test roots in `tests/README.md` (QG-01, QG-12)
+- [X] T011 [P] Integration — Configure editor, Markdown, Python, TypeScript and Terraform formatting in `.editorconfig` (QG-16)
+- [X] T012 [P] Integration — Add API and worker container build targets in `backend/Containerfile` (QG-13)
+- [X] T013 Integration — Document directory ownership and local setup in `README.md` (QG-16)
+- [X] T014 Integration — Add baseline format, type, unit and artifact-drift jobs in `.github/workflows/ci.yml` (QG-08, QG-16)
 
 **Checkpoint**: All planned paths exist; no domain behavior has been implemented.
 
@@ -55,24 +55,24 @@ map one-to-one to Lane A/B/C/D and run in four worktrees.
 - [X] T015 Integration — Copy and split the canonical REST contract into lane fragments under `packages/contracts/openapi/root.yaml` (FR-005, QG-04)
 - [X] T016 [P] Integration — Encode the WebSocket envelope and message schemas in `packages/contracts/events/websocket/v1/` (FR-032-FR-035, QG-08)
 - [X] T017 [P] Integration — Encode the async envelope and domain event schemas in `packages/contracts/events/common/v1/envelope.json` (FR-050)
-- [X] T018 Integration — Generate and commit Python/TypeScript contract types from canonical schemas in `packages/contracts/generated/README.md`
-- [X] T019 Integration — Add generated-type and canonical-contract drift tests in `backend/tests/contract/test_generated_contract_drift.py`
-- [X] T020 [P] Integration — Implement opaque IDs, clocks and CommandMeta primitives in `backend/src/interview_evidence/shared/ids.py`
+- [X] T018 Integration — Generate and commit Python/TypeScript contract types from canonical schemas in `packages/contracts/generated/README.md` (QG-08)
+- [X] T019 Integration — Add generated-type and canonical-contract drift tests in `backend/tests/contract/test_generated_contract_drift.py` (QG-08)
+- [X] T020 [P] Integration — Implement opaque IDs, clocks and CommandMeta primitives in `backend/src/interview_evidence/shared/ids.py` (FR-032, QG-08)
 - [X] T021 [P] Integration — Implement required TenantContext and scope guards in `backend/src/interview_evidence/shared/tenant.py` (FR-005, QG-04)
 - [X] T022 [P] Integration — Implement the safe error envelope and error catalog in `backend/src/interview_evidence/shared/errors.py` (FR-049)
 - [X] T023 [P] Integration — Implement typed configuration with secret-safe rendering in `backend/src/interview_evidence/shared/config.py` (FR-049)
 - [X] T024 [P] Integration — Define company/applicant principal interfaces and deterministic auth fakes in `backend/src/interview_evidence/shared/security/principals.py` (FR-006, FR-013)
-- [X] T025 [P] Integration — Define storage, queue, AI, search, speech and email ports plus fakes in `backend/src/interview_evidence/shared/aws_clients/ports.py`
+- [X] T025 [P] Integration — Define storage, queue, AI, search, speech and email ports plus fakes in `backend/src/interview_evidence/shared/aws_clients/ports.py` (QG-11, QG-13-QG-15)
 - [X] T026 Integration — Implement OutboxEvent and ProcessedMessage primitives in `backend/src/interview_evidence/shared/messaging/outbox.py` (FR-032, FR-050)
 - [X] T027 [P] Integration — Implement the protected audit append interface in `backend/src/interview_evidence/shared/audit.py` (FR-048, FR-049)
 - [X] T028 Integration — Configure four Alembic version locations and branch labels in `backend/alembic.ini` (QG-16)
 - [X] T029 Integration — Add lane-head, prefix, downgrade and ORM drift validation in `scripts/check_migrations.sh` (QG-16)
-- [X] T030 [P] Integration — Add forbidden cross-module import rules in `scripts/check_module_boundaries.py`
-- [X] T031 [P] Integration — Create tenant, criterion, invitation, strategy, session and report contract fixtures in `tests/fixtures/shared/factories.py`
-- [X] T032 Integration — Create root router composition without domain-private imports in `backend/src/interview_evidence/main.py`
-- [X] T033 [P] Integration — Create feature-route registries for both SPAs in `apps/company-console/src/app/featureRoutes.ts` and `apps/applicant-interview/src/app/featureRoutes.ts`
+- [X] T030 [P] Integration — Add forbidden cross-module import rules in `scripts/check_module_boundaries.py` (QG-16)
+- [X] T031 [P] Integration — Create tenant, criterion, invitation, strategy, session and report contract fixtures in `tests/fixtures/shared/factories.py` (QG-01, QG-04)
+- [X] T032 Integration — Create root router composition without domain-private imports in `backend/src/interview_evidence/main.py` (QG-01, QG-16)
+- [X] T033 [P] Integration — Create feature-route registries for both SPAs in `apps/company-console/src/app/featureRoutes.ts` and `apps/applicant-interview/src/app/featureRoutes.ts` (QG-01)
 - [X] T034 Integration — Add structured logging, trace propagation and prohibited-field tests in `backend/src/interview_evidence/shared/observability.py` (FR-049, FR-051)
-- [X] T035 Integration — Add the complete foundation gate and tag verification in `scripts/verify_foundation.sh`
+- [X] T035 Integration — Add the complete foundation gate and tag verification in `scripts/verify_foundation.sh` (QG-01, QG-04, QG-08, QG-11, QG-16)
 
 **Checkpoint**: Contract generation is clean, fakes conform, boundary and migration checks pass, and
 all four worktrees can start from the same `foundation-v1` commit.
@@ -297,12 +297,12 @@ decisions and cannot complete deletion while any target remains.
 ### Merge Train and Real Adapters (Integration Owner)
 
 - [ ] T171 Integration — Merge lane Alembic heads and prove empty/previous-snapshot upgrade in `backend/alembic/versions/merge/m_001_lane_merge.py` (QG-16)
-- [ ] T172 Integration — Replace Lane A campaign/consent fakes for Lane B and add real boundary tests in `backend/tests/integration/cross_module/test_a_to_b.py`
-- [ ] T173 Integration — Replace Lane B strategy/retrieval fakes for Lane C and add real boundary tests in `backend/tests/integration/cross_module/test_b_to_c.py`
-- [ ] T174 Integration — Replace Lane C Turn/media fakes for Lane D and add real boundary tests in `backend/tests/integration/cross_module/test_c_to_d.py`
-- [ ] T175 Integration — Connect Lane D report/deletion projections to Lane A company views in `backend/tests/integration/cross_module/test_d_to_a.py`
-- [ ] T176 Integration — Wire all router fragments and worker handlers in `backend/src/interview_evidence/main.py`
-- [ ] T177 Integration — Wire all feature routes without changing lane feature internals in `apps/company-console/src/app/featureRoutes.ts` and `apps/applicant-interview/src/app/featureRoutes.ts`
+- [ ] T172 Integration — Replace Lane A campaign/consent fakes for Lane B and add real boundary tests in `backend/tests/integration/cross_module/test_a_to_b.py` (FR-015, FR-021, QG-01, QG-04)
+- [ ] T173 Integration — Replace Lane B strategy/retrieval fakes for Lane C and add real boundary tests in `backend/tests/integration/cross_module/test_b_to_c.py` (FR-028, FR-030, QG-01, QG-10)
+- [ ] T174 Integration — Replace Lane C Turn/media fakes for Lane D and add real boundary tests in `backend/tests/integration/cross_module/test_c_to_d.py` (FR-037-FR-041, QG-01-QG-02)
+- [ ] T175 Integration — Connect Lane D report/deletion projections to Lane A company views in `backend/tests/integration/cross_module/test_d_to_a.py` (FR-042-FR-047, QG-01, QG-03, QG-05)
+- [ ] T176 Integration — Wire all router fragments and worker handlers in `backend/src/interview_evidence/main.py` (FR-050, QG-01, QG-11)
+- [ ] T177 Integration — Wire all feature routes without changing lane feature internals in `apps/company-console/src/app/featureRoutes.ts` and `apps/applicant-interview/src/app/featureRoutes.ts` (QG-01)
 - [ ] T178 Integration — Complete local production-contract composition and health checks in `compose.yaml` (QG-11)
 
 ### Full Quality Gates
@@ -318,9 +318,9 @@ decisions and cannot complete deletion while any target remains.
 - [ ] T187 [P] Lane C — Add five-concurrent-session and long-running pipeline load scenarios in `tests/load/interview_load.py` (SC-007, SC-013)
 - [ ] T188 [P] Lane D — Add Evidence seek performance measurement in `tests/load/evidence_seek.py` (SC-012)
 - [ ] T189 Integration — Add stage CloudFront-to-AWS-service smoke journey in `tests/e2e/test_stage_smoke.py` (QG-13-QG-14)
-- [ ] T190 Integration — Run and record every command/outcome from `specs/001-interview-evidence-platform/quickstart.md`
+- [ ] T190 Integration — Run and record every command/outcome from `specs/001-interview-evidence-platform/quickstart.md` (QG-01-QG-16)
 - [ ] T191 Integration — Record FR/SC/QG-to-test coverage and zero unresolved critical gaps in `specs/001-interview-evidence-platform/validation-report.md`
-- [ ] T192 Integration — Run `$speckit-converge` and append every remaining spec/plan/code gap to `specs/001-interview-evidence-platform/tasks.md`
+- [ ] T192 Integration — Run `$speckit-converge` and append every remaining spec/plan/code gap to `specs/001-interview-evidence-platform/tasks.md` (QG-01-QG-16)
 
 **Final Checkpoint**: QG-01 through QG-16 pass, contract generation is clean, all migrations have one
 merged head, all four lane suites and the thin end-to-end journey pass, and no critical convergence
