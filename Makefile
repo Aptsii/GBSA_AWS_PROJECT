@@ -131,8 +131,15 @@ test-foundation: test-unit test-contract artifacts-check boundaries-check migrat
 verify-foundation:
 	scripts/verify_foundation.sh --pre-tag
 
-test-lane-a demo-lane-a test-lane-b demo-lane-b:
+test-lane-a demo-lane-a:
 	$(not_ready)
+
+test-lane-b:
+	$(UV) run pytest backend/tests/contract/submission_analysis backend/tests/unit/submission_analysis backend/tests/integration/submission_analysis
+	$(PNPM) --filter @iep/applicant-interview test -- src/features/submissions/__tests__/submissionJourney.test.tsx
+
+demo-lane-b:
+	$(UV) run pytest backend/tests/integration/submission_analysis/test_lane_b_quickstart.py -q
 
 test-lane-c demo-lane-c test-lane-d demo-lane-d:
 	$(not_ready)
