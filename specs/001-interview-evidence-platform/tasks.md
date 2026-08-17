@@ -29,17 +29,17 @@ map one-to-one to Lane A/B/C/D and run in four worktrees.
 - [X] T001 Integration — Define JavaScript workspaces and root scripts in `package.json`
 - [X] T002 [P] Integration — Define the locked Python workspace, FastAPI and test dependencies in `pyproject.toml`
 - [X] T003 [P] Integration — Define local PostgreSQL, DynamoDB, S3/SQS emulation and search services in `compose.yaml`
-- [ ] T004 Integration — Add the documented bootstrap, generation and test entry points to `Makefile`
+- [X] T004 Integration — Add the documented bootstrap, generation and test entry points to `Makefile`
 - [X] T005 [P] Integration — Document safe local configuration with no credentials in `.env.example`
 - [X] T006 [P] Integration — Scaffold the company Vite application and feature slots in `apps/company-console/package.json`
 - [X] T007 [P] Integration — Scaffold the applicant Vite application and feature slots in `apps/applicant-interview/package.json`
-- [ ] T008 [P] Integration — Scaffold the Python package and API/worker entry points in `backend/src/interview_evidence/__init__.py`
+- [X] T008 [P] Integration — Scaffold the Python package and API/worker entry points in `backend/src/interview_evidence/__init__.py`
 - [X] T009 [P] Lane A — Create the approved Terraform directory roots in `infra/README.md` (PD-26, QG-16)
-- [ ] T010 [P] Integration — Create shared end-to-end, fixture, regression and load test roots in `tests/README.md`
-- [ ] T011 [P] Integration — Configure editor, Markdown, Python, TypeScript and Terraform formatting in `.editorconfig`
-- [ ] T012 [P] Integration — Add API and worker container build targets in `backend/Containerfile`
-- [ ] T013 Integration — Document directory ownership and local setup in `README.md`
-- [ ] T014 Integration — Add baseline format, type, unit and artifact-drift jobs in `.github/workflows/ci.yml`
+- [X] T010 [P] Integration — Create shared end-to-end, fixture, regression and load test roots in `tests/README.md`
+- [X] T011 [P] Integration — Configure editor, Markdown, Python, TypeScript and Terraform formatting in `.editorconfig`
+- [X] T012 [P] Integration — Add API and worker container build targets in `backend/Containerfile`
+- [X] T013 Integration — Document directory ownership and local setup in `README.md`
+- [X] T014 Integration — Add baseline format, type, unit and artifact-drift jobs in `.github/workflows/ci.yml`
 
 **Checkpoint**: All planned paths exist; no domain behavior has been implemented.
 
@@ -52,27 +52,27 @@ map one-to-one to Lane A/B/C/D and run in four worktrees.
 **Critical**: Complete and review `checklists/parallel-readiness.md`, then tag one common
 `foundation-v1` commit. No lane branches from an earlier commit.
 
-- [ ] T015 Integration — Copy and split the canonical REST contract into lane fragments under `packages/contracts/openapi/root.yaml` (FR-005, QG-04)
-- [ ] T016 [P] Integration — Encode the WebSocket envelope and message schemas in `packages/contracts/events/websocket/v1/` (FR-032-FR-035, QG-08)
-- [ ] T017 [P] Integration — Encode the async envelope and domain event schemas in `packages/contracts/events/common/v1/envelope.json` (FR-050)
-- [ ] T018 Integration — Generate and commit Python/TypeScript contract types from canonical schemas in `packages/contracts/generated/README.md`
-- [ ] T019 Integration — Add generated-type and canonical-contract drift tests in `backend/tests/contract/test_generated_contract_drift.py`
-- [ ] T020 [P] Integration — Implement opaque IDs, clocks and CommandMeta primitives in `backend/src/interview_evidence/shared/ids.py`
-- [ ] T021 [P] Integration — Implement required TenantContext and scope guards in `backend/src/interview_evidence/shared/tenant.py` (FR-005, QG-04)
-- [ ] T022 [P] Integration — Implement the safe error envelope and error catalog in `backend/src/interview_evidence/shared/errors.py` (FR-049)
-- [ ] T023 [P] Integration — Implement typed configuration with secret-safe rendering in `backend/src/interview_evidence/shared/config.py` (FR-049)
-- [ ] T024 [P] Integration — Define company/applicant principal interfaces and deterministic auth fakes in `backend/src/interview_evidence/shared/security/principals.py` (FR-006, FR-013)
-- [ ] T025 [P] Integration — Define storage, queue, AI, search, speech and email ports plus fakes in `backend/src/interview_evidence/shared/aws_clients/ports.py`
-- [ ] T026 Integration — Implement OutboxEvent and ProcessedMessage primitives in `backend/src/interview_evidence/shared/messaging/outbox.py` (FR-032, FR-050)
-- [ ] T027 [P] Integration — Implement the protected audit append interface in `backend/src/interview_evidence/shared/audit.py` (FR-048, FR-049)
-- [ ] T028 Integration — Configure four Alembic version locations and branch labels in `backend/alembic.ini` (QG-16)
-- [ ] T029 Integration — Add lane-head, prefix, downgrade and ORM drift validation in `scripts/check_migrations.sh` (QG-16)
-- [ ] T030 [P] Integration — Add forbidden cross-module import rules in `scripts/check_module_boundaries.py`
-- [ ] T031 [P] Integration — Create tenant, criterion, invitation, strategy, session and report contract fixtures in `tests/fixtures/shared/factories.py`
-- [ ] T032 Integration — Create root router composition without domain-private imports in `backend/src/interview_evidence/main.py`
-- [ ] T033 [P] Integration — Create feature-route registries for both SPAs in `apps/company-console/src/app/featureRoutes.ts` and `apps/applicant-interview/src/app/featureRoutes.ts`
-- [ ] T034 Integration — Add structured logging, trace propagation and prohibited-field tests in `backend/src/interview_evidence/shared/observability.py` (FR-049, FR-051)
-- [ ] T035 Integration — Add the complete foundation gate and tag verification in `scripts/verify_foundation.sh`
+- [X] T015 Integration — Copy and split the canonical REST contract into lane fragments under `packages/contracts/openapi/root.yaml` (FR-005, QG-04)
+- [X] T016 [P] Integration — Encode the WebSocket envelope and message schemas in `packages/contracts/events/websocket/v1/` (FR-032-FR-035, QG-08)
+- [X] T017 [P] Integration — Encode the async envelope and domain event schemas in `packages/contracts/events/common/v1/envelope.json` (FR-050)
+- [X] T018 Integration — Generate and commit Python/TypeScript contract types from canonical schemas in `packages/contracts/generated/README.md`
+- [X] T019 Integration — Add generated-type and canonical-contract drift tests in `backend/tests/contract/test_generated_contract_drift.py`
+- [X] T020 [P] Integration — Implement opaque IDs, clocks and CommandMeta primitives in `backend/src/interview_evidence/shared/ids.py`
+- [X] T021 [P] Integration — Implement required TenantContext and scope guards in `backend/src/interview_evidence/shared/tenant.py` (FR-005, QG-04)
+- [X] T022 [P] Integration — Implement the safe error envelope and error catalog in `backend/src/interview_evidence/shared/errors.py` (FR-049)
+- [X] T023 [P] Integration — Implement typed configuration with secret-safe rendering in `backend/src/interview_evidence/shared/config.py` (FR-049)
+- [X] T024 [P] Integration — Define company/applicant principal interfaces and deterministic auth fakes in `backend/src/interview_evidence/shared/security/principals.py` (FR-006, FR-013)
+- [X] T025 [P] Integration — Define storage, queue, AI, search, speech and email ports plus fakes in `backend/src/interview_evidence/shared/aws_clients/ports.py`
+- [X] T026 Integration — Implement OutboxEvent and ProcessedMessage primitives in `backend/src/interview_evidence/shared/messaging/outbox.py` (FR-032, FR-050)
+- [X] T027 [P] Integration — Implement the protected audit append interface in `backend/src/interview_evidence/shared/audit.py` (FR-048, FR-049)
+- [X] T028 Integration — Configure four Alembic version locations and branch labels in `backend/alembic.ini` (QG-16)
+- [X] T029 Integration — Add lane-head, prefix, downgrade and ORM drift validation in `scripts/check_migrations.sh` (QG-16)
+- [X] T030 [P] Integration — Add forbidden cross-module import rules in `scripts/check_module_boundaries.py`
+- [X] T031 [P] Integration — Create tenant, criterion, invitation, strategy, session and report contract fixtures in `tests/fixtures/shared/factories.py`
+- [X] T032 Integration — Create root router composition without domain-private imports in `backend/src/interview_evidence/main.py`
+- [X] T033 [P] Integration — Create feature-route registries for both SPAs in `apps/company-console/src/app/featureRoutes.ts` and `apps/applicant-interview/src/app/featureRoutes.ts`
+- [X] T034 Integration — Add structured logging, trace propagation and prohibited-field tests in `backend/src/interview_evidence/shared/observability.py` (FR-049, FR-051)
+- [X] T035 Integration — Add the complete foundation gate and tag verification in `scripts/verify_foundation.sh`
 
 **Checkpoint**: Contract generation is clean, fakes conform, boundary and migration checks pass, and
 all four worktrees can start from the same `foundation-v1` commit.
