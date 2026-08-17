@@ -18,92 +18,92 @@ quality. It does not mean implementation work is complete.
 
 ## Requirement Completeness
 
-- [ ] CHK001 Are all four lane responsibilities connected to complete, independently testable user
+- [x] CHK001 Are all four lane responsibilities connected to complete, independently testable user
   outcomes rather than technical layers alone? [Completeness, Spec §User Scenarios, Plan §Four-Lane Ownership]
-- [ ] CHK002 Are every shared prerequisite and the exact foundation exit conditions documented
+- [x] CHK002 Are every shared prerequisite and the exact foundation exit conditions documented
   before lane branching? [Completeness, Plan §Contract and Schema Freeze]
-- [ ] CHK003 Are all cross-lane data reads, commands and events represented by a named public contract?
+- [x] CHK003 Are all cross-lane data reads, commands and events represented by a named public contract?
   [Completeness, Contracts §Module Boundary Contract]
-- [ ] CHK004 Are all shared and generated paths assigned to one integration owner, including app
+- [x] CHK004 Are all shared and generated paths assigned to one integration owner, including app
   shells, route composition, migration merge heads and CI? [Completeness, Plan §Integration-Owned Paths]
-- [ ] CHK005 Are the requirements for contract fakes and fixtures complete for every producer that a
+- [x] CHK005 Are the requirements for contract fakes and fixtures complete for every producer that a
   lane may consume before merge? [Gap, Plan §Contract and Schema Freeze]
 
 ## Ownership and Boundary Clarity
 
-- [ ] CHK006 Is each source, test, migration and contract-fragment path assigned to exactly one lane
+- [x] CHK006 Is each source, test, migration and contract-fragment path assigned to exactly one lane
   or the integration owner? [Clarity, Plan §Four-Lane Ownership]
-- [ ] CHK007 Is the procedure for transferring ownership or requesting a shared-path change
+- [x] CHK007 Is the procedure for transferring ownership or requesting a shared-path change
   unambiguous? [Clarity, Parallel Workstreams §Task Claiming]
-- [ ] CHK008 Are forbidden dependencies precise enough to distinguish public module contracts from
+- [x] CHK008 Are forbidden dependencies precise enough to distinguish public module contracts from
   private domain, repository and table access? [Clarity, Contracts §Dependency Direction]
-- [ ] CHK009 Is the integration owner's authority time-bounded and clear when it rotates after the
+- [x] CHK009 Is the integration owner's authority time-bounded and clear when it rotates after the
   foundation wave? [Clarity, Parallel Workstreams §Roles]
-- [ ] CHK010 Are migration revision prefixes, branch labels, head count and merge-revision ownership
+- [x] CHK010 Are migration revision prefixes, branch labels, head count and merge-revision ownership
   specified without overlapping writers? [Clarity, Plan §Migration Strategy]
 
 ## Contract Consistency
 
-- [ ] CHK011 Do the HTTP, WebSocket, async event and module contracts use consistent tenant,
+- [x] CHK011 Do the HTTP, WebSocket, async event and module contracts use consistent tenant,
   idempotency, correlation and version semantics? [Consistency, Contracts]
-- [ ] CHK012 Do contract schemas use the same entity names, status values and ownership as the data
+- [x] CHK012 Do contract schemas use the same entity names, status values and ownership as the data
   model? [Consistency, Data Model §Ownership Matrix, Contracts]
-- [ ] CHK013 Is SourceReference consistently defined as question provenance and Evidence as actual
+- [x] CHK013 Is SourceReference consistently defined as question provenance and Evidence as actual
   answer proof across spec, model and APIs? [Consistency, Spec FR-030/FR-040/FR-041]
-- [ ] CHK014 Are additive, semantic and breaking contract changes classified consistently, with a
+- [x] CHK014 Are additive, semantic and breaking contract changes classified consistently, with a
   clear rule for version retention? [Consistency, Plan §Contract and Schema Freeze]
-- [ ] CHK015 Are unknown enum values and unsupported major versions assigned safe consumer behavior?
+- [x] CHK015 Are unknown enum values and unsupported major versions assigned safe consumer behavior?
   [Edge Case, Contracts §Compatibility]
 
 ## Acceptance Criteria Quality
 
-- [ ] CHK016 Can each lane prove its thin slice using only frozen contracts and documented fakes
+- [x] CHK016 Can each lane prove its thin slice using only frozen contracts and documented fakes
   before any other lane merges? [Measurability, Quickstart §Validate Each Lane Independently]
-- [ ] CHK017 Is lane completion objectively defined by contract, tenant, recovery, observability,
+- [x] CHK017 Is lane completion objectively defined by contract, tenant, recovery, observability,
   migration and quickstart evidence? [Acceptance Criteria, Parallel Workstreams §Lane Completion Checklist]
-- [ ] CHK018 Are the merge-train checks defined after each individual lane, not only after all four
+- [x] CHK018 Are the merge-train checks defined after each individual lane, not only after all four
   merges? [Coverage, Plan §Wave 2]
-- [ ] CHK019 Can a reviewer map every implementation task to one lane, one exact file path and
+- [x] CHK019 Can a reviewer map every implementation task to one lane, one exact file path and
   explicit FR/SC/QG IDs? [Traceability, Plan §Testing Strategy]
-- [ ] CHK020 Is final integration success measurable through the complete thin end-to-end journey
+- [x] CHK020 Is final integration success measurable through the complete thin end-to-end journey
   and QG-01 through QG-16? [Acceptance Criteria, Quickstart §Merged Thin End-to-End Journey]
 
 ## Failure and Recovery Coverage
 
-- [ ] CHK021 Are duplicate delivery, stale sequence, reconnect and outbox reconciliation requirements
+- [x] CHK021 Are duplicate delivery, stale sequence, reconnect and outbox reconciliation requirements
   defined at every cross-lane boundary they affect? [Coverage, Spec FR-032/FR-034]
-- [ ] CHK022 Are partial analysis, search fallback, text-only questions, missing media and failed
+- [x] CHK022 Are partial analysis, search fallback, text-only questions, missing media and failed
   deletion targets given explicit non-success states? [Coverage, Spec §Edge Cases]
-- [ ] CHK023 Are rollback and compatibility requirements documented for database and contract changes
+- [x] CHK023 Are rollback and compatibility requirements documented for database and contract changes
   that merge in a different order than they were developed? [Recovery, Plan §Migration Strategy]
-- [ ] CHK024 Is the behavior defined when a lane finishes against a fake but the real producer
+- [x] CHK024 Is the behavior defined when a lane finishes against a fake but the real producer
   violates timing, error or optional-field assumptions? [Gap, Plan §Wave 2]
-- [ ] CHK025 Are technical failures explicitly excluded from applicant assessment throughout the
+- [x] CHK025 Are technical failures explicitly excluded from applicant assessment throughout the
   interview-to-report integration? [Consistency, Spec FR-027/FR-035/FR-040]
 
 ## Security and Privacy Coverage
 
-- [ ] CHK026 Are tenant and applicant scope requirements present on every synchronous and asynchronous
+- [x] CHK026 Are tenant and applicant scope requirements present on every synchronous and asynchronous
   contract? [Coverage, Spec FR-005, Contracts]
-- [ ] CHK027 Are consent authorization and withdrawal effects defined before analysis, recording and
+- [x] CHK027 Are consent authorization and withdrawal effects defined before analysis, recording and
   assessment work can begin? [Completeness, Spec FR-014/FR-015]
-- [ ] CHK028 Is deletion ownership complete for every lane's relational, hot-view, object, search,
+- [x] CHK028 Is deletion ownership complete for every lane's relational, hot-view, object, search,
   summary and embedding targets? [Completeness, Data Model §Deletion]
-- [ ] CHK029 Are prohibited log fields and safe error/event payload requirements consistent for all
+- [x] CHK029 Are prohibited log fields and safe error/event payload requirements consistent for all
   four lanes? [Consistency, Spec FR-049, Contracts §Async Events]
-- [ ] CHK030 Is the human-only final decision boundary represented in requirements, API contract,
+- [x] CHK030 Is the human-only final decision boundary represented in requirements, API contract,
   data ownership and merge acceptance? [Traceability, Spec FR-003/FR-045]
 
 ## Dependencies and Assumptions
 
-- [ ] CHK031 Are external AWS availability, local fake behavior and live-development validation
+- [x] CHK031 Are external AWS availability, local fake behavior and live-development validation
   responsibilities assigned without requiring credentials for normal lane tests?
   [Dependency, Research R-014]
-- [ ] CHK032 Are configurable retrieval, timing, media and capacity parameters explicitly separated
+- [x] CHK032 Are configurable retrieval, timing, media and capacity parameters explicitly separated
   from frozen contract semantics? [Assumption, Research §Resolved Unknowns]
-- [ ] CHK033 Is the A→B→C→D merge order justified by semantic dependencies while preserving each
+- [x] CHK033 Is the A→B→C→D merge order justified by semantic dependencies while preserving each
   lane's ability to finish and review independently? [Consistency, Plan §Wave 2]
-- [ ] CHK034 Are unresolved design ambiguities required to amend an artifact before code rather than
+- [x] CHK034 Are unresolved design ambiguities required to amend an artifact before code rather than
   being settled differently in lane branches? [Governance, Parallel Workstreams §Conflict Resolution]
 
 ## Notes
