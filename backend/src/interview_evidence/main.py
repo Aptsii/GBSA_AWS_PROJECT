@@ -24,8 +24,8 @@ from interview_evidence.company_management.api.company_routes import (
     CompanyRouteRuntime,
     create_company_router,
 )
-from interview_evidence.company_management.workers.invitation_email import (
-    InvitationEmailHandler,
+from interview_evidence.company_management.events import (
+    create_invitation_email_handler,
 )
 from interview_evidence.interview_engine.api.applicant_routes import (
     ApplicantInterviewRouteRuntime,
@@ -83,7 +83,7 @@ def create_application_routers(runtimes: ApplicationRuntimes) -> tuple[APIRouter
 def create_worker_registry() -> Mapping[str, object]:
     return MappingProxyType(
         {
-            "invitation.email_requested": InvitationEmailHandler(),
+            "invitation.email_requested": create_invitation_email_handler(),
             "submission.analysis_requested": AnalysisJobHandler(),
             "media.postprocess_requested": MediaProcessor(),
             "report.generation_requested": ReportGenerator(),

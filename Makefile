@@ -9,6 +9,16 @@ TERRAFORM ?= terraform
 PYTHON_PATHS := backend/src backend/tests tests
 CONTRACT_GENERATOR := packages/contracts/scripts/generate_contracts.py
 CONTRACT_OUTPUT := packages/contracts/generated
+TERRAFORM_ROOTS := \
+	infra/environments/dev/foundation \
+	infra/environments/dev/data-ai \
+	infra/environments/dev/application \
+	infra/environments/stage \
+	infra/environments/prod
+DEV_TERRAFORM_ROOTS := \
+	infra/environments/dev/foundation \
+	infra/environments/dev/data-ai \
+	infra/environments/dev/application
 
 .DEFAULT_GOAL := help
 
@@ -68,7 +78,7 @@ migrate:
 	cd backend && $(UV) run alembic -c alembic.ini upgrade heads
 
 seed-contract-fixtures:
-	$(not_ready)
+	AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test $(UV) run python scripts/seed_contract_fixtures.py
 
 format:
 	$(UV) run ruff format $(PYTHON_PATHS)
@@ -131,8 +141,13 @@ test-foundation: test-unit test-contract artifacts-check boundaries-check migrat
 verify-foundation:
 	scripts/verify_foundation.sh --pre-tag
 
-test-lane-a demo-lane-a:
-	$(not_ready)
+test-lane-a:
+	$(UV) run pytest backend/tests/contract/company_management backend/tests/unit/company_management backend/tests/integration/company_management
+	$(PNPM) --filter @iep/company-console test -- src/features/hiring/__tests__/campaignJourney.test.tsx
+	$(PNPM) --filter @iep/applicant-interview test -- src/features/access/__tests__/accessJourney.test.tsx
+
+demo-lane-a:
+	$(UV) run pytest backend/tests/integration/company_management/test_lane_a_quickstart.py -q
 
 test-lane-b:
 	$(UV) run pytest backend/tests/contract/submission_analysis backend/tests/unit/submission_analysis backend/tests/integration/submission_analysis
@@ -155,17 +170,88 @@ test-lane-d:
 demo-lane-d:
 	$(UV) run pytest backend/tests/integration/reporting/test_lane_d_quickstart.py -q
 
-test-integration test-e2e-thin test-recovery test-tenant-isolation:
-	$(not_ready)
+test-integration:
+	$(UV) run pytest backend/tests/integration/cross_module backend/tests/unit/test_main.py tests/e2e/test_stage_smoke.py
+	$(PNPM) --filter @iep/company-console test -- src/app/featureRoutes.test.ts
+	$(PNPM) --filter @iep/applicant-interview test -- src/app/featureRoutes.test.ts
 
-test-deletion-residue test-ai-regression test-load-pilot test-prior-lanes:
-	$(not_ready)
+test-e2e-thin:
+	$(UV) run pytest tests/e2e/test_thin_journey.py
+
+test-recovery:
+	$(UV) run pytest \
+		backend/tests/integration/interview_engine/test_session_recovery.py \
+		backend/tests/integration/interview_engine/test_idempotency.py \
+		backend/tests/integration/interview_engine/test_degraded_modes.py
+
+test-tenant-isolation:
+	$(UV) run pytest \
+		backend/tests/integration/company_management/test_tenant_isolation.py \
+		backend/tests/integration/submission_analysis/test_retrieval_isolation.py \
+		backend/tests/integration/reporting/test_tenant_isolation.py \
+		tests/e2e/test_tenant_isolation.py
+
+test-deletion-residue:
+	$(UV) run pytest \
+		backend/tests/integration/reporting/test_deletion_manifest.py \
+		tests/e2e/test_deletion_residue.py
+
+test-ai-regression:
+	$(UV) run python tests/regression/run_regression.py
+
+test-load-pilot:
+	$(UV) run python tests/load/interview_load.py
+	$(UV) run python tests/load/evidence_seek.py
+
+test-prior-lanes:
+	$(MAKE) test-lane-a
+	$(MAKE) test-lane-b
+	$(MAKE) test-lane-c
+	$(MAKE) test-lane-d
 
 infra-format-check:
 	$(TERRAFORM) fmt -check -recursive infra
 
-infra-validate infra-security-check infra-plan-dev:
-	$(not_ready)
+infra-validate:
+	@set -eu; \
+	for root in $(TERRAFORM_ROOTS); do \
+		printf 'Validating %s\n' "$$root"; \
+		data_dir="$$(mktemp -d)"; \
+		TF_DATA_DIR="$$data_dir" $(TERRAFORM) -chdir="$$root" init \
+			-backend=false -input=false -lockfile=readonly >/dev/null; \
+		TF_DATA_DIR="$$data_dir" $(TERRAFORM) -chdir="$$root" validate; \
+		rm -rf "$$data_dir"; \
+	done
+
+infra-security-check:
+	$(UV) run pytest infra/tests
+
+infra-plan-dev: seed-contract-fixtures
+	@set -eu; \
+	for root in $(DEV_TERRAFORM_ROOTS); do \
+		printf 'Planning %s\n' "$$root"; \
+		data_dir="$$(mktemp -d)"; \
+		AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test AWS_REGION=ap-northeast-2 \
+			TF_DATA_DIR="$$data_dir" $(TERRAFORM) -chdir="$$root" init \
+			-reconfigure -input=false -lockfile=readonly \
+			-backend-config=bucket=iep-local-terraform-state \
+			-backend-config=endpoint=http://localhost:4566 \
+			-backend-config=skip_credentials_validation=true \
+			-backend-config=skip_metadata_api_check=true \
+			-backend-config=skip_region_validation=true \
+			-backend-config=skip_requesting_account_id=true \
+			-backend-config=force_path_style=true >/dev/null; \
+		plan_argument=""; \
+		case "$$root" in \
+			*/foundation) plan_argument='-var=company_tenant_identity={company_id="018f2000-0000-7000-8000-000000000100",company_user_id="018f2000-0000-7000-8000-000000000101",identity_subject="local-contract-admin"}' ;; \
+		esac; \
+		AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test AWS_REGION=ap-northeast-2 \
+			TF_DATA_DIR="$$data_dir" $(TERRAFORM) -chdir="$$root" plan \
+			-input=false -lock=false -refresh=false $$plan_argument \
+			-out="/tmp/iep-$$(basename "$$root").tfplan" >/dev/null; \
+		rm -f "/tmp/iep-$$(basename "$$root").tfplan"; \
+		rm -rf "$$data_dir"; \
+	done
 
 image-api:
 	$(DOCKER) build --file backend/Containerfile --target api --tag interview-evidence-api:local .
