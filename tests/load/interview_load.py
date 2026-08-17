@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections.abc import Mapping
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
@@ -16,6 +17,7 @@ from typing import Any
 from interview_evidence.interview_engine.adapters.retrieval_client import RetrievalClient
 from interview_evidence.interview_engine.application.interview_service import InterviewService
 from interview_evidence.interview_engine.application.question_generator import QuestionGenerator
+from interview_evidence.interview_engine.domain.session import SessionState
 from interview_evidence.shared.aws_clients.ports import ProtectedText
 from interview_evidence.shared.ids import FixedClock, OpaqueId, UUID7Generator
 from interview_evidence.shared.tenant import ActorType, ApplicantScope, TenantContext
@@ -44,8 +46,8 @@ class _SequencedQuestionModel:
         prompt: ProtectedText,
         criterion_id: OpaqueId,
         criterion_name: str,
-        source_references: tuple[dict[str, object], ...],
-    ) -> dict[str, object]:
+        source_references: tuple[Mapping[str, object], ...],
+    ) -> Mapping[str, object]:
         del prompt, source_references
         with self._lock:
             self._sequence += 1
@@ -68,9 +70,11 @@ class _SessionFixture:
 @dataclass(frozen=True, slots=True)
 class SessionResult:
     session_number: int
+    session_id: OpaqueId
     answer_count: int
     turn_count: int
     final_sequence: int
+    final_state: SessionState
     elapsed_seconds: float
     resumed_without_duplicate: bool
     tenant_data_mixed: bool
@@ -87,6 +91,8 @@ class LoadReport:
     long_running_turns: int
     long_running_elapsed_seconds: float
     cumulative_turns: int
+    shared_runtime_sessions: int
+    cross_company_separation_verified: bool
     minimum_completion_ratio: float
     minimum_cumulative_turns: int
     passed: bool
@@ -113,19 +119,13 @@ def _fixture(id_generator: UUID7Generator, session_number: int) -> _SessionFixtu
 
 
 def _run_session(
+    service: InterviewService,
     session_number: int,
     answer_count: int,
     fixture: _SessionFixture,
-    clock: FixedClock,
     id_generator: UUID7Generator,
     start_barrier: Barrier | None = None,
 ) -> SessionResult:
-    service = InterviewService(
-        retrieval=RetrievalClient(_EmptyRetrievalContracts()),
-        question_generator=QuestionGenerator(_SequencedQuestionModel()),
-        clock=clock,
-        id_generator=id_generator,
-    )
     if start_barrier is not None:
         start_barrier.wait(timeout=10)
 
@@ -165,33 +165,72 @@ def _run_session(
         )
         current = result.session
 
-    turns = service.list_turns(
+    completed = service.complete_session(
         fixture.context,
         fixture.scope,
         current.interview_session_id,
+        expected_sequence=current.session_sequence,
+        idempotency_key=f"load-session-complete-{session_number:04d}",
+        last_recording_chunk_sequence=answer_count,
+    )
+    turns = service.list_turns(
+        fixture.context,
+        fixture.scope,
+        completed.interview_session_id,
     )
     snapshot = service.resume(
         fixture.context,
         fixture.scope,
-        current.interview_session_id,
+        completed.interview_session_id,
         client_sequence=0,
     )
     tenant_data_mixed = any(
         turn.company_id != fixture.scope.company_id
-        or turn.interview_session_id != current.interview_session_id
+        or turn.interview_session_id != completed.interview_session_id
         for turn in turns
     )
     return SessionResult(
         session_number=session_number,
+        session_id=completed.interview_session_id,
         answer_count=answer_count,
         turn_count=len(turns),
-        final_sequence=current.session_sequence,
+        final_sequence=completed.session_sequence,
+        final_state=completed.state,
         elapsed_seconds=perf_counter() - started_at,
         resumed_without_duplicate=(
-            snapshot.last_final_turn_id == turns[-2].turn_id and len(turns) == answer_count * 2
+            snapshot.state is SessionState.COMPLETED
+            and snapshot.last_final_turn_id == turns[-2].turn_id
+            and len(turns) == answer_count * 2
         ),
         tenant_data_mixed=tenant_data_mixed,
     )
+
+
+def _cross_company_separation_verified(
+    service: InterviewService,
+    fixtures: list[_SessionFixture],
+    results: list[SessionResult],
+) -> bool:
+    ordered_results = {result.session_number: result for result in results}
+    for session_number, fixture in enumerate(fixtures, start=1):
+        result = ordered_results[session_number]
+        session = service.get_session(fixture.context, fixture.scope, result.session_id)
+        turns = service.list_turns(fixture.context, fixture.scope, result.session_id)
+        if session.state is not SessionState.COMPLETED or len(turns) != result.answer_count * 2:
+            return False
+        for other_number, other_fixture in enumerate(fixtures, start=1):
+            if other_number == session_number:
+                continue
+            try:
+                service.get_session(
+                    other_fixture.context,
+                    other_fixture.scope,
+                    result.session_id,
+                )
+            except LookupError:
+                continue
+            return False
+    return True
 
 
 def run_load_scenarios(
@@ -207,6 +246,12 @@ def run_load_scenarios(
 
     clock = FixedClock(datetime(2026, 8, 17, 12, 0, tzinfo=UTC))
     id_generator = UUID7Generator(clock)
+    service = InterviewService(
+        retrieval=RetrievalClient(_EmptyRetrievalContracts()),
+        question_generator=QuestionGenerator(_SequencedQuestionModel()),
+        clock=clock,
+        id_generator=id_generator,
+    )
     fixtures = [
         _fixture(id_generator, session_number)
         for session_number in range(1, concurrent_sessions + 1)
@@ -219,10 +264,10 @@ def run_load_scenarios(
         futures = [
             executor.submit(
                 _run_session,
+                service,
                 session_number,
                 answers_per_session,
                 fixture,
-                clock,
                 id_generator,
                 start_barrier,
             )
@@ -233,7 +278,8 @@ def run_load_scenarios(
     concurrent_elapsed = perf_counter() - concurrent_started_at
 
     completed = sum(
-        result.turn_count == result.answer_count * 2
+        result.final_state is SessionState.COMPLETED
+        and result.turn_count == result.answer_count * 2
         and result.resumed_without_duplicate
         and not result.tenant_data_mixed
         for result in results
@@ -242,18 +288,27 @@ def run_load_scenarios(
 
     long_fixture = _fixture(id_generator, concurrent_sessions + 1)
     long_result = _run_session(
+        service,
         concurrent_sessions + 1,
         long_running_answers,
         long_fixture,
-        clock,
         id_generator,
+    )
+    all_fixtures = [*fixtures, long_fixture]
+    all_results = [*results, long_result]
+    cross_company_separation_verified = _cross_company_separation_verified(
+        service,
+        all_fixtures,
+        all_results,
     )
     cumulative_turns = sum(result.turn_count for result in results) + long_result.turn_count
     passed = (
         completion_ratio >= MINIMUM_COMPLETION_RATIO
         and cumulative_turns >= MINIMUM_CUMULATIVE_TURNS
+        and long_result.final_state is SessionState.COMPLETED
         and long_result.resumed_without_duplicate
         and not long_result.tenant_data_mixed
+        and cross_company_separation_verified
     )
     return LoadReport(
         concurrent_sessions=concurrent_sessions,
@@ -265,6 +320,8 @@ def run_load_scenarios(
         long_running_turns=long_result.turn_count,
         long_running_elapsed_seconds=long_result.elapsed_seconds,
         cumulative_turns=cumulative_turns,
+        shared_runtime_sessions=len(all_results),
+        cross_company_separation_verified=cross_company_separation_verified,
         minimum_completion_ratio=MINIMUM_COMPLETION_RATIO,
         minimum_cumulative_turns=MINIMUM_CUMULATIVE_TURNS,
         passed=passed,
