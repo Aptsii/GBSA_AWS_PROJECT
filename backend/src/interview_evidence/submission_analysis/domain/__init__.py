@@ -1,0 +1,1 @@
+"""Submission-analysis domain models."""
