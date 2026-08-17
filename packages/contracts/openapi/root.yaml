@@ -1,0 +1,255 @@
+openapi: 3.1.0
+info:
+  title: Interview Evidence Platform API
+  version: 1.0.0
+  description: 'Contract baseline for the Korean-language pilot. All company routes enforce the company_id
+
+    from the authenticated principal. Applicant routes enforce the invitation-scoped session
+
+    cookie; neither API accepts company_id from an untrusted request body.
+
+    '
+servers:
+- url: /v1
+tags:
+- name: Company
+- name: Hiring
+- name: Applicant Access
+- name: Submission
+- name: Interview
+- name: Reporting
+- name: Privacy
+paths:
+  /me:
+    $ref: ./paths/company/contract.yaml#/paths/~1me
+  /positions:
+    $ref: ./paths/company/contract.yaml#/paths/~1positions
+  /positions/{position_id}/competency-model-versions:
+    $ref: ./paths/company/contract.yaml#/paths/~1positions~1{position_id}~1competency-model-versions
+  /competency-model-versions/{version_id}/publish:
+    $ref: ./paths/company/contract.yaml#/paths/~1competency-model-versions~1{version_id}~1publish
+  /campaigns:
+    $ref: ./paths/company/contract.yaml#/paths/~1campaigns
+  /campaigns/{campaign_id}/publish:
+    $ref: ./paths/company/contract.yaml#/paths/~1campaigns~1{campaign_id}~1publish
+  /campaigns/{campaign_id}/invitations:
+    $ref: ./paths/company/contract.yaml#/paths/~1campaigns~1{campaign_id}~1invitations
+  /applicant/access/exchange:
+    $ref: ./paths/company/contract.yaml#/paths/~1applicant~1access~1exchange
+  /applicant/identity-verifications:
+    $ref: ./paths/company/contract.yaml#/paths/~1applicant~1identity-verifications
+  /applicant/consents:
+    $ref: ./paths/company/contract.yaml#/paths/~1applicant~1consents
+  /applicant/submissions/upload-intents:
+    $ref: ./paths/submission/contract.yaml#/paths/~1applicant~1submissions~1upload-intents
+  /applicant/submissions:
+    $ref: ./paths/submission/contract.yaml#/paths/~1applicant~1submissions
+  /applicant/analysis-status:
+    $ref: ./paths/submission/contract.yaml#/paths/~1applicant~1analysis-status
+  /applicant/equipment-checks:
+    $ref: ./paths/interview/contract.yaml#/paths/~1applicant~1equipment-checks
+  /applicant/interview-sessions:
+    $ref: ./paths/interview/contract.yaml#/paths/~1applicant~1interview-sessions
+  /applicant/interview-sessions/{session_id}/resume:
+    $ref: ./paths/interview/contract.yaml#/paths/~1applicant~1interview-sessions~1{session_id}~1resume
+  /applicant/interview-sessions/{session_id}/media-upload-intents:
+    $ref: ./paths/interview/contract.yaml#/paths/~1applicant~1interview-sessions~1{session_id}~1media-upload-intents
+  /interview-sessions/{session_id}/report:
+    $ref: ./paths/reporting/contract.yaml#/paths/~1interview-sessions~1{session_id}~1report
+  /interview-sessions/{session_id}/timeline:
+    $ref: ./paths/reporting/contract.yaml#/paths/~1interview-sessions~1{session_id}~1timeline
+  /reports/{report_id}/items/{report_item_id}/reviews:
+    $ref: ./paths/reporting/contract.yaml#/paths/~1reports~1{report_id}~1items~1{report_item_id}~1reviews
+  /interview-sessions/{session_id}/review-artifacts:
+    $ref: ./paths/reporting/contract.yaml#/paths/~1interview-sessions~1{session_id}~1review-artifacts
+  /invitations/{invitation_id}/final-decisions:
+    $ref: ./paths/reporting/contract.yaml#/paths/~1invitations~1{invitation_id}~1final-decisions
+  /privacy/deletion-requests:
+    $ref: ./paths/reporting/contract.yaml#/paths/~1privacy~1deletion-requests
+  /privacy/deletion-requests/{deletion_request_id}:
+    $ref: ./paths/reporting/contract.yaml#/paths/~1privacy~1deletion-requests~1{deletion_request_id}
+components:
+  securitySchemes:
+    CompanyBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    ApplicantSession:
+      type: apiKey
+      in: cookie
+      name: iep_applicant_session
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 16
+        maxLength: 128
+    IfMatchVersion:
+      name: If-Match-Version
+      in: header
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    Cursor:
+      name: cursor
+      in: query
+      schema:
+        type: string
+        maxLength: 512
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 50
+    PositionId:
+      name: position_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    VersionId:
+      name: version_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    CampaignId:
+      name: campaign_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    InvitationId:
+      name: invitation_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    SessionId:
+      name: session_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ReportId:
+      name: report_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ReportItemId:
+      name: report_item_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  responses:
+    Error:
+      description: Structured error response
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+  schemas:
+    ErrorEnvelope:
+      $ref: ./paths/company/contract.yaml#/components/schemas/ErrorEnvelope
+    CompanyUserView:
+      $ref: ./paths/company/contract.yaml#/components/schemas/CompanyUserView
+    PositionCreate:
+      $ref: ./paths/company/contract.yaml#/components/schemas/PositionCreate
+    Position:
+      $ref: ./paths/company/contract.yaml#/components/schemas/Position
+    PositionPage:
+      $ref: ./paths/company/contract.yaml#/components/schemas/PositionPage
+    EvaluationCriterionInput:
+      $ref: ./paths/company/contract.yaml#/components/schemas/EvaluationCriterionInput
+    CompetencyModelVersionCreate:
+      $ref: ./paths/company/contract.yaml#/components/schemas/CompetencyModelVersionCreate
+    CompetencyModelVersion:
+      $ref: ./paths/company/contract.yaml#/components/schemas/CompetencyModelVersion
+    CampaignCreate:
+      $ref: ./paths/company/contract.yaml#/components/schemas/CampaignCreate
+    Campaign:
+      $ref: ./paths/company/contract.yaml#/components/schemas/Campaign
+    InvitationBatchCreate:
+      $ref: ./paths/company/contract.yaml#/components/schemas/InvitationBatchCreate
+    InvitationView:
+      $ref: ./paths/company/contract.yaml#/components/schemas/InvitationView
+    InvitationPage:
+      $ref: ./paths/company/contract.yaml#/components/schemas/InvitationPage
+    InvitationBatchResult:
+      $ref: ./paths/company/contract.yaml#/components/schemas/InvitationBatchResult
+    ApplicantTokenExchange:
+      $ref: ./paths/company/contract.yaml#/components/schemas/ApplicantTokenExchange
+    ApplicantIdentityVerification:
+      $ref: ./paths/company/contract.yaml#/components/schemas/ApplicantIdentityVerification
+    ApplicantAccessState:
+      $ref: ./paths/company/contract.yaml#/components/schemas/ApplicantAccessState
+    ConsentCreate:
+      $ref: ./paths/company/contract.yaml#/components/schemas/ConsentCreate
+    ConsentView:
+      $ref: ./paths/company/contract.yaml#/components/schemas/ConsentView
+    UploadIntentCreate:
+      $ref: ./paths/submission/contract.yaml#/components/schemas/UploadIntentCreate
+    UploadIntent:
+      $ref: ./paths/submission/contract.yaml#/components/schemas/UploadIntent
+    SubmissionCreate:
+      $ref: ./paths/submission/contract.yaml#/components/schemas/SubmissionCreate
+    SubmissionView:
+      $ref: ./paths/submission/contract.yaml#/components/schemas/SubmissionView
+    AnalysisReadiness:
+      $ref: ./paths/submission/contract.yaml#/components/schemas/AnalysisReadiness
+    EquipmentCheckCreate:
+      $ref: ./paths/interview/contract.yaml#/components/schemas/EquipmentCheckCreate
+    EquipmentComponent:
+      $ref: ./paths/interview/contract.yaml#/components/schemas/EquipmentComponent
+    EquipmentCheck:
+      $ref: ./paths/interview/contract.yaml#/components/schemas/EquipmentCheck
+    InterviewSessionCreate:
+      $ref: ./paths/interview/contract.yaml#/components/schemas/InterviewSessionCreate
+    InterviewSessionView:
+      $ref: ./paths/interview/contract.yaml#/components/schemas/InterviewSessionView
+    InterviewResumeSnapshot:
+      $ref: ./paths/interview/contract.yaml#/components/schemas/InterviewResumeSnapshot
+    RecordingUploadIntentCreate:
+      $ref: ./paths/interview/contract.yaml#/components/schemas/RecordingUploadIntentCreate
+    AssessmentState:
+      $ref: ./paths/reporting/contract.yaml#/components/schemas/AssessmentState
+    EvidenceView:
+      $ref: ./paths/reporting/contract.yaml#/components/schemas/EvidenceView
+    ReportItemView:
+      $ref: ./paths/reporting/contract.yaml#/components/schemas/ReportItemView
+    ReportView:
+      $ref: ./paths/reporting/contract.yaml#/components/schemas/ReportView
+    TimelineView:
+      $ref: ./paths/reporting/contract.yaml#/components/schemas/TimelineView
+    HumanAssessmentReviewCreate:
+      $ref: ./paths/reporting/contract.yaml#/components/schemas/HumanAssessmentReviewCreate
+    ReviewArtifactCreate:
+      $ref: ./paths/reporting/contract.yaml#/components/schemas/ReviewArtifactCreate
+    FinalDecisionCreate:
+      $ref: ./paths/reporting/contract.yaml#/components/schemas/FinalDecisionCreate
+    HumanReviewView:
+      $ref: ./paths/reporting/contract.yaml#/components/schemas/HumanReviewView
+    DeletionRequestCreate:
+      $ref: ./paths/reporting/contract.yaml#/components/schemas/DeletionRequestCreate
+    DeletionTargetView:
+      $ref: ./paths/reporting/contract.yaml#/components/schemas/DeletionTargetView
+    DeletionStatus:
+      $ref: ./paths/reporting/contract.yaml#/components/schemas/DeletionStatus
+    ProcessingStatus:
+      $ref: ./paths/reporting/contract.yaml#/components/schemas/ProcessingStatus

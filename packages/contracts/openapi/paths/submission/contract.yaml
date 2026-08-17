@@ -1,0 +1,381 @@
+paths:
+  /applicant/submissions/upload-intents:
+    post:
+      operationId: createSubmissionUploadIntent
+      x-owner-lane: B
+      tags:
+      - Submission
+      security:
+      - ApplicantSession: []
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadIntentCreate'
+      responses:
+        '201':
+          description: Scoped short-lived upload intent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadIntent'
+        default:
+          $ref: '#/components/responses/Error'
+  /applicant/submissions:
+    get:
+      operationId: listApplicantSubmissions
+      x-owner-lane: B
+      tags:
+      - Submission
+      security:
+      - ApplicantSession: []
+      responses:
+        '200':
+          description: Current applicant submission statuses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SubmissionView'
+        default:
+          $ref: '#/components/responses/Error'
+    post:
+      operationId: registerApplicantSubmission
+      x-owner-lane: B
+      tags:
+      - Submission
+      security:
+      - ApplicantSession: []
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmissionCreate'
+      responses:
+        '202':
+          description: Submission accepted for analysis
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionView'
+        default:
+          $ref: '#/components/responses/Error'
+  /applicant/analysis-status:
+    get:
+      operationId: getApplicantAnalysisStatus
+      x-owner-lane: B
+      tags:
+      - Submission
+      security:
+      - ApplicantSession: []
+      responses:
+        '200':
+          description: Aggregate analysis and strategy readiness
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalysisReadiness'
+        default:
+          $ref: '#/components/responses/Error'
+components:
+  securitySchemes:
+    CompanyBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    ApplicantSession:
+      type: apiKey
+      in: cookie
+      name: iep_applicant_session
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 16
+        maxLength: 128
+    IfMatchVersion:
+      name: If-Match-Version
+      in: header
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    Cursor:
+      name: cursor
+      in: query
+      schema:
+        type: string
+        maxLength: 512
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 50
+    PositionId:
+      name: position_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    VersionId:
+      name: version_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    CampaignId:
+      name: campaign_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    InvitationId:
+      name: invitation_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    SessionId:
+      name: session_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ReportId:
+      name: report_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ReportItemId:
+      name: report_item_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  responses:
+    Error:
+      description: Structured error response
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+  schemas:
+    ErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - type
+      - title
+      - status
+      - code
+      - request_id
+      - retryable
+      properties:
+        type:
+          type: string
+          format: uri-reference
+        title:
+          type: string
+        status:
+          type: integer
+        code:
+          type: string
+        detail:
+          type: string
+        request_id:
+          type: string
+          format: uuid
+        retryable:
+          type: boolean
+        current_version:
+          type: integer
+        errors:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - field
+            - code
+            properties:
+              field:
+                type: string
+              code:
+                type: string
+    UploadIntentCreate:
+      type: object
+      additionalProperties: false
+      required:
+      - source_type
+      - filename
+      - media_type
+      - byte_size
+      - sha256
+      properties:
+        source_type:
+          type: string
+          enum:
+          - cover_letter
+          - resume
+          - pdf
+        filename:
+          type: string
+          minLength: 1
+          maxLength: 255
+        media_type:
+          type: string
+        byte_size:
+          type: integer
+          minimum: 1
+        sha256:
+          type: string
+          pattern: ^[a-f0-9]{64}$
+    UploadIntent:
+      type: object
+      additionalProperties: false
+      required:
+      - upload_id
+      - method
+      - url
+      - required_headers
+      - expires_at
+      properties:
+        upload_id:
+          type: string
+          format: uuid
+        method:
+          type: string
+          enum:
+          - PUT
+        url:
+          type: string
+          format: uri
+        required_headers:
+          type: object
+        expires_at:
+          type: string
+          format: date-time
+    SubmissionCreate:
+      oneOf:
+      - type: object
+        additionalProperties: false
+        required:
+        - source_type
+        - upload_id
+        properties:
+          source_type:
+            type: string
+            enum:
+            - cover_letter
+            - resume
+            - pdf
+          upload_id:
+            type: string
+            format: uuid
+      - type: object
+        additionalProperties: false
+        required:
+        - source_type
+        - public_url
+        properties:
+          source_type:
+            type: string
+            enum:
+            - public_git
+            - public_url
+          public_url:
+            type: string
+            format: uri
+          candidate_identity_inputs:
+            type: object
+    SubmissionView:
+      type: object
+      additionalProperties: false
+      required:
+      - submission_id
+      - source_type
+      - status
+      - created_at
+      properties:
+        submission_id:
+          type: string
+          format: uuid
+        source_type:
+          type: string
+        status:
+          type: string
+          enum:
+          - received
+          - validating
+          - analyzing
+          - ready
+          - partial
+          - failed
+          - deleted
+        failure_code:
+          type:
+          - string
+          - 'null'
+        impact_summary:
+          type:
+          - string
+          - 'null'
+        created_at:
+          type: string
+          format: date-time
+    AnalysisReadiness:
+      type: object
+      additionalProperties: false
+      required:
+      - overall_status
+      - submissions
+      - interview_ready
+      properties:
+        overall_status:
+          type: string
+          enum:
+          - waiting
+          - analyzing
+          - ready
+          - partial
+          - failed
+        submissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubmissionView'
+        interview_ready:
+          type: boolean
+        strategy_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        strategy_version:
+          type:
+          - integer
+          - 'null'
+        impact_summary:
+          type:
+          - string
+          - 'null'

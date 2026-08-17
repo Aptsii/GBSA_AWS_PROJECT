@@ -1,0 +1,418 @@
+paths:
+  /applicant/equipment-checks:
+    post:
+      operationId: recordEquipmentCheck
+      x-owner-lane: C
+      tags:
+      - Interview
+      security:
+      - ApplicantSession: []
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EquipmentCheckCreate'
+      responses:
+        '201':
+          description: Equipment readiness record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EquipmentCheck'
+        default:
+          $ref: '#/components/responses/Error'
+  /applicant/interview-sessions:
+    post:
+      operationId: createInterviewSession
+      x-owner-lane: C
+      tags:
+      - Interview
+      security:
+      - ApplicantSession: []
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InterviewSessionCreate'
+      responses:
+        '201':
+          description: Server-authoritative interview session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InterviewSessionView'
+        default:
+          $ref: '#/components/responses/Error'
+  /applicant/interview-sessions/{session_id}/resume:
+    get:
+      operationId: getInterviewResumeSnapshot
+      x-owner-lane: C
+      tags:
+      - Interview
+      security:
+      - ApplicantSession: []
+      parameters:
+      - $ref: '#/components/parameters/SessionId'
+      responses:
+        '200':
+          description: Authoritative recovery snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InterviewResumeSnapshot'
+        default:
+          $ref: '#/components/responses/Error'
+  /applicant/interview-sessions/{session_id}/media-upload-intents:
+    post:
+      operationId: createRecordingUploadIntent
+      x-owner-lane: C
+      tags:
+      - Interview
+      security:
+      - ApplicantSession: []
+      parameters:
+      - $ref: '#/components/parameters/SessionId'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordingUploadIntentCreate'
+      responses:
+        '201':
+          description: Scoped recording chunk upload intent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadIntent'
+        default:
+          $ref: '#/components/responses/Error'
+components:
+  securitySchemes:
+    CompanyBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    ApplicantSession:
+      type: apiKey
+      in: cookie
+      name: iep_applicant_session
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 16
+        maxLength: 128
+    IfMatchVersion:
+      name: If-Match-Version
+      in: header
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    Cursor:
+      name: cursor
+      in: query
+      schema:
+        type: string
+        maxLength: 512
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 50
+    PositionId:
+      name: position_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    VersionId:
+      name: version_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    CampaignId:
+      name: campaign_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    InvitationId:
+      name: invitation_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    SessionId:
+      name: session_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ReportId:
+      name: report_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ReportItemId:
+      name: report_item_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  responses:
+    Error:
+      description: Structured error response
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+  schemas:
+    ErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - type
+      - title
+      - status
+      - code
+      - request_id
+      - retryable
+      properties:
+        type:
+          type: string
+          format: uri-reference
+        title:
+          type: string
+        status:
+          type: integer
+        code:
+          type: string
+        detail:
+          type: string
+        request_id:
+          type: string
+          format: uuid
+        retryable:
+          type: boolean
+        current_version:
+          type: integer
+        errors:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - field
+            - code
+            properties:
+              field:
+                type: string
+              code:
+                type: string
+    UploadIntent:
+      type: object
+      additionalProperties: false
+      required:
+      - upload_id
+      - method
+      - url
+      - required_headers
+      - expires_at
+      properties:
+        upload_id:
+          type: string
+          format: uuid
+        method:
+          type: string
+          enum:
+          - PUT
+        url:
+          type: string
+          format: uri
+        required_headers:
+          type: object
+        expires_at:
+          type: string
+          format: date-time
+    EquipmentCheckCreate:
+      type: object
+      additionalProperties: false
+      required:
+      - camera
+      - microphone
+      - network
+      properties:
+        camera:
+          $ref: '#/components/schemas/EquipmentComponent'
+        microphone:
+          $ref: '#/components/schemas/EquipmentComponent'
+        network:
+          $ref: '#/components/schemas/EquipmentComponent'
+    EquipmentComponent:
+      type: object
+      additionalProperties: false
+      required:
+      - status
+      properties:
+        status:
+          type: string
+          enum:
+          - ready
+          - warning
+          - failed
+        sanitized_code:
+          type:
+          - string
+          - 'null'
+    EquipmentCheck:
+      unevaluatedProperties: false
+      allOf:
+      - $ref: '#/components/schemas/EquipmentCheckCreate'
+      - type: object
+        required:
+        - equipment_check_id
+        - overall_status
+        - checked_at
+        properties:
+          equipment_check_id:
+            type: string
+            format: uuid
+          overall_status:
+            type: string
+            enum:
+            - ready
+            - warning
+            - failed
+          checked_at:
+            type: string
+            format: date-time
+    InterviewSessionCreate:
+      type: object
+      additionalProperties: false
+      required:
+      - equipment_check_id
+      - strategy_id
+      - acknowledged_partial_analysis
+      properties:
+        equipment_check_id:
+          type: string
+          format: uuid
+        strategy_id:
+          type: string
+          format: uuid
+        acknowledged_partial_analysis:
+          type: boolean
+    InterviewSessionView:
+      type: object
+      additionalProperties: false
+      required:
+      - interview_session_id
+      - state
+      - session_sequence
+      - websocket_path
+      - protocol_version
+      properties:
+        interview_session_id:
+          type: string
+          format: uuid
+        state:
+          type: string
+          enum:
+          - preparing
+          - in_progress
+          - awaiting_answer
+          - preparing_question
+          - paused
+          - completed
+          - report_generating
+          - reviewable
+        session_sequence:
+          type: integer
+          minimum: 0
+        websocket_path:
+          type: string
+        protocol_version:
+          type: string
+          const: '1.0'
+    InterviewResumeSnapshot:
+      type: object
+      additionalProperties: false
+      required:
+      - interview_session_id
+      - state
+      - server_sequence
+      - last_verified_recording_chunk_sequence
+      properties:
+        interview_session_id:
+          type: string
+          format: uuid
+        state:
+          type: string
+        server_sequence:
+          type: integer
+          minimum: 0
+        last_final_turn_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        pending_turn:
+          type:
+          - object
+          - 'null'
+        last_verified_recording_chunk_sequence:
+          type: integer
+          minimum: 0
+        degraded_modes:
+          type: array
+          items:
+            type: string
+    RecordingUploadIntentCreate:
+      type: object
+      additionalProperties: false
+      required:
+      - chunk_sequence
+      - byte_size
+      - sha256
+      - session_start_ms
+      - session_end_ms
+      properties:
+        chunk_sequence:
+          type: integer
+          minimum: 0
+        byte_size:
+          type: integer
+          minimum: 1
+        sha256:
+          type: string
+          pattern: ^[a-f0-9]{64}$
+        session_start_ms:
+          type: integer
+          minimum: 0
+        session_end_ms:
+          type: integer
+          minimum: 1

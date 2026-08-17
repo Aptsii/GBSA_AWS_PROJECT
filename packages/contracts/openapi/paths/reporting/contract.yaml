@@ -1,0 +1,702 @@
+paths:
+  /interview-sessions/{session_id}/report:
+    get:
+      operationId: getInterviewReport
+      x-owner-lane: D
+      tags:
+      - Reporting
+      security:
+      - CompanyBearer: []
+      parameters:
+      - $ref: '#/components/parameters/SessionId'
+      responses:
+        '200':
+          description: AI original plus human review projection
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportView'
+        '202':
+          description: Report is still being generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessingStatus'
+        default:
+          $ref: '#/components/responses/Error'
+  /interview-sessions/{session_id}/timeline:
+    get:
+      operationId: getInterviewTimeline
+      x-owner-lane: D
+      tags:
+      - Reporting
+      security:
+      - CompanyBearer: []
+      parameters:
+      - $ref: '#/components/parameters/SessionId'
+      - name: query
+        in: query
+        schema:
+          type: string
+          maxLength: 200
+      responses:
+        '200':
+          description: Timeline entries and signed playback locator
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimelineView'
+        default:
+          $ref: '#/components/responses/Error'
+  /reports/{report_id}/items/{report_item_id}/reviews:
+    post:
+      operationId: createHumanAssessmentReview
+      x-owner-lane: D
+      tags:
+      - Reporting
+      security:
+      - CompanyBearer: []
+      parameters:
+      - $ref: '#/components/parameters/ReportId'
+      - $ref: '#/components/parameters/ReportItemId'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HumanAssessmentReviewCreate'
+      responses:
+        '201':
+          description: Append-only human assessment review
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HumanReviewView'
+        default:
+          $ref: '#/components/responses/Error'
+  /interview-sessions/{session_id}/review-artifacts:
+    post:
+      operationId: createReviewArtifact
+      x-owner-lane: D
+      tags:
+      - Reporting
+      security:
+      - CompanyBearer: []
+      parameters:
+      - $ref: '#/components/parameters/SessionId'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewArtifactCreate'
+      responses:
+        '201':
+          description: Note or bookmark created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HumanReviewView'
+        default:
+          $ref: '#/components/responses/Error'
+  /invitations/{invitation_id}/final-decisions:
+    post:
+      operationId: recordHumanFinalDecision
+      x-owner-lane: D
+      tags:
+      - Reporting
+      security:
+      - CompanyBearer: []
+      parameters:
+      - $ref: '#/components/parameters/InvitationId'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FinalDecisionCreate'
+      responses:
+        '201':
+          description: Human-authored final decision record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HumanReviewView'
+        default:
+          $ref: '#/components/responses/Error'
+  /privacy/deletion-requests:
+    post:
+      operationId: createDeletionRequest
+      x-owner-lane: D
+      tags:
+      - Privacy
+      security:
+      - CompanyBearer: []
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeletionRequestCreate'
+      responses:
+        '202':
+          description: Deletion manifest accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeletionStatus'
+        default:
+          $ref: '#/components/responses/Error'
+  /privacy/deletion-requests/{deletion_request_id}:
+    get:
+      operationId: getDeletionRequest
+      x-owner-lane: D
+      tags:
+      - Privacy
+      security:
+      - CompanyBearer: []
+      parameters:
+      - name: deletion_request_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Per-store deletion and verification state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeletionStatus'
+        default:
+          $ref: '#/components/responses/Error'
+components:
+  securitySchemes:
+    CompanyBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    ApplicantSession:
+      type: apiKey
+      in: cookie
+      name: iep_applicant_session
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 16
+        maxLength: 128
+    IfMatchVersion:
+      name: If-Match-Version
+      in: header
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    Cursor:
+      name: cursor
+      in: query
+      schema:
+        type: string
+        maxLength: 512
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 50
+    PositionId:
+      name: position_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    VersionId:
+      name: version_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    CampaignId:
+      name: campaign_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    InvitationId:
+      name: invitation_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    SessionId:
+      name: session_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ReportId:
+      name: report_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ReportItemId:
+      name: report_item_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  responses:
+    Error:
+      description: Structured error response
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+  schemas:
+    ErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - type
+      - title
+      - status
+      - code
+      - request_id
+      - retryable
+      properties:
+        type:
+          type: string
+          format: uri-reference
+        title:
+          type: string
+        status:
+          type: integer
+        code:
+          type: string
+        detail:
+          type: string
+        request_id:
+          type: string
+          format: uuid
+        retryable:
+          type: boolean
+        current_version:
+          type: integer
+        errors:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - field
+            - code
+            properties:
+              field:
+                type: string
+              code:
+                type: string
+    AssessmentState:
+      type: string
+      enum:
+      - confirmed
+      - partially_confirmed
+      - insufficient_evidence
+      - needs_follow_up
+    EvidenceView:
+      type: object
+      additionalProperties: false
+      required:
+      - evidence_id
+      - answer_turn_id
+      - transcript_segment_id
+      - video_start_ms
+      - video_end_ms
+      - observation
+      - rationale
+      - sufficiency
+      properties:
+        evidence_id:
+          type: string
+          format: uuid
+        answer_turn_id:
+          type: string
+          format: uuid
+        transcript_segment_id:
+          type: string
+          format: uuid
+        video_start_ms:
+          type: integer
+          minimum: 0
+        video_end_ms:
+          type: integer
+          minimum: 1
+        observation:
+          type: string
+        rationale:
+          type: string
+        sufficiency:
+          type: string
+          enum:
+          - direct
+          - supporting
+          - weak
+    ReportItemView:
+      type: object
+      additionalProperties: false
+      required:
+      - report_item_id
+      - criterion_id
+      - assessment_state
+      - observation
+      - rationale
+      - evidence
+      - uncertainty
+      properties:
+        report_item_id:
+          type: string
+          format: uuid
+        criterion_id:
+          type: string
+          format: uuid
+        assessment_state:
+          $ref: '#/components/schemas/AssessmentState'
+        observation:
+          type: string
+        rationale:
+          type: string
+        uncertainty:
+          type: string
+        follow_up_question:
+          type:
+          - string
+          - 'null'
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvidenceView'
+    ReportView:
+      type: object
+      additionalProperties: false
+      required:
+      - report_id
+      - report_version
+      - status
+      - summary
+      - items
+      - ai_original_immutable
+      properties:
+        report_id:
+          type: string
+          format: uuid
+        report_version:
+          type: integer
+          minimum: 1
+        status:
+          type: string
+          enum:
+          - generating
+          - ready
+          - partial
+          - failed
+        summary:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportItemView'
+        ai_original_immutable:
+          type: boolean
+          const: true
+        human_reviews:
+          type: array
+          items:
+            $ref: '#/components/schemas/HumanReviewView'
+    TimelineView:
+      type: object
+      additionalProperties: false
+      required:
+      - entries
+      - playback
+      properties:
+        entries:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - entry_id
+            - entry_type
+            - start_ms
+            - end_ms
+            properties:
+              entry_id:
+                type: string
+                format: uuid
+              entry_type:
+                type: string
+                enum:
+                - question
+                - answer
+                - event
+                - evidence
+              start_ms:
+                type: integer
+                minimum: 0
+              end_ms:
+                type: integer
+                minimum: 0
+              text:
+                type:
+                - string
+                - 'null'
+              technical_failure:
+                type: boolean
+                default: false
+        playback:
+          type: object
+          additionalProperties: false
+          required:
+          - url
+          - expires_at
+          - status
+          properties:
+            url:
+              type:
+              - string
+              - 'null'
+              format: uri
+            expires_at:
+              type:
+              - string
+              - 'null'
+              format: date-time
+            status:
+              type: string
+              enum:
+              - ready
+              - partial
+              - processing
+              - unavailable
+    HumanAssessmentReviewCreate:
+      type: object
+      additionalProperties: false
+      required:
+      - assessment_state
+      - reason
+      properties:
+        assessment_state:
+          $ref: '#/components/schemas/AssessmentState'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 5000
+    ReviewArtifactCreate:
+      type: object
+      additionalProperties: false
+      required:
+      - review_type
+      - target_id
+      - value
+      properties:
+        review_type:
+          type: string
+          enum:
+          - note
+          - bookmark
+        target_id:
+          type: string
+          format: uuid
+        value:
+          type: string
+          minLength: 1
+          maxLength: 10000
+    FinalDecisionCreate:
+      type: object
+      additionalProperties: false
+      required:
+      - decision
+      - reason
+      properties:
+        decision:
+          type: string
+          enum:
+          - advance
+          - reject
+          - hold
+          - withdrawn
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 5000
+    HumanReviewView:
+      type: object
+      additionalProperties: false
+      required:
+      - human_review_id
+      - review_type
+      - created_by
+      - created_at
+      properties:
+        human_review_id:
+          type: string
+          format: uuid
+        review_type:
+          type: string
+          enum:
+          - assessment_override
+          - note
+          - bookmark
+          - final_decision
+        created_by:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+    DeletionRequestCreate:
+      type: object
+      additionalProperties: false
+      required:
+      - scope_type
+      - scope_id
+      - reason
+      properties:
+        scope_type:
+          type: string
+          enum:
+          - invitation
+          - applicant
+        scope_id:
+          type: string
+          format: uuid
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 2000
+    DeletionTargetView:
+      type: object
+      additionalProperties: false
+      required:
+      - target_id
+      - owner_lane
+      - store
+      - target_type
+      - status
+      - attempts
+      properties:
+        target_id:
+          type: string
+          format: uuid
+        owner_lane:
+          type: string
+          enum:
+          - A
+          - B
+          - C
+          - D
+        store:
+          type: string
+          enum:
+          - aurora
+          - dynamodb
+          - s3
+          - opensearch
+        target_type:
+          type: string
+        status:
+          type: string
+          enum:
+          - pending
+          - deleting
+          - retrying
+          - failed
+          - verified_absent
+        attempts:
+          type: integer
+          minimum: 0
+        verified_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        error_code:
+          type:
+          - string
+          - 'null'
+    DeletionStatus:
+      type: object
+      additionalProperties: false
+      required:
+      - deletion_request_id
+      - manifest_id
+      - status
+      - expected_targets
+      - verified_targets
+      - targets
+      properties:
+        deletion_request_id:
+          type: string
+          format: uuid
+        manifest_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+          - requested
+          - enumerating
+          - deleting
+          - verifying
+          - retrying
+          - partially_completed
+          - completed
+        expected_targets:
+          type: integer
+          minimum: 0
+        verified_targets:
+          type: integer
+          minimum: 0
+        targets:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeletionTargetView'
+    ProcessingStatus:
+      type: object
+      additionalProperties: false
+      required:
+      - status
+      properties:
+        status:
+          type: string
+          enum:
+          - queued
+          - running
+          - partial
+          - failed
+        retryable:
+          type: boolean
+          default: false
+        message:
+          type:
+          - string
+          - 'null'
