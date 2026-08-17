@@ -50,7 +50,7 @@ packages = [
 default-groups = ["dev"]
 
 [tool.pytest.ini_options]
-addopts = "--strict-config --strict-markers"
+addopts = "--strict-config --strict-markers --import-mode=importlib"
 asyncio_mode = "auto"
 pythonpath = ["backend/src", "."]
 testpaths = ["backend/tests", "tests"]

@@ -148,8 +148,12 @@ test-lane-c:
 demo-lane-c:
 	$(UV) run pytest backend/tests/integration/interview_engine/test_lane_c_quickstart.py -q
 
-test-lane-d demo-lane-d:
-	$(not_ready)
+test-lane-d:
+	$(UV) run pytest backend/tests/contract/reporting backend/tests/unit/reporting backend/tests/integration/reporting
+	$(PNPM) --filter @iep/company-console test -- src/features/review/__tests__
+
+demo-lane-d:
+	$(UV) run pytest backend/tests/integration/reporting/test_lane_d_quickstart.py -q
 
 test-integration test-e2e-thin test-recovery test-tenant-isolation:
 	$(not_ready)
