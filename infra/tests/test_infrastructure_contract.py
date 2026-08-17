@@ -111,13 +111,13 @@ def test_application_deployments_do_not_fight_pipeline_or_autoscaling() -> None:
     compute = _read("modules/compute/main.tf")
 
     assert "ignore_changes = [desired_count, task_definition]" in compute
-    assert "image_tag_mutability = \"IMMUTABLE\"" in compute
+    assert 'image_tag_mutability = "IMMUTABLE"' in compute
     assert "assign_public_ip = false" in compute
 
 
 def test_terraform_contains_no_business_workflow_provisioners_or_secrets() -> None:
     terraform_files = tuple(INFRA_ROOT.rglob("*.tf"))
-    prohibited = ("local-exec", "remote-exec", "provisioner \"", "BEGIN PRIVATE KEY")
+    prohibited = ("local-exec", "remote-exec", 'provisioner "', "BEGIN PRIVATE KEY")
 
     for terraform_file in terraform_files:
         configuration = terraform_file.read_text(encoding="utf-8")
