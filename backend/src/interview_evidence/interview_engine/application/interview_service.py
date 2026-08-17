@@ -22,6 +22,7 @@ from interview_evidence.interview_engine.application.question_policy import Ques
 from interview_evidence.interview_engine.application.state_machine import SessionStateMachine
 from interview_evidence.interview_engine.domain.session import InterviewSession, SessionState
 from interview_evidence.interview_engine.domain.turn import Turn, TurnSpeaker, TurnStatus
+from interview_evidence.shared.aws_clients.ports import ProtectedText
 from interview_evidence.shared.ids import Clock, OpaqueId, SystemClock, UUID7Generator
 from interview_evidence.shared.tenant import ApplicantScope, TenantContext, ensure_applicant_scope
 
@@ -259,7 +260,7 @@ class InterviewService:
                 sequence=len(turns) + 1,
                 speaker=TurnSpeaker.INTERVIEWER,
                 status=TurnStatus.PRESENTED,
-                text=question_text,
+                text=ProtectedText(question_text),
                 target_criterion_id=generated.target_criterion_id,
                 model_config_version=generated.model_config_version,
                 idempotency_key=str(self._id_generator.new()),

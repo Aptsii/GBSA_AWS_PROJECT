@@ -49,7 +49,7 @@ class Turn:
     status: TurnStatus
     idempotency_key: str
     created_at: datetime
-    text: ProtectedText | str | None = None
+    text: ProtectedText | None = None
     target_criterion_id: OpaqueId | None = None
     model_config_version: str | None = None
     finalized_at: datetime | None = None
@@ -63,8 +63,6 @@ class Turn:
             object.__setattr__(self, "speaker", TurnSpeaker(self.speaker))
         if not isinstance(self.status, TurnStatus):
             object.__setattr__(self, "status", TurnStatus(self.status))
-        if isinstance(self.text, str):
-            object.__setattr__(self, "text", ProtectedText(self.text))
         if self.text is not None and not isinstance(self.text, ProtectedText):
             raise TypeError("turn text must be protected")
         if self.sequence < 1:

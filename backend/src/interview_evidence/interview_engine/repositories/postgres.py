@@ -4,7 +4,17 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from sqlalchemy import JSON, DateTime, Integer, String, Text, UniqueConstraint, delete, select
+from sqlalchemy import (
+    JSON,
+    CheckConstraint,
+    DateTime,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    delete,
+    select,
+)
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from interview_evidence.interview_engine.domain.session import InterviewSession, SessionState
@@ -27,6 +37,13 @@ from interview_evidence.shared.tenant import ApplicantScope, TenantContext, ensu
 class InterviewSessionRow(Base):
     __tablename__ = "interview_sessions"
     __table_args__ = (
+        CheckConstraint("session_sequence >= 0", name="session_sequence_nonnegative"),
+        CheckConstraint("row_version >= 1", name="session_row_version_positive"),
+        CheckConstraint(
+            "state IN ('preparing', 'in_progress', 'awaiting_answer', "
+            "'preparing_question', 'paused', 'completed', 'report_generating', 'reviewable')",
+            name="interview_session_state",
+        ),
         UniqueConstraint(
             "company_id",
             "interview_session_id",
@@ -52,6 +69,20 @@ class InterviewSessionRow(Base):
 class TurnRow(Base):
     __tablename__ = "interview_turns"
     __table_args__ = (
+        CheckConstraint("sequence >= 1", name="interview_turn_sequence_positive"),
+        CheckConstraint("speaker IN ('interviewer', 'applicant')", name="interview_turn_speaker"),
+        CheckConstraint(
+            "status IN ('preparing', 'presented', 'recording', 'final', 'failed')",
+            name="interview_turn_status",
+        ),
+        CheckConstraint(
+            "status != 'final' OR (text IS NOT NULL AND finalized_at IS NOT NULL)",
+            name="final_interview_turn_has_text_and_time",
+        ),
+        CheckConstraint(
+            "speaker != 'interviewer' OR target_criterion_id IS NOT NULL",
+            name="interviewer_turn_has_criterion",
+        ),
         UniqueConstraint(
             "company_id",
             "interview_session_id",
@@ -83,6 +114,15 @@ class TurnRow(Base):
 class SessionCheckpointRow(Base):
     __tablename__ = "session_checkpoints"
     __table_args__ = (
+        CheckConstraint("session_sequence >= 0", name="checkpoint_sequence_nonnegative"),
+        CheckConstraint(
+            "last_media_chunk_sequence >= 0",
+            name="checkpoint_media_sequence_nonnegative",
+        ),
+        CheckConstraint(
+            "hot_view_sync_status IN ('pending', 'synced', 'degraded')",
+            name="checkpoint_hot_view_status",
+        ),
         UniqueConstraint(
             "company_id",
             "interview_session_id",
@@ -105,6 +145,16 @@ class SessionCheckpointRow(Base):
 class RecordingChunkRow(Base):
     __tablename__ = "recording_chunks"
     __table_args__ = (
+        CheckConstraint("sequence >= 0", name="recording_chunk_sequence_nonnegative"),
+        CheckConstraint("byte_size >= 1", name="recording_chunk_byte_size_positive"),
+        CheckConstraint(
+            "session_start_ms >= 0 AND session_end_ms > session_start_ms",
+            name="recording_chunk_time_range",
+        ),
+        CheckConstraint(
+            "upload_status IN ('issued', 'uploaded', 'verified', 'failed')",
+            name="recording_chunk_upload_status",
+        ),
         UniqueConstraint(
             "company_id",
             "interview_session_id",
@@ -294,20 +344,33 @@ class InterviewSessionRepository:
         )
         targets: list[tuple[str, OpaqueId]] = []
         for session_id in session_ids:
-            for target_type, row_type, column in (
-                ("turn", TurnRow, TurnRow.turn_id),
-                ("checkpoint", SessionCheckpointRow, SessionCheckpointRow.checkpoint_id),
-                ("recording_chunk", RecordingChunkRow, RecordingChunkRow.recording_chunk_id),
-            ):
-                targets.extend(
-                    (target_type, OpaqueId(value))
-                    for value in self.session.scalars(
-                        select(column).where(
-                            row_type.company_id == str(scope.company_id),
-                            row_type.interview_session_id == str(session_id),
-                        )
+            targets.extend(
+                ("turn", OpaqueId(value))
+                for value in self.session.scalars(
+                    select(TurnRow.turn_id).where(
+                        TurnRow.company_id == str(scope.company_id),
+                        TurnRow.interview_session_id == str(session_id),
                     )
                 )
+            )
+            targets.extend(
+                ("checkpoint", OpaqueId(value))
+                for value in self.session.scalars(
+                    select(SessionCheckpointRow.checkpoint_id).where(
+                        SessionCheckpointRow.company_id == str(scope.company_id),
+                        SessionCheckpointRow.interview_session_id == str(session_id),
+                    )
+                )
+            )
+            targets.extend(
+                ("recording_chunk", OpaqueId(value))
+                for value in self.session.scalars(
+                    select(RecordingChunkRow.recording_chunk_id).where(
+                        RecordingChunkRow.company_id == str(scope.company_id),
+                        RecordingChunkRow.interview_session_id == str(session_id),
+                    )
+                )
+            )
             targets.append(("interview_session", session_id))
         return tuple(targets)
 
@@ -320,31 +383,74 @@ class InterviewSessionRepository:
     ) -> bool:
         ensure_applicant_scope(context, scope)
         checked_id = str(OpaqueId(target_id))
-        table_and_id = {
-            "turn": (TurnRow, TurnRow.turn_id),
-            "checkpoint": (SessionCheckpointRow, SessionCheckpointRow.checkpoint_id),
-            "recording_chunk": (RecordingChunkRow, RecordingChunkRow.recording_chunk_id),
-            "interview_session": (InterviewSessionRow, InterviewSessionRow.interview_session_id),
-        }.get(target_type)
-        if table_and_id is None:
-            raise ValueError("unknown interview deletion target type")
-        row_type, id_column = table_and_id
-        self.session.execute(
-            delete(row_type).where(
-                id_column == checked_id,
-                row_type.company_id == str(scope.company_id),
-            )
-        )
-        self.session.flush()
-        return (
-            self.session.scalar(
-                select(id_column).where(
-                    id_column == checked_id,
-                    row_type.company_id == str(scope.company_id),
+        company_id = str(scope.company_id)
+        if target_type == "turn":
+            self.session.execute(
+                delete(TurnRow).where(
+                    TurnRow.turn_id == checked_id, TurnRow.company_id == company_id
                 )
             )
-            is None
-        )
+            self.session.flush()
+            return (
+                self.session.scalar(
+                    select(TurnRow.turn_id).where(
+                        TurnRow.turn_id == checked_id, TurnRow.company_id == company_id
+                    )
+                )
+                is None
+            )
+        if target_type == "checkpoint":
+            self.session.execute(
+                delete(SessionCheckpointRow).where(
+                    SessionCheckpointRow.checkpoint_id == checked_id,
+                    SessionCheckpointRow.company_id == company_id,
+                )
+            )
+            self.session.flush()
+            return (
+                self.session.scalar(
+                    select(SessionCheckpointRow.checkpoint_id).where(
+                        SessionCheckpointRow.checkpoint_id == checked_id,
+                        SessionCheckpointRow.company_id == company_id,
+                    )
+                )
+                is None
+            )
+        if target_type == "recording_chunk":
+            self.session.execute(
+                delete(RecordingChunkRow).where(
+                    RecordingChunkRow.recording_chunk_id == checked_id,
+                    RecordingChunkRow.company_id == company_id,
+                )
+            )
+            self.session.flush()
+            return (
+                self.session.scalar(
+                    select(RecordingChunkRow.recording_chunk_id).where(
+                        RecordingChunkRow.recording_chunk_id == checked_id,
+                        RecordingChunkRow.company_id == company_id,
+                    )
+                )
+                is None
+            )
+        if target_type == "interview_session":
+            self.session.execute(
+                delete(InterviewSessionRow).where(
+                    InterviewSessionRow.interview_session_id == checked_id,
+                    InterviewSessionRow.company_id == company_id,
+                )
+            )
+            self.session.flush()
+            return (
+                self.session.scalar(
+                    select(InterviewSessionRow.interview_session_id).where(
+                        InterviewSessionRow.interview_session_id == checked_id,
+                        InterviewSessionRow.company_id == company_id,
+                    )
+                )
+                is None
+            )
+        raise ValueError("unknown interview deletion target type")
 
     def _authorize_child(
         self,
@@ -380,7 +486,11 @@ class InterviewSessionRepository:
     def _session(row: InterviewSessionRow) -> InterviewSession:
         return InterviewSession(
             interview_session_id=OpaqueId(row.interview_session_id),
-            scope=ApplicantScope(row.company_id, row.applicant_id, row.invitation_id),
+            scope=ApplicantScope(
+                OpaqueId(row.company_id),
+                OpaqueId(row.applicant_id),
+                OpaqueId(row.invitation_id),
+            ),
             interview_strategy_id=OpaqueId(row.interview_strategy_id),
             competency_model_version_id=OpaqueId(row.competency_model_version_id),
             state=SessionState(row.state),
