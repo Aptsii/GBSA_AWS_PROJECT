@@ -1,5 +1,7 @@
 import { useState } from "react";
 
+import { Avatar, AvatarSpeechMark } from "./Avatar";
+
 export type InterviewRoomPhase =
   "question" | "answering" | "processing" | "paused" | "completed";
 
@@ -7,6 +9,7 @@ interface InterviewRoomProps {
   readonly question: string;
   readonly textOnly?: boolean;
   readonly phase?: InterviewRoomPhase;
+  readonly speechMarks?: readonly AvatarSpeechMark[];
   readonly onCompleteAnswer?: () => void;
   readonly onRepeatQuestion?: () => void;
 }
@@ -23,6 +26,7 @@ export function InterviewRoom({
   question,
   textOnly = false,
   phase = "answering",
+  speechMarks = [],
   onCompleteAnswer,
   onRepeatQuestion,
 }: InterviewRoomProps) {
@@ -42,6 +46,12 @@ export function InterviewRoom({
 
       {textOnly && <p role="status">음성 없이 텍스트로 진행합니다.</p>}
       <p role="status">{phaseMessages[phase]}</p>
+
+      <Avatar
+        speaking={phase === "question"}
+        textOnly={textOnly}
+        speechMarks={speechMarks}
+      />
 
       <section aria-labelledby="current-question-title">
         <h2 id="current-question-title">현재 질문</h2>
