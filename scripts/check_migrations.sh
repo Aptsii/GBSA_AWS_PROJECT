@@ -13,53 +13,34 @@ else
   python_cmd=(uv run python)
 fi
 
-expected_heads=(
-  "a_:company"
-  "b_:submission"
-  "c_:interview"
-  "d_:reporting"
-)
-
 "${python_cmd[@]}" "${repo_root}/scripts/check_migration_policy.py" --config "${config_path}"
 
-actual_heads="$("${alembic_cmd[@]}" -c "${config_path}" heads)"
-head_revisions=()
+migration_metadata="$(${python_cmd[@]} - "${config_path}" <<'PY'
+import sys
 
-for expected in "${expected_heads[@]}"; do
-  prefix="${expected%%:*}"
-  branch="${expected##*:}"
-  matching_heads="$(grep -E "^[[:alnum:]_]+ \(${branch}\) \(head\)$" <<<"${actual_heads}" || true)"
-  matching_count="$(grep -c . <<<"${matching_heads}" || true)"
-  if [[ "${matching_count}" -ne 1 ]]; then
-    echo "Expected exactly one migration head for ${branch}, found ${matching_count}." >&2
-    exit 1
-  fi
-  revision="${matching_heads%% *}"
-  if [[ "${revision}" != "${prefix}"* ]]; then
-    echo "Migration head ${revision} has the wrong prefix for ${branch}." >&2
-    exit 1
-  fi
-  head_revisions+=("${revision}")
-done
+from alembic.config import Config
+from alembic.script import ScriptDirectory
 
-head_count="$(grep -Ec '\(head\)$' <<<"${actual_heads}")"
-if [[ "${head_count}" -ne 4 ]]; then
-  echo "Expected exactly four migration heads, found ${head_count}." >&2
-  exit 1
-fi
+script = ScriptDirectory.from_config(Config(sys.argv[1]))
+head = script.get_current_head()
+revision = script.get_revision(head)
+print(head)
+print(" ".join(revision._normalized_down_revisions))
+PY
+)"
+final_head="$(sed -n '1p' <<<"${migration_metadata}")"
+parent_heads="$(sed -n '2p' <<<"${migration_metadata}")"
 
 temporary_root="$(mktemp -d "${TMPDIR:-/tmp}/iep-migrations.XXXXXX")"
 trap 'rm -rf "${temporary_root}"' EXIT
-export DATABASE_URL="sqlite:///${temporary_root}/migration-check.db"
+export DATABASE_URL="sqlite:///${temporary_root}/empty-upgrade.db"
 
-"${alembic_cmd[@]}" -c "${config_path}" upgrade heads >/dev/null
-upgraded_heads="$("${alembic_cmd[@]}" -c "${config_path}" current)"
-for revision in "${head_revisions[@]}"; do
-  if ! grep -Eq "^${revision} .*\(head\)$" <<<"${upgraded_heads}"; then
-    echo "Upgrade did not reach migration head: ${revision}" >&2
-    exit 1
-  fi
-done
+"${alembic_cmd[@]}" -c "${config_path}" upgrade head >/dev/null
+upgraded_head="$("${alembic_cmd[@]}" -c "${config_path}" current)"
+if ! grep -Eq "^${final_head} .*\(head\)" <<<"${upgraded_head}"; then
+  echo "Empty-database upgrade did not reach migration head: ${final_head}" >&2
+  exit 1
+fi
 
 "${alembic_cmd[@]}" -c "${config_path}" check >/dev/null
 "${alembic_cmd[@]}" -c "${config_path}" downgrade base >/dev/null
@@ -84,4 +65,23 @@ if [[ -n "${remaining_schema_objects}" ]]; then
   exit 1
 fi
 
-echo "Migration heads (${head_revisions[*]}), prefixes, labels, downgrade, and ORM drift check passed."
+export DATABASE_URL="sqlite:///${temporary_root}/previous-snapshot.db"
+for revision in ${parent_heads}; do
+  "${alembic_cmd[@]}" -c "${config_path}" upgrade "${revision}" >/dev/null
+done
+snapshot_heads="$("${alembic_cmd[@]}" -c "${config_path}" current)"
+for revision in ${parent_heads}; do
+  if ! grep -Eq "^${revision}( |$)" <<<"${snapshot_heads}"; then
+    echo "Previous integration snapshot did not reach lane head: ${revision}" >&2
+    exit 1
+  fi
+done
+
+"${alembic_cmd[@]}" -c "${config_path}" upgrade head >/dev/null
+merged_snapshot_head="$("${alembic_cmd[@]}" -c "${config_path}" current)"
+if ! grep -Eq "^${final_head} .*\(head\)" <<<"${merged_snapshot_head}"; then
+  echo "Previous integration snapshot did not upgrade to merge head: ${final_head}" >&2
+  exit 1
+fi
+
+echo "Migration head ${final_head}, lane prefixes, labels, empty upgrade, previous snapshot upgrade, downgrade, and ORM drift check passed."

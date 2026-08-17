@@ -13,6 +13,7 @@ from alembic.config import Config
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 ALEMBIC_CONFIG = REPOSITORY_ROOT / "backend" / "alembic.ini"
 VERSIONS_ROOT = REPOSITORY_ROOT / "backend" / "alembic" / "versions"
+MERGE_REVISION = VERSIONS_ROOT / "merge" / "m_001_lane_merge.py"
 LANES = {
     "company": "a_000_foundation.py",
     "submission": "b_000_foundation.py",
@@ -53,7 +54,23 @@ def test_alembic_config_declares_each_lane_version_location() -> None:
     config = Config(str(ALEMBIC_CONFIG))
     locations = set(config.get_version_locations_list())
 
-    assert locations == {str(VERSIONS_ROOT / lane) for lane in LANES}
+    assert locations == {
+        *(str(VERSIONS_ROOT / lane) for lane in LANES),
+        str(VERSIONS_ROOT / "merge"),
+    }
+
+
+def test_merge_revision_joins_the_current_lane_heads() -> None:
+    merge_revision = _load_revision(MERGE_REVISION)
+    lane_heads = tuple(
+        _lane_migration_head(VERSIONS_ROOT / lane) for lane in LANES
+    )
+
+    assert merge_revision.revision == "m_001"
+    assert merge_revision.down_revision == lane_heads
+    assert merge_revision.branch_labels is None
+    assert callable(merge_revision.upgrade)
+    assert callable(merge_revision.downgrade)
 
 
 def test_each_lane_starts_with_one_reversible_labeled_head() -> None:
@@ -80,9 +97,10 @@ def test_migration_validation_gate_passes() -> None:
     assert "prefixes" in result.stdout
     assert "downgrade" in result.stdout
     assert "ORM drift" in result.stdout
+    assert "previous snapshot" in result.stdout
 
 
-def test_migration_gate_discovers_a_new_valid_lane_head(tmp_path: Path) -> None:
+def test_migration_gate_requires_a_new_merge_for_a_new_lane_head(tmp_path: Path) -> None:
     temporary_backend = tmp_path / "backend"
     shutil.copytree(REPOSITORY_ROOT / "backend" / "alembic", temporary_backend / "alembic")
     shutil.copy2(ALEMBIC_CONFIG, temporary_backend / "alembic.ini")
@@ -132,8 +150,9 @@ def test_migration_gate_discovers_a_new_valid_lane_head(tmp_path: Path) -> None:
         text=True,
     )
 
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert next_revision in result.stdout
+    assert result.returncode == 1
+    assert "merge revision parents" in result.stderr
+    assert next_revision in result.stderr
 
 
 def _run_temporary_migration_gate(tmp_path: Path) -> tuple[Path, dict[str, str]]:
