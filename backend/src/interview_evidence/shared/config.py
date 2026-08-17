@@ -47,6 +47,14 @@ class Settings(BaseSettings):
     default_retention_days: int = Field(ge=1, le=3_650)
     signed_url_ttl_seconds: int = Field(ge=60, le=3_600)
     event_queue_url: SecretStr | None = None
+    event_dlq_url: SecretStr | None = None
+    worker_max_attempts: int = Field(default=5, ge=1, le=20)
+    worker_wait_time_seconds: int = Field(default=20, ge=0, le=20)
+    worker_visibility_timeout_seconds: int = Field(default=60, ge=1, le=43_200)
+    object_storage_bucket: str = Field(
+        default="iep-local-contract-fixtures",
+        pattern=r"^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$",
+    )
 
     @model_validator(mode="after")
     def validate_regions(self) -> Settings:

@@ -1,0 +1,268 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Protected deployment environment
+        required: true
+        type: choice
+        options: [dev, stage, prod]
+      state_root:
+        description: Terraform state root to plan and apply
+        required: true
+        type: choice
+        options: [foundation, data-ai, application]
+      image_digest:
+        description: Immutable API and worker image digest
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-${{ inputs.environment }}-${{ inputs.state_root }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ap-northeast-2
+  TERRAFORM_VERSION: 1.10.5
+  UV_VERSION: 0.10.9
+  NODE_VERSION: 22.13.1
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      terraform-root: ${{ steps.root.outputs.path }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+      - uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - id: root
+        name: Resolve Terraform root
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="infra/environments/${{ inputs.environment }}/${{ inputs.state_root }}"
+          printf 'path=%s\n' "$root" >> "$GITHUB_OUTPUT"
+      - name: Terraform init
+        working-directory: ${{ steps.root.outputs.path }}
+        run: >-
+          terraform init -input=false
+          -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+      - name: Terraform plan
+        working-directory: ${{ steps.root.outputs.path }}
+        run: terraform plan -input=false -out=tfplan
+      - uses: actions/upload-artifact@v6
+        with:
+          name: terraform-plan-${{ inputs.environment }}-${{ inputs.state_root }}
+          path: ${{ steps.root.outputs.path }}/tfplan
+          if-no-files-found: error
+          retention-days: 7
+
+  apply:
+    needs: plan
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+      - uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - uses: actions/download-artifact@v7
+        with:
+          name: terraform-plan-${{ inputs.environment }}-${{ inputs.state_root }}
+          path: ${{ needs.plan.outputs.terraform-root }}
+      - name: Terraform init
+        working-directory: ${{ needs.plan.outputs.terraform-root }}
+        run: >-
+          terraform init -input=false
+          -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+      - name: Apply reviewed saved plan
+        working-directory: ${{ needs.plan.outputs.terraform-root }}
+        run: terraform apply -input=false tfplan
+
+  migrate:
+    needs: apply
+    if: ${{ inputs.state_root == 'application' }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    outputs:
+      api-task-definition: ${{ steps.register.outputs.api_task_definition }}
+      worker-task-definition: ${{ steps.register.outputs.worker_task_definition }}
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - id: register
+        name: Register immutable ECS task definitions
+        shell: bash
+        run: |
+          set -euo pipefail
+          digest='${{ inputs.image_digest }}'
+          if [[ ! "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            printf 'image_digest must match sha256:[0-9a-f]{64}\n' >&2
+            exit 2
+          fi
+
+          register_task() {
+            local service_name="$1"
+            local container_name="$2"
+            local repository="$3"
+            local output_name="$4"
+            local current_task_definition
+            local definition
+            local revised
+            local registered_task_definition
+
+            current_task_definition=$(aws ecs describe-services \
+              --cluster "${{ vars.ECS_CLUSTER }}" \
+              --services "$service_name" \
+              --query 'services[0].taskDefinition' \
+              --output text)
+            if [[ -z "$current_task_definition" || "$current_task_definition" == "None" ]]; then
+              printf 'unable to resolve task definition for %s\n' "$service_name" >&2
+              exit 1
+            fi
+
+            definition=$(aws ecs describe-task-definition \
+              --task-definition "$current_task_definition" \
+              --query 'taskDefinition' \
+              --output json)
+            revised=$(jq \
+              --arg container "$container_name" \
+              --arg image "${repository}@${digest}" \
+              '(.containerDefinitions[] | select(.name == $container) | .image) = $image
+               | del(
+                   .taskDefinitionArn,
+                   .revision,
+                   .status,
+                   .requiresAttributes,
+                   .compatibilities,
+                   .registeredAt,
+                   .registeredBy
+                 )' <<<"$definition")
+            registered_task_definition=$(aws ecs register-task-definition \
+              --cli-input-json "$revised" \
+              --query 'taskDefinition.taskDefinitionArn' \
+              --output text)
+            printf '%s=%s\n' "$output_name" "$registered_task_definition" >> "$GITHUB_OUTPUT"
+          }
+
+          register_task \
+            "${{ vars.API_SERVICE }}" \
+            api \
+            "${{ vars.API_IMAGE_REPOSITORY }}" \
+            api_task_definition
+          register_task \
+            "${{ vars.WORKER_SERVICE }}" \
+            worker \
+            "${{ vars.WORKER_IMAGE_REPOSITORY }}" \
+            worker_task_definition
+      - name: Run Alembic migration task
+        shell: bash
+        run: |
+          set -euo pipefail
+          task_arn=$(aws ecs run-task \
+            --cluster "${{ vars.ECS_CLUSTER }}" \
+            --task-definition "${{ steps.register.outputs.worker_task_definition }}" \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[${{ vars.PRIVATE_SUBNETS }}],securityGroups=[${{ vars.WORKER_SECURITY_GROUP }}],assignPublicIp=DISABLED}" \
+            --overrides '{"containerOverrides":[{"name":"worker","command":["uv","run","alembic","-c","backend/alembic.ini","upgrade","heads"]}]}' \
+            --query 'tasks[0].taskArn' \
+            --output text)
+          if [[ -z "$task_arn" || "$task_arn" == "None" ]]; then
+            printf 'migration task failed to start\n' >&2
+            exit 1
+          fi
+          aws ecs wait tasks-stopped \
+            --cluster "${{ vars.ECS_CLUSTER }}" \
+            --tasks "$task_arn"
+          exit_code=$(aws ecs describe-tasks \
+            --cluster "${{ vars.ECS_CLUSTER }}" \
+            --tasks "$task_arn" \
+            --query "tasks[0].containers[?name=='worker'].exitCode | [0]" \
+            --output text)
+          if [[ "$exit_code" != "0" ]]; then
+            reason=$(aws ecs describe-tasks \
+              --cluster "${{ vars.ECS_CLUSTER }}" \
+              --tasks "$task_arn" \
+              --query 'tasks[0].stoppedReason' \
+              --output text)
+            printf 'migration task failed: exit_code=%s reason=%s\n' "$exit_code" "$reason" >&2
+            exit 1
+          fi
+
+  deploy-ecs:
+    needs: migrate
+    if: ${{ inputs.state_root == 'application' }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Deploy immutable image digest
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'Deploying image digest %s\n' '${{ inputs.image_digest }}'
+          aws ecs update-service \
+            --cluster "${{ vars.ECS_CLUSTER }}" \
+            --service "${{ vars.API_SERVICE }}" \
+            --task-definition "${{ needs.migrate.outputs.api-task-definition }}" \
+            --force-new-deployment
+          aws ecs update-service \
+            --cluster "${{ vars.ECS_CLUSTER }}" \
+            --service "${{ vars.WORKER_SERVICE }}" \
+            --task-definition "${{ needs.migrate.outputs.worker-task-definition }}" \
+            --force-new-deployment
+          aws ecs wait services-stable \
+            --cluster "${{ vars.ECS_CLUSTER }}" \
+            --services "${{ vars.API_SERVICE }}" "${{ vars.WORKER_SERVICE }}"
+
+  deploy-frontends:
+    needs: deploy-ecs
+    if: ${{ inputs.state_root == 'application' }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @iep/company-console build
+      - run: pnpm --filter @iep/applicant-interview build
+      - name: Publish private-origin assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          aws s3 sync apps/company-console/dist "s3://${{ vars.COMPANY_SITE_BUCKET }}" --delete
+          aws s3 sync apps/applicant-interview/dist "s3://${{ vars.APPLICANT_SITE_BUCKET }}" --delete
+          aws cloudfront create-invalidation \
+            --distribution-id "${{ vars.COMPANY_DISTRIBUTION_ID }}" \
+            --paths '/*'
+          aws cloudfront create-invalidation \
+            --distribution-id "${{ vars.APPLICANT_DISTRIBUTION_ID }}" \
+            --paths '/*'

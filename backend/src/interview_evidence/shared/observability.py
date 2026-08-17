@@ -306,6 +306,18 @@ def inject_trace_context(carrier: MutableMapping[str, str]) -> MutableMapping[st
 
 def _safe_log_record_factory(*args: Any, **kwargs: Any) -> logging.LogRecord:
     record = _BASE_LOG_RECORD_FACTORY(*args, **kwargs)
+    if record.name == "uvicorn.access" and isinstance(record.args, tuple) and len(record.args) == 5:
+        _, method, _, http_version, status_code = record.args
+        safe_methods = {"DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"}
+        safe_method = method if method in safe_methods else "GET"
+        safe_http_version = http_version if http_version in {"1.0", "1.1", "2"} else "1.1"
+        safe_status = status_code if isinstance(status_code, int) else 500
+        record.msg = '%s - "%s %s HTTP/%s" %d'
+        record.args = (REDACTED, safe_method, REDACTED, safe_http_version, safe_status)
+        record.exc_info = None
+        record.exc_text = None
+        record.stack_info = None
+        return record
     record.msg = REDACTED
     record.args = ()
     record.exc_info = None

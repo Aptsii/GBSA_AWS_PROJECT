@@ -2,7 +2,17 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, DateTime, Float, Integer, String, Text, select
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    Float,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    select,
+)
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from interview_evidence.shared.database import Base
@@ -104,6 +114,13 @@ class EvidenceRow(Base):
 
 class HumanReviewRow(Base):
     __tablename__ = "human_reviews"
+    __table_args__ = (
+        UniqueConstraint(
+            "company_id",
+            "idempotency_key",
+            name="uq_human_reviews_company_id_idempotency_key",
+        ),
+    )
     human_review_id: Mapped[str] = mapped_column(String(36), primary_key=True)
     company_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
     report_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
@@ -112,7 +129,7 @@ class HumanReviewRow(Base):
     target_id: Mapped[str] = mapped_column(String(36), nullable=False)
     value: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
     reason: Mapped[str | None] = mapped_column(Text)
-    idempotency_key: Mapped[str] = mapped_column(String(128), nullable=False, unique=True)
+    idempotency_key: Mapped[str] = mapped_column(String(128), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 

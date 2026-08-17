@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 
 import pytest
 from interview_evidence.reporting.adapters.playback import PlaybackLocator
+from interview_evidence.reporting.api.runtime import SQLAlchemyReportingRouteService
 from interview_evidence.reporting.repositories.postgres import (
     DeletionManifestRow,
     DeletionRequestRow,
@@ -16,6 +17,7 @@ from interview_evidence.reporting.repositories.postgres import (
     TranscriptSegmentRow,
 )
 from interview_evidence.shared.database import Base
+from interview_evidence.shared.ids import FixedClock, UUID7Generator
 from interview_evidence.shared.tenant import TenantContext, TenantScopeViolation
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
@@ -43,6 +45,7 @@ REVIEW_ID = "018f2000-0000-7000-8000-000000000254"
 DELETION_REQUEST_ID = "018f2000-0000-7000-8000-000000000260"
 MANIFEST_ID = "018f2000-0000-7000-8000-000000000261"
 TARGET_ID = "018f2000-0000-7000-8000-000000000262"
+OTHER_INVITATION_ID = "018f2000-0000-7000-8000-000000000263"
 
 
 def test_cross_tenant_media_locator_is_denied() -> None:
@@ -209,6 +212,43 @@ def test_reporting_repository_scopes_timeline_evidence_review_and_deletion_reads
                 repository.report_row(other_context, REPORT_ID)
             with pytest.raises(TenantScopeViolation):
                 repository.deletion_request_row(other_context, DELETION_REQUEST_ID)
+    finally:
+        Base.metadata.drop_all(engine)
+        engine.dispose()
+
+
+def test_human_review_idempotency_key_is_scoped_per_company() -> None:
+    engine = create_engine(
+        "sqlite+pysqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(engine)
+    try:
+        with Session(engine) as session:
+            ids = UUID7Generator(FixedClock(NOW))
+            service = SQLAlchemyReportingRouteService(
+                session,
+                clock=FixedClock(NOW),
+                id_generator=ids,
+            )
+            first = service.final_decision(
+                context=TenantContext(**make_tenant_context()),
+                invitation_id=INVITATION_ID,
+                decision="hold",
+                reason="첫 번째 기업의 사람 검토",
+                idempotency_key="shared-final-decision-key-0001",
+            )
+            second = service.final_decision(
+                context=TenantContext(**make_other_tenant_context()),
+                invitation_id=OTHER_INVITATION_ID,
+                decision="advance",
+                reason="두 번째 기업의 사람 검토",
+                idempotency_key="shared-final-decision-key-0001",
+            )
+
+            assert first["human_review_id"] != second["human_review_id"]
+            assert session.query(HumanReviewRow).count() == 2
     finally:
         Base.metadata.drop_all(engine)
         engine.dispose()

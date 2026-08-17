@@ -326,8 +326,6 @@ decisions and cannot complete deletion while any target remains.
 merged head, all four lane suites and the thin end-to-end journey pass, and no critical convergence
 gap remains.
 
----
-
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -430,3 +428,22 @@ additional degraded modes or richer review UI.
 - Shared contract changes merge separately before consumer implementation.
 - A completed task checkbox is updated on the integration branch after its commit is accepted.
 - Final completion requires the merged quickstart and convergence pass, not four isolated green lanes.
+
+## Phase 8: Convergence
+
+- [ ] T193 CRITICAL Integration — Compose production `ApplicationRuntimes` from configured SQLAlchemy repositories and AWS adapters, mount every `/v1` router in the API container factory, and prove the deployed OpenAPI exposes tenant- and consent-guarded feature routes per FR-001-FR-052 and QG-01/QG-11 (missing)
+- [ ] T194 CRITICAL Integration — Implement the tenant-scoped versioned queue receive, dispatch, retry, acknowledgement and shutdown loop for the registered worker handlers in `backend/src/interview_evidence/workers/__main__.py` per FR-050 and plan worker rules (missing)
+- [ ] T195 [P] Integration — Mount the company and applicant feature registries into real React Router navigation and render the owned lane screens instead of static application shells per T177 and QG-01 (partial)
+- [ ] T196 Integration — Replace the snapshot-only thin journey with a real composed company-to-human-decision flow over the production runtime, PostgreSQL and local AWS-compatible services per T179 and QG-01 (partial)
+- [ ] T197 [P] Lane A — Compose independent `foundation`, `data-ai` and `application` roots for stage and prod with the required network, edge, identity, data, async, AI/search, observability and compute modules per plan environment roots and QG-13/QG-16 (contradicts)
+- [ ] T198 Integration — Align deployment root selection with all environment state roots, register ECS task definitions with the requested immutable `image_digest`, and wait for migration task success before service rollout per T170 and QG-13/QG-16 (partial)
+- [ ] T199 Integration — Extend the enabled stage smoke into an authenticated CloudFront-to-API business journey that reaches the configured AWS data and AI services, rather than independent health/resource checks, per T189 and QG-13 (partial)
+- [ ] T200 [P] Lane C — Rework pilot load validation to use a shared production-like runtime, transition all five concurrent interviews to `COMPLETED`, and assert cross-company data separation across hundreds of accumulated records per SC-007/SC-013 (partial)
+- [ ] T201 [P] Lane D — Measure Evidence selection through actual browser media playback start, including signed playback retrieval and the two-second threshold, per SC-012 (partial)
+- [ ] T202 Integration — Add versioned production metrics and tests for stage latency, retries, reconciliation lag, queue age and degraded-mode use at API and worker boundaries per FR-051, plan operational design and Constitution V (missing)
+- [ ] T203 Integration — Correct `validation-report.md` to show the convergence findings as unresolved until T193-T202 pass, then rerun every affected FR/SC/QG gate and record the final result per T191 (contradicts)
+
+## Phase 9: Convergence
+
+- [ ] T204 CRITICAL Lane D — Scope SQLAlchemy human-review idempotency replay and database uniqueness by `company_id`, with a migration and cross-company same-key regression test, per FR-005, SC-014 and Constitution II (contradicts)
+- [ ] T205 Integration — Align the versioned EMF metric namespace and queue-age unit with the deployed Terraform alarm contract, and add a cross-layer contract test per FR-051 and plan operational design (contradicts)

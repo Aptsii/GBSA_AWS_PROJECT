@@ -16,6 +16,7 @@ from interview_evidence.shared.observability import (
 )
 from opentelemetry import trace
 from opentelemetry.trace import NonRecordingSpan, SpanContext, TraceFlags, TraceState
+from uvicorn.logging import AccessFormatter
 
 
 def test_nested_prohibited_fields_are_redacted() -> None:
@@ -212,3 +213,23 @@ def test_stdlib_and_uvicorn_exception_records_drop_messages_and_tracebacks() -> 
     assert "protected applicant answer text" not in output
     assert "RuntimeError" not in output
     assert output.strip() == "[REDACTED]"
+
+
+def test_uvicorn_access_records_keep_a_safe_formatter_shape() -> None:
+    configure_structured_logging()
+    logger = logging.getLogger("uvicorn.access")
+    record = logger.makeRecord(
+        logger.name,
+        logging.INFO,
+        __file__,
+        1,
+        '%s - "%s %s HTTP/%s" %d',
+        ("127.0.0.1:12345", "GET", "/v1/private-token", "1.1", 200),
+        None,
+    )
+
+    rendered = AccessFormatter().format(record)
+
+    assert "private-token" not in rendered
+    assert "127.0.0.1" not in rendered
+    assert "[REDACTED]" in rendered

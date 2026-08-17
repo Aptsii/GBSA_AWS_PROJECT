@@ -4,6 +4,8 @@ import re
 from pathlib import Path
 
 INFRA_ROOT = Path(__file__).resolve().parents[1]
+ENVIRONMENTS = ("dev", "stage", "prod")
+STATE_ROOTS = ("foundation", "data-ai", "application")
 
 
 def _read(relative_path: str) -> str:
@@ -68,12 +70,10 @@ def test_reusable_modules_cover_required_aws_boundaries() -> None:
 
 
 def test_state_roots_use_distinct_encrypted_native_lockfile_backends() -> None:
-    roots = (
-        "environments/dev/foundation/main.tf",
-        "environments/dev/data-ai/main.tf",
-        "environments/dev/application/main.tf",
-        "environments/stage/main.tf",
-        "environments/prod/main.tf",
+    roots = tuple(
+        f"environments/{environment}/{state_root}/main.tf"
+        for environment in ENVIRONMENTS
+        for state_root in STATE_ROOTS
     )
     keys: set[str] = set()
 
@@ -92,10 +92,32 @@ def test_state_roots_use_distinct_encrypted_native_lockfile_backends() -> None:
     assert len(keys) == len(roots)
 
 
+def test_each_environment_composes_the_required_independent_roots() -> None:
+    expected_modules = {
+        "foundation": ("network", "identity", "edge"),
+        "data-ai": ("data", "async_workflow", "ai_search", "observability"),
+        "application": ("compute",),
+    }
+
+    for environment in ENVIRONMENTS:
+        assert not (INFRA_ROOT / f"environments/{environment}/main.tf").exists()
+        for state_root, modules in expected_modules.items():
+            relative_root = f"environments/{environment}/{state_root}"
+            configuration = _read(f"{relative_root}/main.tf")
+            assert (INFRA_ROOT / relative_root / ".terraform.lock.hcl").is_file()
+            for module in modules:
+                assert f'module "{module}"' in configuration, (
+                    environment,
+                    state_root,
+                    module,
+                )
+
+
 def test_storage_is_private_encrypted_and_protected() -> None:
     edge = _read("modules/edge/main.tf")
     data = _read("modules/data/main.tf")
-    production = _read("environments/prod/main.tf")
+    stage = _read("environments/stage/data-ai/main.tf")
+    production = _read("environments/prod/data-ai/main.tf")
 
     assert "aws_s3_bucket_public_access_block" in edge
     assert "aws_s3_bucket_public_access_block" in data
@@ -104,7 +126,10 @@ def test_storage_is_private_encrypted_and_protected() -> None:
     assert 'sse_algorithm     = "aws:kms"' in data
     assert "storage_encrypted           = true" in data
     assert "publicly_accessible" not in data
+    assert "deletion_protection        = true" in stage
+    assert "backup_retention_days      = 14" in stage
     assert "deletion_protection        = true" in production
+    assert "backup_retention_days      = 35" in production
 
 
 def test_application_deployments_do_not_fight_pipeline_or_autoscaling() -> None:

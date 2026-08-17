@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from alembic.config import Config
+from alembic.script import ScriptDirectory
 
 LANE_PREFIXES = {
     "company": "a_",
@@ -18,6 +19,8 @@ LANE_PREFIXES = {
     "interview": "c_",
     "reporting": "d_",
 }
+MERGE_LANE = "merge"
+MERGE_PREFIX = "m_"
 DESTRUCTIVE_SQL = re.compile(r"\b(?:DROP|TRUNCATE|DELETE\s+FROM)\b", re.IGNORECASE)
 
 
@@ -137,25 +140,149 @@ def validate_revision(path: Path, lane: str, prefix: str) -> list[str]:
     return errors
 
 
+def _is_noop(function: ast.FunctionDef) -> bool:
+    return all(
+        isinstance(statement, ast.Pass)
+        or (
+            isinstance(statement, ast.Expr)
+            and isinstance(statement.value, ast.Constant)
+            and isinstance(statement.value.value, str)
+        )
+        for statement in function.body
+    )
+
+
+def validate_merge_revision(path: Path) -> list[str]:
+    errors: list[str] = []
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    except (OSError, SyntaxError) as error:
+        return [f"{path}: cannot parse migration: {error}"]
+
+    revision = _literal_assignment(tree, "revision")
+    if not isinstance(revision, str):
+        errors.append(f"{path}: revision must be a literal string")
+    elif not revision.startswith(MERGE_PREFIX):
+        errors.append(f"{path}: revision {revision} has the wrong prefix for merge")
+
+    down_revision = _literal_assignment(tree, "down_revision")
+    if not isinstance(down_revision, tuple):
+        errors.append(f"{path}: merge down_revision must be a tuple")
+    else:
+        parent_prefixes = [
+            prefix
+            for parent in down_revision
+            if isinstance(parent, str)
+            for prefix in LANE_PREFIXES.values()
+            if parent.startswith(prefix)
+        ]
+        if len(down_revision) != len(LANE_PREFIXES) or sorted(parent_prefixes) != sorted(
+            LANE_PREFIXES.values()
+        ):
+            errors.append(
+                f"{path}: merge down_revision must contain exactly one parent "
+                "from every lane"
+            )
+
+    if _literal_assignment(tree, "branch_labels") is not None:
+        errors.append(f"{path}: merge branch_labels must be absent")
+
+    for function_name in ("upgrade", "downgrade"):
+        function = _function(tree, function_name)
+        if function is None:
+            errors.append(f"{path}: migration must define {function_name}()")
+        elif not _is_noop(function):
+            errors.append(f"{path}: merge {function_name}() must not change schema or data")
+    return errors
+
+
+def validate_merge_topology(config: Config) -> list[str]:
+    errors: list[str] = []
+    script = ScriptDirectory.from_config(config)
+    revisions = list(script.walk_revisions(base="base", head="heads"))
+    revision_ids = {revision.revision for revision in revisions}
+    lane_heads: list[str] = []
+
+    for prefix in LANE_PREFIXES.values():
+        lane_revisions = {revision for revision in revision_ids if revision.startswith(prefix)}
+        lane_parents = {
+            parent
+            for revision in revisions
+            if revision.revision in lane_revisions
+            for parent in revision._normalized_down_revisions
+            if parent in lane_revisions
+        }
+        heads = sorted(lane_revisions - lane_parents)
+        if len(heads) != 1:
+            errors.append(f"expected one current lane head for {prefix}, found {heads!r}")
+        else:
+            lane_heads.append(heads[0])
+
+    integration_revisions = [
+        revision for revision in revisions if revision.revision.startswith(MERGE_PREFIX)
+    ]
+    merge_revisions = [
+        revision
+        for revision in integration_revisions
+        if len(revision._normalized_down_revisions) == len(LANE_PREFIXES)
+    ]
+    if len(merge_revisions) != 1:
+        errors.append(
+            "expected exactly one lane-join merge revision, "
+            f"found {len(merge_revisions)}"
+        )
+        return errors
+
+    merge_revision = merge_revisions[0]
+    merge_parents = sorted(merge_revision._normalized_down_revisions)
+    if merge_parents != sorted(lane_heads):
+        errors.append(
+            f"merge revision parents {merge_parents!r} do not match current lane heads "
+            f"{sorted(lane_heads)!r}"
+        )
+
+    heads = sorted(script.get_heads())
+    if len(heads) != 1 or not heads[0].startswith(MERGE_PREFIX):
+        errors.append(
+            f"expected one Integration-owned final head, found {heads!r}"
+        )
+    return errors
+
+
 def check(config_path: Path) -> list[str]:
     config = Config(str(config_path))
     errors: list[str] = []
-    seen_lanes: set[str] = set()
+    seen_locations: set[str] = set()
     for raw_location in config.get_version_locations_list() or []:
         location = Path(raw_location)
         lane = location.name
+        seen_locations.add(lane)
+        if lane == MERGE_LANE:
+            for path in sorted(location.glob("*.py")):
+                if path.name != "__init__.py":
+                    try:
+                        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+                    except (OSError, SyntaxError) as error:
+                        errors.append(f"{path}: cannot parse migration: {error}")
+                        continue
+                    if isinstance(_literal_assignment(tree, "down_revision"), tuple):
+                        errors.extend(validate_merge_revision(path))
+                    else:
+                        errors.extend(validate_revision(path, MERGE_LANE, MERGE_PREFIX))
+            continue
         prefix = LANE_PREFIXES.get(lane)
         if prefix is None:
             errors.append(f"{location}: unknown migration ownership directory")
             continue
-        seen_lanes.add(lane)
         for path in sorted(location.glob("*.py")):
             if path.name != "__init__.py":
                 errors.extend(validate_revision(path, lane, prefix))
 
-    missing = set(LANE_PREFIXES) - seen_lanes
+    missing = {*LANE_PREFIXES, MERGE_LANE} - seen_locations
     if missing:
         errors.append(f"missing migration ownership directories: {sorted(missing)!r}")
+    if not errors:
+        errors.extend(validate_merge_topology(config))
     return errors
 
 

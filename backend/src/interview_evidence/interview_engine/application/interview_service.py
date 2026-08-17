@@ -326,6 +326,66 @@ class InterviewService:
         except KeyError:
             raise LookupError("interview session was not found") from None
 
+    def complete_session(
+        self,
+        context: TenantContext,
+        scope: ApplicantScope,
+        session_id: str | OpaqueId,
+        *,
+        expected_sequence: int,
+        idempotency_key: str,
+        last_recording_chunk_sequence: int,
+    ) -> InterviewSession:
+        ensure_applicant_scope(context, scope)
+        checked_session_id = OpaqueId(session_id)
+
+        def complete() -> InterviewSession:
+            interview_session = self.get_session(context, scope, checked_session_id)
+            paused = self._state_machine.transition(
+                interview_session,
+                expected_sequence=expected_sequence,
+                target=SessionState.PAUSED,
+            )
+            completed = self._state_machine.transition(
+                paused,
+                expected_sequence=paused.session_sequence,
+                target=SessionState.COMPLETED,
+            )
+            self._store_session(scope, completed)
+            last_final_turn_id = next(
+                (
+                    turn.turn_id
+                    for turn in reversed(self._turn_list(scope, checked_session_id))
+                    if turn.evidence_eligible
+                ),
+                None,
+            )
+            self._checkpoints.record(
+                context,
+                scope,
+                checked_session_id,
+                session_sequence=completed.session_sequence,
+                last_final_turn_id=last_final_turn_id,
+                last_media_chunk_sequence=last_recording_chunk_sequence,
+                pending_turn_id=None,
+                state=completed.state,
+                degraded_modes=completed.degraded_modes,
+            )
+            return completed
+
+        return self._idempotency.execute(
+            context,
+            scope,
+            idempotency_key,
+            {
+                "session_id": str(checked_session_id),
+                "expected_sequence": expected_sequence,
+                "last_recording_chunk_sequence": last_recording_chunk_sequence,
+            },
+            complete,
+            namespace="session-complete",
+        )
+
     def list_turns(
         self,
         context: TenantContext,

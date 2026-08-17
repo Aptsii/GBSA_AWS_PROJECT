@@ -18,7 +18,7 @@ services:
       - postgres-data:/var/lib/postgresql/data
 
   localstack:
-    image: localstack/localstack:2026.07.3
+    image: localstack/localstack:4.7.0
     environment:
       SERVICES: s3,sqs
       AWS_DEFAULT_REGION: ${AWS_REGION:-ap-northeast-2}
@@ -31,13 +31,23 @@ services:
       timeout: 5s
       retries: 20
     volumes:
-      - localstack-data:/var/lib/localstack
+      - localstack-community-data:/var/lib/localstack
 
   dynamodb:
     image: amazon/dynamodb-local:3.3.1
+    user: "0:0"
     command: ["-jar", "DynamoDBLocal.jar", "-sharedDb", "-dbPath", "/home/dynamodblocal/data"]
     ports:
       - "${DYNAMODB_PORT:-8000}:8000"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "test -w /home/dynamodblocal/data && curl -sS --max-time 3 -o /dev/null http://localhost:8000",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
     volumes:
       - dynamodb-data:/home/dynamodblocal/data
 
@@ -58,8 +68,146 @@ services:
     volumes:
       - opensearch-data:/usr/share/opensearch/data
 
+  api:
+    build:
+      context: .
+      dockerfile: backend/Containerfile
+      target: api
+    environment:
+      DATABASE_URL: postgresql+psycopg://interview:interview_local@postgres:5432/interview_evidence
+      IEP_DATABASE_URL: postgresql+psycopg://interview:interview_local@postgres:5432/interview_evidence
+      IEP_ENVIRONMENT: local
+      IEP_APPLICANT_SESSION_SECRET: local-applicant-session-secret-change-me
+      IEP_COMPANY_JWT_ISSUER: https://identity.local.invalid/
+      IEP_COMPANY_JWT_AUDIENCE: interview-evidence-api
+      IEP_COMPANY_JWKS_URL: https://identity.local.invalid/.well-known/jwks.json
+      IEP_APPLICANT_SESSION_TTL_SECONDS: "7200"
+      IEP_INVITATION_PUBLIC_BASE_URL: http://localhost:5174/
+      IEP_INVITATION_EMAIL_TEMPLATE: invitation-v1
+      IEP_SIGNED_URL_TTL_SECONDS: "900"
+      IEP_DEFAULT_RETENTION_DAYS: "30"
+      IEP_OBJECT_STORAGE_BUCKET: iep-local-contract-fixtures
+      IEP_EVENT_QUEUE_URL: http://localstack:4566/000000000000/iep-local-contract-events
+      IEP_EVENT_DLQ_URL: http://localstack:4566/000000000000/iep-local-contract-events-dlq
+      IEP_WORKER_MAX_ATTEMPTS: "5"
+      IEP_WORKER_WAIT_TIME_SECONDS: "5"
+      IEP_WORKER_VISIBILITY_TIMEOUT_SECONDS: "30"
+      AWS_ENDPOINT_URL: http://localstack:4566
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      DYNAMODB_ENDPOINT_URL: http://dynamodb:8000
+      OPENSEARCH_URL: http://opensearch:9200
+      AWS_REGION: ${AWS_REGION:-ap-northeast-2}
+      ENABLE_LIVE_AWS: "false"
+    ports:
+      - "${API_PORT:-8001}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+      dynamodb:
+        condition: service_healthy
+      opensearch:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready')",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  worker:
+    build:
+      context: .
+      dockerfile: backend/Containerfile
+      target: worker
+    environment:
+      DATABASE_URL: postgresql+psycopg://interview:interview_local@postgres:5432/interview_evidence
+      IEP_DATABASE_URL: postgresql+psycopg://interview:interview_local@postgres:5432/interview_evidence
+      IEP_ENVIRONMENT: local
+      IEP_APPLICANT_SESSION_SECRET: local-applicant-session-secret-change-me
+      IEP_COMPANY_JWT_ISSUER: https://identity.local.invalid/
+      IEP_COMPANY_JWT_AUDIENCE: interview-evidence-api
+      IEP_COMPANY_JWKS_URL: https://identity.local.invalid/.well-known/jwks.json
+      IEP_APPLICANT_SESSION_TTL_SECONDS: "7200"
+      IEP_INVITATION_PUBLIC_BASE_URL: http://localhost:5174/
+      IEP_INVITATION_EMAIL_TEMPLATE: invitation-v1
+      IEP_SIGNED_URL_TTL_SECONDS: "900"
+      IEP_DEFAULT_RETENTION_DAYS: "30"
+      IEP_OBJECT_STORAGE_BUCKET: iep-local-contract-fixtures
+      IEP_EVENT_QUEUE_URL: http://localstack:4566/000000000000/iep-local-contract-events
+      IEP_EVENT_DLQ_URL: http://localstack:4566/000000000000/iep-local-contract-events-dlq
+      IEP_WORKER_MAX_ATTEMPTS: "5"
+      IEP_WORKER_WAIT_TIME_SECONDS: "5"
+      IEP_WORKER_VISIBILITY_TIMEOUT_SECONDS: "30"
+      AWS_ENDPOINT_URL: http://localstack:4566
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      DYNAMODB_ENDPOINT_URL: http://dynamodb:8000
+      OPENSEARCH_URL: http://opensearch:9200
+      AWS_REGION: ${AWS_REGION:-ap-northeast-2}
+      ENABLE_LIVE_AWS: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+      dynamodb:
+        condition: service_healthy
+      opensearch:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "from interview_evidence.main import create_worker_registry; assert len(create_worker_registry()) == 4",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  company-console:
+    build:
+      context: .
+      dockerfile: apps/Containerfile
+      target: company-console
+    ports:
+      - "${COMPANY_CONSOLE_PORT:-5173}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  applicant-interview:
+    build:
+      context: .
+      dockerfile: apps/Containerfile
+      target: applicant-interview
+    ports:
+      - "${APPLICANT_INTERVIEW_PORT:-5174}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
 volumes:
   postgres-data:
-  localstack-data:
+  localstack-community-data:
   dynamodb-data:
   opensearch-data:

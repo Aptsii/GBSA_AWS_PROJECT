@@ -44,9 +44,13 @@ make bootstrap
 make compose-up
 ```
 
-The Compose stack supplies PostgreSQL, S3/SQS emulation, DynamoDB, and OpenSearch. The API
-composition root and both image targets are present. The worker entrypoint deliberately fails
-closed until T176 registers the lane handlers, so it cannot appear healthy while doing no work.
+The Compose stack supplies PostgreSQL, S3/SQS emulation, DynamoDB, and OpenSearch. The API factory
+builds request-scoped SQLAlchemy transactions, configured authentication/session adapters, S3
+storage, and every versioned `/v1` router. Both image targets and all four async worker handlers are
+registered. The worker entrypoint stays alive until `SIGINT` or `SIGTERM`, and its Compose health
+check rejects an empty handler registry. Queue consumers validate the v1 envelope, enforce tenant
+scope, record durable duplicate outcomes, use bounded visibility retries, and acknowledge only
+after success or DLQ transfer.
 
 Common checks:
 
@@ -60,8 +64,8 @@ make artifacts-check
 
 Contract generation is exposed through `make generate`; `make artifacts-check` regenerates the
 canonical fragments in memory and rejects missing, extra, or byte-drifted generated artifacts.
-Every command named in the quickstart is reserved in the Makefile. Commands owned by later lane or
-integration tasks fail with a clear message until their implementation lands.
+Every command named in the quickstart is implemented in the Makefile, including local fixture
+seeding, lane journeys, merged failure gates, AI regression, pilot load, and Terraform validation.
 
 Build the two backend image targets with:
 
