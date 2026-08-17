@@ -4,9 +4,6 @@ import hashlib
 from datetime import UTC, datetime
 
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session
-
 from interview_evidence.shared.aws_clients.ports import FakeObjectStorage, ProtectedBytes
 from interview_evidence.shared.database import Base
 from interview_evidence.shared.ids import FixedClock, UUID7Generator
@@ -33,13 +30,17 @@ from interview_evidence.submission_analysis.application.submission_service impor
 from interview_evidence.submission_analysis.application.submission_validator import (
     SubmissionValidator,
 )
-from interview_evidence.submission_analysis.domain.source import SourceLocation, SourceReference
+from interview_evidence.submission_analysis.contracts import SubmissionAnalysisPublicService
+from interview_evidence.submission_analysis.domain.source import SourceReference
 from interview_evidence.submission_analysis.repositories.postgres import (
     SubmissionAnalysisRepository,
 )
 from interview_evidence.workers.analysis.document_chunker import DocumentChunker
 from interview_evidence.workers.analysis.document_extract import DocumentExtractor
 from interview_evidence.workers.analysis.git_fetch import GitFetchLimits, PublicRepositoryFetcher
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
+
 from tests.fixtures.shared.factories import (
     APPLICANT_ID,
     COMPANY_ID,
@@ -162,7 +163,8 @@ def test_lane_b_quickstart_creates_scoped_strategy_and_deletes_derived_data() ->
         assert readiness["interview_ready"] is True
         assert readiness["strategy_id"] == str(strategy.interview_strategy_id)
 
-        retrieved = HybridRetriever(search).retrieve(
+        retriever = HybridRetriever(search)
+        retrieved = retriever.retrieve(
             _context(),
             RetrievalQuery(
                 scope=_scope(),
@@ -175,16 +177,23 @@ def test_lane_b_quickstart_creates_scoped_strategy_and_deletes_derived_data() ->
         )
         assert retrieved.results[0].source_reference.source_id == source.source_id
 
-        targets = SubmissionDeletionService(repository, object_storage, search).enumerate_targets(
-            _context(), _scope()
+        deletion = SubmissionDeletionService(repository, object_storage, search)
+        public = SubmissionAnalysisPublicService(repository, retriever, deletion)
+        status_snapshot = public.get_analysis_status(_context(), invitation_id=INVITATION_ID)
+        strategy_snapshot = public.get_strategy_snapshot(
+            _context(), strategy_id=strategy.interview_strategy_id
         )
+        source_snapshot = public.resolve_source_reference(_context(), source_id=source.source_id)
+        assert status_snapshot["strategy_ready"] is True
+        assert (
+            strategy_snapshot["competency_model_version_id"]
+            == make_criterion_snapshot()["competency_model_version_id"]
+        )
+        assert source_snapshot["evidence_eligible"] is False
+
+        targets = deletion.enumerate_targets(_context(), _scope())
         assert {target.store for target in targets} == {"aurora", "s3", "opensearch"}
-        receipts = [
-            SubmissionDeletionService(repository, object_storage, search).delete_target(
-                _context(), _scope(), target
-            )
-            for target in targets
-        ]
+        receipts = [deletion.delete_target(_context(), _scope(), target) for target in targets]
         assert all(receipt.status == "verified_absent" for receipt in receipts)
 
         with pytest.raises(TenantScopeViolation):
