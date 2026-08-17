@@ -1,7 +1,21 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any
+from typing import Literal, cast
+
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    Float,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    delete,
+    select,
+)
+from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from interview_evidence.shared.database import Base
 from interview_evidence.shared.errors import ErrorCode, SafeApplicationError
@@ -23,19 +37,6 @@ from interview_evidence.submission_analysis.domain.submission import (
     Submission,
     SubmissionStatus,
 )
-from sqlalchemy import (
-    JSON,
-    Boolean,
-    DateTime,
-    Float,
-    Integer,
-    String,
-    Text,
-    UniqueConstraint,
-    delete,
-    select,
-)
-from sqlalchemy.orm import Mapped, Session, mapped_column
 
 
 class SubmissionRow(Base):
@@ -204,6 +205,32 @@ class SubmissionAnalysisRepository:
         ).all()
         return tuple(self._submission(row) for row in rows)
 
+    def scope_for_invitation(
+        self, context: TenantContext, invitation_id: str | OpaqueId
+    ) -> ApplicantScope:
+        checked_invitation_id = str(OpaqueId(invitation_id))
+        row = self.session.scalars(
+            select(SubmissionRow)
+            .where(
+                SubmissionRow.company_id == str(context.company_id),
+                SubmissionRow.invitation_id == checked_invitation_id,
+            )
+            .order_by(SubmissionRow.created_at, SubmissionRow.submission_id)
+        ).first()
+        if row is None:
+            if self.session.scalars(
+                select(SubmissionRow).where(SubmissionRow.invitation_id == checked_invitation_id)
+            ).first():
+                raise TenantScopeViolation
+            raise SafeApplicationError(ErrorCode.RESOURCE_NOT_FOUND)
+        scope = ApplicantScope(
+            OpaqueId(row.company_id),
+            OpaqueId(row.applicant_id),
+            OpaqueId(row.invitation_id),
+        )
+        ensure_applicant_scope(context, scope)
+        return scope
+
     def mark_submission_ready(
         self, context: TenantContext, submission_id: str | OpaqueId
     ) -> Submission:
@@ -257,6 +284,23 @@ class SubmissionAnalysisRepository:
         ).all()
         return tuple(self._source_reference(row) for row in rows)
 
+    def get_source_reference(
+        self, context: TenantContext, source_id: str | OpaqueId
+    ) -> SourceReference:
+        checked_id = str(OpaqueId(source_id))
+        row = self.session.get(SubmissionSourceReferenceRow, checked_id)
+        if row is None:
+            raise SafeApplicationError(ErrorCode.RESOURCE_NOT_FOUND)
+        if row.company_id != str(context.company_id):
+            raise TenantScopeViolation
+        scope = ApplicantScope(
+            OpaqueId(row.company_id),
+            OpaqueId(row.applicant_id),
+            OpaqueId(row.invitation_id),
+        )
+        ensure_applicant_scope(context, scope)
+        return self._source_reference(row)
+
     def add_strategy(
         self, context: TenantContext, strategy: InterviewStrategy
     ) -> InterviewStrategy:
@@ -279,6 +323,17 @@ class SubmissionAnalysisRepository:
             .order_by(InterviewStrategyRow.strategy_version.desc())
         ).first()
         return self._strategy(row) if row else None
+
+    def get_strategy(
+        self, context: TenantContext, strategy_id: str | OpaqueId
+    ) -> InterviewStrategy:
+        checked_id = str(OpaqueId(strategy_id))
+        row = self.session.get(InterviewStrategyRow, checked_id)
+        if row is None:
+            raise SafeApplicationError(ErrorCode.RESOURCE_NOT_FOUND)
+        if row.company_id != str(context.company_id):
+            raise TenantScopeViolation
+        return self._strategy(row)
 
     def relational_target_ids(
         self, context: TenantContext, scope: ApplicantScope
@@ -331,7 +386,11 @@ class SubmissionAnalysisRepository:
     def _submission(row: SubmissionRow) -> Submission:
         return Submission(
             submission_id=OpaqueId(row.submission_id),
-            scope=ApplicantScope(row.company_id, row.applicant_id, row.invitation_id),
+            scope=ApplicantScope(
+                OpaqueId(row.company_id),
+                OpaqueId(row.applicant_id),
+                OpaqueId(row.invitation_id),
+            ),
             source_type=SourceType(row.source_type),
             source_uri=row.source_uri,
             original_filename=row.original_filename,
@@ -346,17 +405,22 @@ class SubmissionAnalysisRepository:
 
     @staticmethod
     def _source_reference(row: SubmissionSourceReferenceRow) -> SourceReference:
-        allowed = {
-            key: value
-            for key, value in row.source_location.items()
-            if key in SourceLocation.__dataclass_fields__
-        }
+        location = row.source_location
         return SourceReference(
             company_id=OpaqueId(row.company_id),
-            source_type=row.source_type,  # type: ignore[arg-type]
+            source_type=cast(Literal["submission_chunk", "candidate_code_unit"], row.source_type),
             source_id=OpaqueId(row.source_id),
             source_version=row.source_version,
-            source_location=SourceLocation(**allowed),
+            source_location=SourceLocation(
+                page=_optional_int(location.get("page")),
+                section=_optional_str(location.get("section")),
+                path=_optional_str(location.get("path")),
+                symbol=_optional_str(location.get("symbol")),
+                start_offset=_optional_int(location.get("start_offset")),
+                end_offset=_optional_int(location.get("end_offset")),
+                start_line=_optional_int(location.get("start_line")),
+                end_line=_optional_int(location.get("end_line")),
+            ),
             source_hash=row.source_hash,
             ownership_confidence=row.ownership_confidence,
         )
@@ -401,11 +465,7 @@ class SubmissionAnalysisRepository:
             time_budget=row.time_budget,
             required_evidence_plan=row.required_evidence_plan,
             source_reference_candidates=tuple(
-                SourceReferenceCandidate(
-                    source_type=item["source_type"],  # type: ignore[arg-type]
-                    source_id=OpaqueId(str(item["source_id"])),
-                    locator_version=int(item["locator_version"]),
-                )
+                SubmissionAnalysisRepository._source_candidate(item)
                 for item in row.source_reference_candidates
             ),
             model_config_version=row.model_config_version,
@@ -413,8 +473,31 @@ class SubmissionAnalysisRepository:
             created_at=_instant(row.created_at),
         )
 
+    @staticmethod
+    def _source_candidate(item: dict[str, object]) -> SourceReferenceCandidate:
+        source_type = item.get("source_type")
+        source_id = item.get("source_id")
+        locator_version = item.get("locator_version")
+        if source_type not in {"submission_chunk", "candidate_code_unit"}:
+            raise ValueError("stored source candidate type is invalid")
+        if not isinstance(source_id, str) or not isinstance(locator_version, int):
+            raise ValueError("stored source candidate is invalid")
+        return SourceReferenceCandidate(
+            source_type=source_type,
+            source_id=OpaqueId(source_id),
+            locator_version=locator_version,
+        )
+
 
 def _instant(value: datetime) -> datetime:
     if value.tzinfo is None or value.utcoffset() is None:
         return value.replace(tzinfo=UTC)
     return value.astimezone(UTC)
+
+
+def _optional_int(value: object) -> int | None:
+    return value if isinstance(value, int) else None
+
+
+def _optional_str(value: object) -> str | None:
+    return value if isinstance(value, str) else None
