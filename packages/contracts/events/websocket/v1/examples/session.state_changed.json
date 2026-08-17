@@ -1,0 +1,15 @@
+{
+  "protocol_version": "1.0",
+  "message_type": "session.state_changed",
+  "session_id": "018f0000-0000-7000-8000-000000000101",
+  "sequence": 5,
+  "idempotency_key": "state-changed-000005",
+  "correlation_id": "018f0000-0000-7000-8000-000000000208",
+  "sent_at": "2026-08-14T00:02:01Z",
+  "payload": {
+    "previous_state": "awaiting_answer",
+    "state": "preparing_question",
+    "reason_code": "answer_finalized",
+    "checkpoint_id": "018f0000-0000-7000-8000-000000000601"
+  }
+}

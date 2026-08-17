@@ -1,0 +1,19 @@
+{
+  "protocol_version": "1.0",
+  "message_type": "question.ready",
+  "session_id": "018f0000-0000-7000-8000-000000000101",
+  "sequence": 7,
+  "idempotency_key": "question-ready-00007",
+  "correlation_id": "018f0000-0000-7000-8000-000000000212",
+  "sent_at": "2026-08-14T00:02:03Z",
+  "payload": {
+    "question_turn_id": "018f0000-0000-7000-8000-000000000403",
+    "text": "그 선택의 기술적 이유를 설명해 주세요.",
+    "target_criterion_id": "018f0000-0000-7000-8000-000000000801",
+    "audio_url": null,
+    "audio_expires_at": null,
+    "speech_marks_url": null,
+    "source_reference_count": 2,
+    "text_only": true
+  }
+}

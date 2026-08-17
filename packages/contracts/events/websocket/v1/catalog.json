@@ -1,0 +1,22 @@
+{
+  "protocol_version": "1.0",
+  "endpoint": "/v1/applicant/interview-sessions/{session_id}/stream",
+  "messages": [
+    {"message_type": "session.start", "direction": "client", "model_name": "SessionStartMessage", "schema": "./client-messages.json#/$defs/SessionStartMessage", "example": "./examples/session.start.json"},
+    {"message_type": "audio.chunk.begin", "direction": "client", "model_name": "AudioChunkBeginMessage", "schema": "./client-messages.json#/$defs/AudioChunkBeginMessage", "example": "./examples/audio.chunk.begin.json"},
+    {"message_type": "answer.complete", "direction": "client", "model_name": "AnswerCompleteMessage", "schema": "./client-messages.json#/$defs/AnswerCompleteMessage", "example": "./examples/answer.complete.json"},
+    {"message_type": "question.repeat", "direction": "client", "model_name": "QuestionRepeatMessage", "schema": "./client-messages.json#/$defs/QuestionRepeatMessage", "example": "./examples/question.repeat.json"},
+    {"message_type": "session.resume", "direction": "client", "model_name": "SessionResumeMessage", "schema": "./client-messages.json#/$defs/SessionResumeMessage", "example": "./examples/session.resume.json"},
+    {"message_type": "client.ack", "direction": "client", "model_name": "ClientAckMessage", "schema": "./client-messages.json#/$defs/ClientAckMessage", "example": "./examples/client.ack.json"},
+    {"message_type": "heartbeat.ping", "direction": "client", "model_name": "HeartbeatPingMessage", "schema": "./client-messages.json#/$defs/HeartbeatPingMessage", "example": "./examples/heartbeat.ping.json"},
+    {"message_type": "session.state_changed", "direction": "server", "model_name": "SessionStateChangedMessage", "schema": "./server-messages.json#/$defs/SessionStateChangedMessage", "example": "./examples/session.state_changed.json"},
+    {"message_type": "transcript.partial", "direction": "server", "model_name": "TranscriptPartialMessage", "schema": "./server-messages.json#/$defs/TranscriptPartialMessage", "example": "./examples/transcript.partial.json"},
+    {"message_type": "transcript.final", "direction": "server", "model_name": "TranscriptFinalMessage", "schema": "./server-messages.json#/$defs/TranscriptFinalMessage", "example": "./examples/transcript.final.json"},
+    {"message_type": "question.preparing", "direction": "server", "model_name": "QuestionPreparingMessage", "schema": "./server-messages.json#/$defs/QuestionPreparingMessage", "example": "./examples/question.preparing.json"},
+    {"message_type": "question.ready", "direction": "server", "model_name": "QuestionReadyMessage", "schema": "./server-messages.json#/$defs/QuestionReadyMessage", "example": "./examples/question.ready.json"},
+    {"message_type": "resume.snapshot", "direction": "server", "model_name": "ResumeSnapshotMessage", "schema": "./server-messages.json#/$defs/ResumeSnapshotMessage", "example": "./examples/resume.snapshot.json"},
+    {"message_type": "session.paused", "direction": "server", "model_name": "SessionPausedMessage", "schema": "./server-messages.json#/$defs/SessionPausedMessage", "example": "./examples/session.paused.json"},
+    {"message_type": "session.completed", "direction": "server", "model_name": "SessionCompletedMessage", "schema": "./server-messages.json#/$defs/SessionCompletedMessage", "example": "./examples/session.completed.json"},
+    {"message_type": "error", "direction": "server", "model_name": "WebSocketErrorMessage", "schema": "./server-messages.json#/$defs/ErrorMessage", "example": "./examples/error.json"}
+  ]
+}

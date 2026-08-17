@@ -1,0 +1,22 @@
+{
+  "protocol_version": "1.0",
+  "message_type": "resume.snapshot",
+  "session_id": "018f0000-0000-7000-8000-000000000101",
+  "sequence": 43,
+  "idempotency_key": "resume-snapshot-0043",
+  "correlation_id": "018f0000-0000-7000-8000-000000000213",
+  "sent_at": "2026-08-14T00:03:01Z",
+  "payload": {
+    "state": "paused",
+    "server_sequence": 43,
+    "last_final_turn_id": "018f0000-0000-7000-8000-000000000401",
+    "pending_turn": {
+      "turn_id": "018f0000-0000-7000-8000-000000000403",
+      "speaker": "interviewer",
+      "status": "presented"
+    },
+    "last_verified_recording_chunk_sequence": 5,
+    "allowed_client_messages": ["session.resume"],
+    "degraded_modes": []
+  }
+}

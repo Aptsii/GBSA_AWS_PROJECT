@@ -1,0 +1,13 @@
+{
+  "protocol_version": "1.0",
+  "message_type": "client.ack",
+  "session_id": "018f0000-0000-7000-8000-000000000101",
+  "sequence": 43,
+  "idempotency_key": "client-ack-0000043",
+  "correlation_id": "018f0000-0000-7000-8000-000000000206",
+  "sent_at": "2026-08-14T00:03:01Z",
+  "payload": {
+    "server_event_id": "018f0000-0000-7000-8000-000000000501",
+    "applied_sequence": 43
+  }
+}

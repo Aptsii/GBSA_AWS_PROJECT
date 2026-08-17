@@ -1,0 +1,14 @@
+{
+  "protocol_version": "1.0",
+  "message_type": "session.completed",
+  "session_id": "018f0000-0000-7000-8000-000000000101",
+  "sequence": 60,
+  "idempotency_key": "session-completed-060",
+  "correlation_id": "018f0000-0000-7000-8000-000000000215",
+  "sent_at": "2026-08-14T00:30:00Z",
+  "payload": {
+    "completed_at": "2026-08-14T00:30:00Z",
+    "last_turn_id": "018f0000-0000-7000-8000-000000000499",
+    "post_processing_status": "queued"
+  }
+}

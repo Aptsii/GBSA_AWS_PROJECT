@@ -1,0 +1,16 @@
+{
+  "protocol_version": "1.0",
+  "message_type": "error",
+  "session_id": "018f0000-0000-7000-8000-000000000101",
+  "sequence": 43,
+  "idempotency_key": "error-stale-seq-043",
+  "correlation_id": "018f0000-0000-7000-8000-000000000216",
+  "sent_at": "2026-08-14T00:03:01Z",
+  "payload": {
+    "code": "STALE_SEQUENCE",
+    "message": "최신 면접 상태를 다시 불러왔습니다.",
+    "retryable": true,
+    "current_state": "paused",
+    "current_sequence": 43
+  }
+}

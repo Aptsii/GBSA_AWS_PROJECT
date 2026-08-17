@@ -1,0 +1,20 @@
+{
+  "protocol_version": "1.0",
+  "message_type": "transcript.final",
+  "session_id": "018f0000-0000-7000-8000-000000000101",
+  "sequence": 5,
+  "idempotency_key": "transcript-final-0003",
+  "correlation_id": "018f0000-0000-7000-8000-000000000210",
+  "sent_at": "2026-08-14T00:02:01Z",
+  "payload": {
+    "answer_turn_id": "018f0000-0000-7000-8000-000000000401",
+    "transcript_segment_id": "018f0000-0000-7000-8000-000000000701",
+    "segment_sequence": 3,
+    "text": "확정된 지원자 답변 자막",
+    "start_ms": 1200,
+    "end_ms": 2500,
+    "confidence": 0.82,
+    "is_final": true,
+    "review_required": false
+  }
+}

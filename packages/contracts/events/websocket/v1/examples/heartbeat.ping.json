@@ -1,0 +1,10 @@
+{
+  "protocol_version": "1.0",
+  "message_type": "heartbeat.ping",
+  "session_id": "018f0000-0000-7000-8000-000000000101",
+  "sequence": 43,
+  "idempotency_key": "heartbeat-ping-0001",
+  "correlation_id": "018f0000-0000-7000-8000-000000000207",
+  "sent_at": "2026-08-14T00:03:10Z",
+  "payload": {"client_monotonic_ms": 123456.7}
+}

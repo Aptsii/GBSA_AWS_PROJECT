@@ -1,0 +1,14 @@
+{
+  "protocol_version": "1.0",
+  "message_type": "session.resume",
+  "session_id": "018f0000-0000-7000-8000-000000000101",
+  "sequence": 42,
+  "idempotency_key": "session-resume-0001",
+  "correlation_id": "018f0000-0000-7000-8000-000000000205",
+  "sent_at": "2026-08-14T00:03:00Z",
+  "payload": {
+    "last_applied_server_sequence": 42,
+    "last_final_turn_id": "018f0000-0000-7000-8000-000000000401",
+    "last_uploaded_recording_chunk_sequence": 5
+  }
+}

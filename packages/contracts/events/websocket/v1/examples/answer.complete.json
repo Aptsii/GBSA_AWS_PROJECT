@@ -1,0 +1,15 @@
+{
+  "protocol_version": "1.0",
+  "message_type": "answer.complete",
+  "session_id": "018f0000-0000-7000-8000-000000000101",
+  "sequence": 4,
+  "idempotency_key": "answer-complete-0001",
+  "correlation_id": "018f0000-0000-7000-8000-000000000203",
+  "sent_at": "2026-08-14T00:02:00Z",
+  "payload": {
+    "answer_turn_id": "018f0000-0000-7000-8000-000000000401",
+    "last_audio_chunk_sequence": 12,
+    "last_recording_chunk_sequence": 5,
+    "expected_state": "awaiting_answer"
+  }
+}

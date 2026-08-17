@@ -1,0 +1,18 @@
+{
+  "protocol_version": "1.0",
+  "message_type": "audio.chunk.begin",
+  "session_id": "018f0000-0000-7000-8000-000000000101",
+  "sequence": 4,
+  "idempotency_key": "audio-chunk-000012",
+  "correlation_id": "018f0000-0000-7000-8000-000000000202",
+  "sent_at": "2026-08-14T00:01:00Z",
+  "payload": {
+    "answer_turn_id": "018f0000-0000-7000-8000-000000000401",
+    "chunk_sequence": 12,
+    "codec": "pcm_s16le",
+    "sample_rate_hz": 16000,
+    "channel_count": 1,
+    "byte_length": 32000,
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  }
+}

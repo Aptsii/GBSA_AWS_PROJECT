@@ -1,0 +1,18 @@
+{
+  "protocol_version": "1.0",
+  "message_type": "transcript.partial",
+  "session_id": "018f0000-0000-7000-8000-000000000101",
+  "sequence": 4,
+  "idempotency_key": "transcript-partial-003",
+  "correlation_id": "018f0000-0000-7000-8000-000000000209",
+  "sent_at": "2026-08-14T00:01:15Z",
+  "payload": {
+    "answer_turn_id": "018f0000-0000-7000-8000-000000000401",
+    "segment_sequence": 3,
+    "text": "표시 전용 부분 자막",
+    "start_ms": 1200,
+    "end_ms": 2500,
+    "confidence": 0.82,
+    "is_final": false
+  }
+}

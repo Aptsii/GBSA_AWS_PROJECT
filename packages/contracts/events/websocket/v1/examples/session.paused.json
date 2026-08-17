@@ -1,0 +1,15 @@
+{
+  "protocol_version": "1.0",
+  "message_type": "session.paused",
+  "session_id": "018f0000-0000-7000-8000-000000000101",
+  "sequence": 43,
+  "idempotency_key": "session-paused-0043",
+  "correlation_id": "018f0000-0000-7000-8000-000000000214",
+  "sent_at": "2026-08-14T00:03:00Z",
+  "payload": {
+    "reason_code": "NETWORK_INTERRUPTION",
+    "retryable": true,
+    "next_retry_at": "2026-08-14T00:03:05Z",
+    "user_message": "연결이 일시 중단되었습니다. 확인된 지점부터 다시 시작합니다."
+  }
+}

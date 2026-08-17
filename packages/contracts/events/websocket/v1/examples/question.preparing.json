@@ -1,0 +1,10 @@
+{
+  "protocol_version": "1.0",
+  "message_type": "question.preparing",
+  "session_id": "018f0000-0000-7000-8000-000000000101",
+  "sequence": 6,
+  "idempotency_key": "question-preparing-06",
+  "correlation_id": "018f0000-0000-7000-8000-000000000211",
+  "sent_at": "2026-08-14T00:02:02Z",
+  "payload": {"stage": "retrieval", "degraded_mode": "none"}
+}

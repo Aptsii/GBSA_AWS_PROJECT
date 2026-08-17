@@ -1,0 +1,13 @@
+{
+  "protocol_version": "1.0",
+  "message_type": "session.start",
+  "session_id": "018f0000-0000-7000-8000-000000000101",
+  "sequence": 0,
+  "idempotency_key": "session-start-0001",
+  "correlation_id": "018f0000-0000-7000-8000-000000000201",
+  "sent_at": "2026-08-14T00:00:00Z",
+  "payload": {
+    "equipment_check_id": "018f0000-0000-7000-8000-000000000301",
+    "expected_state": "preparing"
+  }
+}

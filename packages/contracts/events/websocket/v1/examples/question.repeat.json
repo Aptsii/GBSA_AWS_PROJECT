@@ -1,0 +1,13 @@
+{
+  "protocol_version": "1.0",
+  "message_type": "question.repeat",
+  "session_id": "018f0000-0000-7000-8000-000000000101",
+  "sequence": 3,
+  "idempotency_key": "question-repeat-0001",
+  "correlation_id": "018f0000-0000-7000-8000-000000000204",
+  "sent_at": "2026-08-14T00:00:30Z",
+  "payload": {
+    "question_turn_id": "018f0000-0000-7000-8000-000000000402",
+    "mode": "repeat_or_clarify"
+  }
+}

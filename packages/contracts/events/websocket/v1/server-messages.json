@@ -1,0 +1,304 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "WebSocketServerMessagesV1",
+  "oneOf": [
+    {"$ref": "#/$defs/SessionStateChangedMessage"},
+    {"$ref": "#/$defs/TranscriptPartialMessage"},
+    {"$ref": "#/$defs/TranscriptFinalMessage"},
+    {"$ref": "#/$defs/QuestionPreparingMessage"},
+    {"$ref": "#/$defs/QuestionReadyMessage"},
+    {"$ref": "#/$defs/ResumeSnapshotMessage"},
+    {"$ref": "#/$defs/SessionPausedMessage"},
+    {"$ref": "#/$defs/SessionCompletedMessage"},
+    {"$ref": "#/$defs/ErrorMessage"}
+  ],
+  "$defs": {
+    "SessionStateChangedMessage": {
+      "title": "SessionStateChangedMessage",
+      "allOf": [
+        {"$ref": "./envelope.json"},
+        {
+          "type": "object",
+          "properties": {
+            "message_type": {"const": "session.state_changed"},
+            "payload": {"$ref": "#/$defs/SessionStateChangedPayload"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "SessionStateChangedPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["previous_state", "state", "reason_code", "checkpoint_id"],
+      "properties": {
+        "previous_state": {"type": "string"},
+        "state": {"type": "string"},
+        "reason_code": {"type": "string"},
+        "checkpoint_id": {"type": "string", "format": "uuid"}
+      }
+    },
+    "TranscriptPartialMessage": {
+      "title": "TranscriptPartialMessage",
+      "allOf": [
+        {"$ref": "./envelope.json"},
+        {
+          "type": "object",
+          "properties": {
+            "message_type": {"const": "transcript.partial"},
+            "payload": {"$ref": "#/$defs/TranscriptPartialPayload"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "TranscriptPartialPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "answer_turn_id",
+        "segment_sequence",
+        "text",
+        "start_ms",
+        "end_ms",
+        "confidence",
+        "is_final"
+      ],
+      "properties": {
+        "answer_turn_id": {"type": "string", "format": "uuid"},
+        "segment_sequence": {"type": "integer", "minimum": 0},
+        "text": {"type": "string"},
+        "start_ms": {"type": "integer", "minimum": 0},
+        "end_ms": {"type": "integer", "minimum": 0},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "is_final": {"const": false}
+      }
+    },
+    "TranscriptFinalMessage": {
+      "title": "TranscriptFinalMessage",
+      "allOf": [
+        {"$ref": "./envelope.json"},
+        {
+          "type": "object",
+          "properties": {
+            "message_type": {"const": "transcript.final"},
+            "payload": {"$ref": "#/$defs/TranscriptFinalPayload"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "TranscriptFinalPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "answer_turn_id",
+        "transcript_segment_id",
+        "segment_sequence",
+        "text",
+        "start_ms",
+        "end_ms",
+        "confidence",
+        "is_final",
+        "review_required"
+      ],
+      "properties": {
+        "answer_turn_id": {"type": "string", "format": "uuid"},
+        "transcript_segment_id": {"type": "string", "format": "uuid"},
+        "segment_sequence": {"type": "integer", "minimum": 0},
+        "text": {"type": "string"},
+        "start_ms": {"type": "integer", "minimum": 0},
+        "end_ms": {"type": "integer", "minimum": 0},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "is_final": {"const": true},
+        "review_required": {"type": "boolean"}
+      }
+    },
+    "QuestionPreparingMessage": {
+      "title": "QuestionPreparingMessage",
+      "allOf": [
+        {"$ref": "./envelope.json"},
+        {
+          "type": "object",
+          "properties": {
+            "message_type": {"const": "question.preparing"},
+            "payload": {"$ref": "#/$defs/QuestionPreparingPayload"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "QuestionPreparingPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stage", "degraded_mode"],
+      "properties": {
+        "stage": {"type": "string", "enum": ["retrieval", "generation", "policy", "speech"]},
+        "degraded_mode": {"type": "string", "enum": ["none", "search_fallback", "text_only"]}
+      }
+    },
+    "QuestionReadyMessage": {
+      "title": "QuestionReadyMessage",
+      "allOf": [
+        {"$ref": "./envelope.json"},
+        {
+          "type": "object",
+          "properties": {
+            "message_type": {"const": "question.ready"},
+            "payload": {"$ref": "#/$defs/QuestionReadyPayload"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "QuestionReadyPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "question_turn_id",
+        "text",
+        "target_criterion_id",
+        "audio_url",
+        "audio_expires_at",
+        "speech_marks_url",
+        "source_reference_count",
+        "text_only"
+      ],
+      "properties": {
+        "question_turn_id": {"type": "string", "format": "uuid"},
+        "text": {"type": "string", "minLength": 1},
+        "target_criterion_id": {"type": "string", "format": "uuid"},
+        "audio_url": {"type": ["string", "null"], "format": "uri"},
+        "audio_expires_at": {"type": ["string", "null"], "format": "date-time"},
+        "speech_marks_url": {"type": ["string", "null"], "format": "uri"},
+        "source_reference_count": {"type": "integer", "minimum": 0},
+        "text_only": {"type": "boolean"}
+      }
+    },
+    "ResumeSnapshotMessage": {
+      "title": "ResumeSnapshotMessage",
+      "allOf": [
+        {"$ref": "./envelope.json"},
+        {
+          "type": "object",
+          "properties": {
+            "message_type": {"const": "resume.snapshot"},
+            "payload": {"$ref": "#/$defs/ResumeSnapshotPayload"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "ResumeSnapshotPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "server_sequence",
+        "last_final_turn_id",
+        "pending_turn",
+        "last_verified_recording_chunk_sequence",
+        "allowed_client_messages",
+        "degraded_modes"
+      ],
+      "properties": {
+        "state": {"type": "string"},
+        "server_sequence": {"type": "integer", "minimum": 0},
+        "last_final_turn_id": {"type": ["string", "null"], "format": "uuid"},
+        "pending_turn": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["turn_id", "speaker", "status"],
+              "properties": {
+                "turn_id": {"type": "string", "format": "uuid"},
+                "speaker": {"type": "string", "enum": ["interviewer", "applicant"]},
+                "status": {"type": "string"}
+              }
+            }
+          ]
+        },
+        "last_verified_recording_chunk_sequence": {"type": "integer", "minimum": 0},
+        "allowed_client_messages": {"type": "array", "items": {"type": "string"}},
+        "degraded_modes": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "SessionPausedMessage": {
+      "title": "SessionPausedMessage",
+      "allOf": [
+        {"$ref": "./envelope.json"},
+        {
+          "type": "object",
+          "properties": {
+            "message_type": {"const": "session.paused"},
+            "payload": {"$ref": "#/$defs/SessionPausedPayload"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "SessionPausedPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reason_code", "retryable", "next_retry_at", "user_message"],
+      "properties": {
+        "reason_code": {"type": "string"},
+        "retryable": {"type": "boolean"},
+        "next_retry_at": {"type": ["string", "null"], "format": "date-time"},
+        "user_message": {"type": "string", "minLength": 1}
+      }
+    },
+    "SessionCompletedMessage": {
+      "title": "SessionCompletedMessage",
+      "allOf": [
+        {"$ref": "./envelope.json"},
+        {
+          "type": "object",
+          "properties": {
+            "message_type": {"const": "session.completed"},
+            "payload": {"$ref": "#/$defs/SessionCompletedPayload"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "SessionCompletedPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["completed_at", "last_turn_id", "post_processing_status"],
+      "properties": {
+        "completed_at": {"type": "string", "format": "date-time"},
+        "last_turn_id": {"type": "string", "format": "uuid"},
+        "post_processing_status": {"type": "string", "enum": ["queued", "running", "partial", "ready"]}
+      }
+    },
+    "ErrorMessage": {
+      "title": "WebSocketErrorMessage",
+      "allOf": [
+        {"$ref": "./envelope.json"},
+        {
+          "type": "object",
+          "properties": {
+            "message_type": {"const": "error"},
+            "payload": {"$ref": "#/$defs/ErrorPayload"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "ErrorPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message", "retryable", "current_state", "current_sequence"],
+      "properties": {
+        "code": {"type": "string"},
+        "message": {"type": "string"},
+        "retryable": {"type": "boolean"},
+        "current_state": {"type": "string"},
+        "current_sequence": {"type": "integer", "minimum": 0}
+      }
+    }
+  }
+}

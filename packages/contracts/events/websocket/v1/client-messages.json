@@ -1,0 +1,200 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "WebSocketClientMessagesV1",
+  "oneOf": [
+    {"$ref": "#/$defs/SessionStartMessage"},
+    {"$ref": "#/$defs/AudioChunkBeginMessage"},
+    {"$ref": "#/$defs/AnswerCompleteMessage"},
+    {"$ref": "#/$defs/QuestionRepeatMessage"},
+    {"$ref": "#/$defs/SessionResumeMessage"},
+    {"$ref": "#/$defs/ClientAckMessage"},
+    {"$ref": "#/$defs/HeartbeatPingMessage"}
+  ],
+  "$defs": {
+    "SessionStartMessage": {
+      "title": "SessionStartMessage",
+      "allOf": [
+        {"$ref": "./envelope.json"},
+        {
+          "type": "object",
+          "properties": {
+            "message_type": {"const": "session.start"},
+            "payload": {"$ref": "#/$defs/SessionStartPayload"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "SessionStartPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["equipment_check_id", "expected_state"],
+      "properties": {
+        "equipment_check_id": {"type": "string", "format": "uuid"},
+        "expected_state": {"const": "preparing"}
+      }
+    },
+    "AudioChunkBeginMessage": {
+      "title": "AudioChunkBeginMessage",
+      "allOf": [
+        {"$ref": "./envelope.json"},
+        {
+          "type": "object",
+          "properties": {
+            "message_type": {"const": "audio.chunk.begin"},
+            "payload": {"$ref": "#/$defs/AudioChunkBeginPayload"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "AudioChunkBeginPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "answer_turn_id",
+        "chunk_sequence",
+        "codec",
+        "sample_rate_hz",
+        "channel_count",
+        "byte_length",
+        "sha256"
+      ],
+      "properties": {
+        "answer_turn_id": {"type": "string", "format": "uuid"},
+        "chunk_sequence": {"type": "integer", "minimum": 0},
+        "codec": {"type": "string", "enum": ["pcm_s16le", "opus"]},
+        "sample_rate_hz": {"type": "integer", "minimum": 8000, "maximum": 48000},
+        "channel_count": {"type": "integer", "minimum": 1, "maximum": 2},
+        "byte_length": {"type": "integer", "minimum": 1},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+      }
+    },
+    "AnswerCompleteMessage": {
+      "title": "AnswerCompleteMessage",
+      "allOf": [
+        {"$ref": "./envelope.json"},
+        {
+          "type": "object",
+          "properties": {
+            "message_type": {"const": "answer.complete"},
+            "payload": {"$ref": "#/$defs/AnswerCompletePayload"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "AnswerCompletePayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "answer_turn_id",
+        "last_audio_chunk_sequence",
+        "last_recording_chunk_sequence",
+        "expected_state"
+      ],
+      "properties": {
+        "answer_turn_id": {"type": "string", "format": "uuid"},
+        "last_audio_chunk_sequence": {"type": "integer", "minimum": 0},
+        "last_recording_chunk_sequence": {"type": "integer", "minimum": 0},
+        "expected_state": {"const": "awaiting_answer"}
+      }
+    },
+    "QuestionRepeatMessage": {
+      "title": "QuestionRepeatMessage",
+      "allOf": [
+        {"$ref": "./envelope.json"},
+        {
+          "type": "object",
+          "properties": {
+            "message_type": {"const": "question.repeat"},
+            "payload": {"$ref": "#/$defs/QuestionRepeatPayload"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "QuestionRepeatPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["question_turn_id", "mode"],
+      "properties": {
+        "question_turn_id": {"type": "string", "format": "uuid"},
+        "mode": {"const": "repeat_or_clarify"}
+      }
+    },
+    "SessionResumeMessage": {
+      "title": "SessionResumeMessage",
+      "allOf": [
+        {"$ref": "./envelope.json"},
+        {
+          "type": "object",
+          "properties": {
+            "message_type": {"const": "session.resume"},
+            "payload": {"$ref": "#/$defs/SessionResumePayload"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "SessionResumePayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "last_applied_server_sequence",
+        "last_final_turn_id",
+        "last_uploaded_recording_chunk_sequence"
+      ],
+      "properties": {
+        "last_applied_server_sequence": {"type": "integer", "minimum": 0},
+        "last_final_turn_id": {"type": ["string", "null"], "format": "uuid"},
+        "last_uploaded_recording_chunk_sequence": {"type": "integer", "minimum": 0}
+      }
+    },
+    "ClientAckMessage": {
+      "title": "ClientAckMessage",
+      "allOf": [
+        {"$ref": "./envelope.json"},
+        {
+          "type": "object",
+          "properties": {
+            "message_type": {"const": "client.ack"},
+            "payload": {"$ref": "#/$defs/ClientAckPayload"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "ClientAckPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["server_event_id", "applied_sequence"],
+      "properties": {
+        "server_event_id": {"type": "string", "format": "uuid"},
+        "applied_sequence": {"type": "integer", "minimum": 0}
+      }
+    },
+    "HeartbeatPingMessage": {
+      "title": "HeartbeatPingMessage",
+      "allOf": [
+        {"$ref": "./envelope.json"},
+        {
+          "type": "object",
+          "properties": {
+            "message_type": {"const": "heartbeat.ping"},
+            "payload": {"$ref": "#/$defs/HeartbeatPingPayload"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "HeartbeatPingPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["client_monotonic_ms"],
+      "properties": {
+        "client_monotonic_ms": {"type": "number", "minimum": 0}
+      }
+    }
+  }
+}

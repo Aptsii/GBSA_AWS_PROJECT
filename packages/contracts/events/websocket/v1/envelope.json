@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "WebSocketEnvelopeV1",
+  "type": "object",
+  "required": [
+    "protocol_version",
+    "message_type",
+    "session_id",
+    "sequence",
+    "idempotency_key",
+    "correlation_id",
+    "sent_at",
+    "payload"
+  ],
+  "properties": {
+    "protocol_version": {"const": "1.0"},
+    "message_type": {"type": "string", "minLength": 1},
+    "session_id": {"type": "string", "format": "uuid"},
+    "sequence": {"type": "integer", "minimum": 0},
+    "idempotency_key": {"type": "string", "minLength": 16, "maxLength": 128},
+    "correlation_id": {"type": "string", "format": "uuid"},
+    "sent_at": {"type": "string", "format": "date-time"},
+    "payload": {"type": "object"}
+  }
+}
