@@ -1,0 +1,9 @@
+{
+  "company_id": "018f2000-0000-7000-8000-000000000100",
+  "invitation_id": "018f2000-0000-7000-8000-000000000210",
+  "previous_state": "consented",
+  "state": "materials_submitted",
+  "row_version": 4,
+  "applied": true,
+  "idempotency_key": "invitation-state-0004"
+}

@@ -1,0 +1,113 @@
+{
+  "event_type": "strategy.ready",
+  "event_version": 1,
+  "messages": {
+    "full": {
+      "aggregate": {
+        "id": "018f1000-0000-7000-8000-000000000220",
+        "type": "interview_strategy",
+        "version": 1
+      },
+      "causation_id": "018f1000-0000-7000-8000-000000000011",
+      "company_id": "018f1000-0000-7000-8000-000000000100",
+      "correlation_id": "018f1000-0000-7000-8000-000000000312",
+      "event_id": "018f1000-0000-7000-8000-000000000012",
+      "event_type": "strategy.ready",
+      "event_version": 1,
+      "idempotency_key": "strategy-ready-00001",
+      "occurred_at": "2026-08-14T00:03:00Z",
+      "payload": {
+        "competency_model_version_id": "018f1000-0000-7000-8000-000000000221",
+        "interview_strategy_id": "018f1000-0000-7000-8000-000000000220",
+        "invitation_id": "018f1000-0000-7000-8000-000000000200",
+        "status": "partial",
+        "strategy_version": 1
+      },
+      "trace_id": "trace-strategy-001"
+    },
+    "minimum": {
+      "aggregate": {
+        "id": "018f1000-0000-7000-8000-000000000220",
+        "type": "interview_strategy",
+        "version": 1
+      },
+      "causation_id": "018f1000-0000-7000-8000-000000000011",
+      "company_id": "018f1000-0000-7000-8000-000000000100",
+      "correlation_id": "018f1000-0000-7000-8000-000000000312",
+      "event_id": "018f1000-0000-7000-8000-000000000012",
+      "event_type": "strategy.ready",
+      "event_version": 1,
+      "idempotency_key": "strategy-ready-00001",
+      "occurred_at": "2026-08-14T00:03:00Z",
+      "payload": {
+        "competency_model_version_id": "018f1000-0000-7000-8000-000000000221",
+        "interview_strategy_id": "018f1000-0000-7000-8000-000000000220",
+        "invitation_id": "018f1000-0000-7000-8000-000000000200",
+        "status": "partial",
+        "strategy_version": 1
+      },
+      "trace_id": "trace-strategy-001"
+    },
+    "unsupported_version": {
+      "aggregate": {
+        "id": "018f1000-0000-7000-8000-000000000220",
+        "type": "interview_strategy",
+        "version": 1
+      },
+      "causation_id": "018f1000-0000-7000-8000-000000000011",
+      "company_id": "018f1000-0000-7000-8000-000000000100",
+      "correlation_id": "018f1000-0000-7000-8000-000000000312",
+      "event_id": "018f1000-0000-7000-8000-000000000012",
+      "event_type": "strategy.ready",
+      "event_version": 2,
+      "idempotency_key": "strategy-ready-00001",
+      "occurred_at": "2026-08-14T00:03:00Z",
+      "payload": {
+        "competency_model_version_id": "018f1000-0000-7000-8000-000000000221",
+        "interview_strategy_id": "018f1000-0000-7000-8000-000000000220",
+        "invitation_id": "018f1000-0000-7000-8000-000000000200",
+        "status": "partial",
+        "strategy_version": 1
+      },
+      "trace_id": "trace-strategy-001"
+    }
+  },
+  "scenarios": {
+    "duplicate": {
+      "delivery_count": 2,
+      "expectation": "idempotent_replay",
+      "message": "full"
+    },
+    "full": {
+      "expectation": "accepted",
+      "message": "full"
+    },
+    "minimum": {
+      "expectation": "accepted",
+      "message": "minimum"
+    },
+    "non_retryable_failure": {
+      "expectation": "rejected",
+      "failure_code": "BUSINESS_REJECTION",
+      "message": "full",
+      "retryable": false
+    },
+    "retryable_failure": {
+      "expectation": "retry",
+      "failure_code": "DEPENDENCY_TIMEOUT",
+      "message": "full",
+      "retryable": true
+    },
+    "unsupported_version": {
+      "error_code": "UNSUPPORTED_EVENT_VERSION",
+      "expectation": "quarantined",
+      "message": "unsupported_version"
+    },
+    "wrong_tenant": {
+      "error_code": "TENANT_SCOPE_MISMATCH",
+      "expectation": "rejected",
+      "message": "full",
+      "tenant_context_company_id": "018f1000-0000-7000-8000-999999999999"
+    }
+  }
+}

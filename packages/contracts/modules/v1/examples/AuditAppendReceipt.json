@@ -1,0 +1,8 @@
+{
+  "company_id": "018f2000-0000-7000-8000-000000000100",
+  "audit_event_id": "018f2000-0000-7000-8000-000000000213",
+  "action": "submission.registered",
+  "resource_type": "submission",
+  "resource_id": "018f2000-0000-7000-8000-000000000220",
+  "result": "succeeded"
+}

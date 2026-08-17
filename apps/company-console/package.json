@@ -8,10 +8,11 @@
     "dev": "vite --port 5173",
     "lint": "eslint src",
     "preview": "vite preview --port 4173",
-    "test": "vitest",
+    "test": "vitest --run",
     "typecheck": "tsc -b --pretty false"
   },
   "dependencies": {
+    "@interview-evidence/contracts": "workspace:*",
     "@tanstack/react-query": "5.101.4",
     "react": "19.2.8",
     "react-dom": "19.2.8",

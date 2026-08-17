@@ -1,0 +1,13 @@
+{
+  "company_id": "018f2000-0000-7000-8000-000000000100",
+  "interview_session_id": "018f2000-0000-7000-8000-000000000230",
+  "invitation_id": "018f2000-0000-7000-8000-000000000210",
+  "applicant_id": "018f2000-0000-7000-8000-000000000211",
+  "interview_strategy_id": "018f2000-0000-7000-8000-000000000221",
+  "competency_model_version_id": "018f2000-0000-7000-8000-000000000202",
+  "state": "paused",
+  "session_sequence": 9,
+  "last_final_turn_id": "018f2000-0000-7000-8000-000000000231",
+  "last_verified_recording_chunk_sequence": 5,
+  "degraded_modes": []
+}

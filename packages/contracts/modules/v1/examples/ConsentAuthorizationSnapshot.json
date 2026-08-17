@@ -1,0 +1,12 @@
+{
+  "company_id": "018f2000-0000-7000-8000-000000000100",
+  "invitation_id": "018f2000-0000-7000-8000-000000000210",
+  "consent_record_id": "018f2000-0000-7000-8000-000000000212",
+  "policy_version": "privacy-v1",
+  "purpose_codes": ["document_analysis", "recording", "ai_assessment"],
+  "retention_days": 180,
+  "accepted_at": "2026-08-14T00:00:00Z",
+  "withdrawn_at": null,
+  "authorized": true,
+  "reason_code": null
+}

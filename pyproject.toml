@@ -31,6 +31,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+  "hatchling==1.32.0",
   "mypy>=2.3.0,<3",
   "pytest>=9.1.1,<10",
   "pytest-asyncio>=1.4.0,<2",
@@ -40,7 +41,10 @@ dev = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["backend/src/interview_evidence"]
+packages = [
+  "backend/src/interview_evidence",
+  "packages/contracts/generated/python/interview_evidence_contracts",
+]
 
 [tool.uv]
 default-groups = ["dev"]
@@ -67,6 +71,6 @@ ignore = ["S101"]
 [tool.mypy]
 python_version = "3.12"
 strict = true
-mypy_path = ["backend/src", "."]
+mypy_path = ["backend/src", "packages/contracts/generated/python", "."]
 packages = ["interview_evidence"]
 exclude = ["packages/contracts/generated"]

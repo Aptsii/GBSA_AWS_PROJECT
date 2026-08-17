@@ -1,0 +1,21 @@
+{
+  "company_id": "018f2000-0000-7000-8000-000000000100",
+  "competency_model_version_id": "018f2000-0000-7000-8000-000000000202",
+  "position_id": "018f2000-0000-7000-8000-000000000201",
+  "version_number": 1,
+  "status": "published",
+  "criteria": [
+    {
+      "criterion_id": "018f2000-0000-7000-8000-000000000203",
+      "code": "TECH_REASONING",
+      "name": "기술적 사고",
+      "description": "선택과 트레이드오프를 설명한다.",
+      "weight": 1,
+      "good_evidence": {"observable": "구체적 근거"},
+      "weak_evidence": {"observable": "근거 없는 단정"},
+      "abstain_guidance": "답변 근거가 없으면 판단을 유보한다.",
+      "common_questions": ["기술 선택 이유를 설명해 주세요."],
+      "required": true
+    }
+  ]
+}

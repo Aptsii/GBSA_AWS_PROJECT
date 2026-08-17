@@ -1,0 +1,10 @@
+{
+  "company_id": "018f2000-0000-7000-8000-000000000100",
+  "campaign_id": "018f2000-0000-7000-8000-000000000200",
+  "position_id": "018f2000-0000-7000-8000-000000000201",
+  "competency_model_version_id": "018f2000-0000-7000-8000-000000000202",
+  "status": "published",
+  "prohibited_topics": ["직무와 무관한 민감 정보"],
+  "interview_duration_minutes": 30,
+  "persona_definition": {"name": "AI 면접관", "tone": "professional"}
+}

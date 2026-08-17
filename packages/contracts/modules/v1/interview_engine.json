@@ -1,0 +1,174 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "InterviewEngineSnapshotsV1",
+  "oneOf": [
+    {"$ref": "#/$defs/SessionSnapshot"},
+    {"$ref": "#/$defs/FinalTurnSnapshot"},
+    {"$ref": "#/$defs/FinalTurnPageSnapshot"},
+    {"$ref": "#/$defs/RecordingChunkSetSnapshot"},
+    {"$ref": "#/$defs/InterviewDeletionTargetEnumerationSnapshot"},
+    {"$ref": "#/$defs/InterviewDeletionTargetReceipt"}
+  ],
+  "$defs": {
+    "SessionSnapshot": {
+      "title": "SessionSnapshot",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "company_id",
+        "interview_session_id",
+        "invitation_id",
+        "applicant_id",
+        "interview_strategy_id",
+        "competency_model_version_id",
+        "state",
+        "session_sequence",
+        "last_final_turn_id",
+        "last_verified_recording_chunk_sequence",
+        "degraded_modes"
+      ],
+      "properties": {
+        "company_id": {"type": "string", "format": "uuid"},
+        "interview_session_id": {"type": "string", "format": "uuid"},
+        "invitation_id": {"type": "string", "format": "uuid"},
+        "applicant_id": {"type": "string", "format": "uuid"},
+        "interview_strategy_id": {"type": "string", "format": "uuid"},
+        "competency_model_version_id": {"type": "string", "format": "uuid"},
+        "state": {"type": "string", "enum": ["preparing", "in_progress", "awaiting_answer", "preparing_question", "paused", "completed", "report_generating", "reviewable"]},
+        "session_sequence": {"type": "integer", "minimum": 0},
+        "last_final_turn_id": {"type": ["string", "null"], "format": "uuid"},
+        "last_verified_recording_chunk_sequence": {"type": "integer", "minimum": 0},
+        "degraded_modes": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "FinalTurnSnapshot": {
+      "title": "FinalTurnSnapshot",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "company_id",
+        "interview_session_id",
+        "turn_id",
+        "sequence",
+        "speaker",
+        "status",
+        "text",
+        "target_criterion_id",
+        "model_config_version",
+        "finalized_at"
+      ],
+      "properties": {
+        "company_id": {"type": "string", "format": "uuid"},
+        "interview_session_id": {"type": "string", "format": "uuid"},
+        "turn_id": {"type": "string", "format": "uuid"},
+        "sequence": {"type": "integer", "minimum": 1},
+        "speaker": {"type": "string", "enum": ["interviewer", "applicant"]},
+        "status": {"const": "final"},
+        "text": {"type": "string"},
+        "target_criterion_id": {"type": ["string", "null"], "format": "uuid"},
+        "model_config_version": {"type": ["string", "null"]},
+        "finalized_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "FinalTurnPageSnapshot": {
+      "title": "FinalTurnPageSnapshot",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["company_id", "interview_session_id", "items", "next_cursor"],
+      "properties": {
+        "company_id": {"type": "string", "format": "uuid"},
+        "interview_session_id": {"type": "string", "format": "uuid"},
+        "items": {"type": "array", "items": {"$ref": "#/$defs/FinalTurnSnapshot"}},
+        "next_cursor": {"type": ["string", "null"], "maxLength": 512}
+      }
+    },
+    "RecordingChunkSetSnapshot": {
+      "title": "RecordingChunkSetSnapshot",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["company_id", "interview_session_id", "chunks"],
+      "properties": {
+        "company_id": {"type": "string", "format": "uuid"},
+        "interview_session_id": {"type": "string", "format": "uuid"},
+        "chunks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "recording_chunk_id",
+              "sequence",
+              "object_ref",
+              "content_hash",
+              "byte_size",
+              "session_start_ms",
+              "session_end_ms",
+              "upload_status"
+            ],
+            "properties": {
+              "recording_chunk_id": {"type": "string", "format": "uuid"},
+              "sequence": {"type": "integer", "minimum": 0},
+              "object_ref": {"type": "string", "minLength": 1},
+              "content_hash": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+              "byte_size": {"type": "integer", "minimum": 1},
+              "session_start_ms": {"type": "integer", "minimum": 0},
+              "session_end_ms": {"type": "integer", "minimum": 1},
+              "upload_status": {"const": "verified"}
+            }
+          }
+        }
+      }
+    },
+    "InterviewDeletionTargetEnumerationSnapshot": {
+      "title": "InterviewDeletionTargetEnumerationSnapshot",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["company_id", "scope_type", "scope_id", "owner_lane", "targets"],
+      "properties": {
+        "company_id": {"type": "string", "format": "uuid"},
+        "scope_type": {"type": "string", "enum": ["session", "applicant"]},
+        "scope_id": {"type": "string", "format": "uuid"},
+        "owner_lane": {"const": "C"},
+        "targets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["target_id", "target_type", "store", "target_version"],
+            "properties": {
+              "target_id": {"type": "string", "format": "uuid"},
+              "target_type": {"type": "string"},
+              "store": {"type": "string", "enum": ["aurora", "dynamodb", "s3"]},
+              "target_version": {"type": "integer", "minimum": 1}
+            }
+          }
+        }
+      }
+    },
+    "InterviewDeletionTargetReceipt": {
+      "title": "InterviewDeletionTargetReceipt",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "company_id",
+        "deletion_request_id",
+        "target_id",
+        "owner_lane",
+        "status",
+        "attempts",
+        "verified_at",
+        "error_code"
+      ],
+      "properties": {
+        "company_id": {"type": "string", "format": "uuid"},
+        "deletion_request_id": {"type": "string", "format": "uuid"},
+        "target_id": {"type": "string", "format": "uuid"},
+        "owner_lane": {"const": "C"},
+        "status": {"type": "string", "enum": ["deleting", "retrying", "failed", "verified_absent"]},
+        "attempts": {"type": "integer", "minimum": 1},
+        "verified_at": {"type": ["string", "null"], "format": "date-time"},
+        "error_code": {"type": ["string", "null"]}
+      }
+    }
+  }
+}

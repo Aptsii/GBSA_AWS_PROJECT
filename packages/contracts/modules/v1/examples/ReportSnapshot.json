@@ -1,0 +1,73 @@
+{
+  "company_id": "018f2000-0000-7000-8000-000000000100",
+  "interview_session_id": "018f2000-0000-7000-8000-000000000230",
+  "report_id": "018f2000-0000-7000-8000-000000000240",
+  "report_version": 1,
+  "competency_model_version_id": "018f2000-0000-7000-8000-000000000202",
+  "status": "partial",
+  "summary": "실제 지원자 답변 근거에 연결된 검토용 요약입니다.",
+  "assessment_counts": {
+    "confirmed": 1,
+    "partially_confirmed": 0,
+    "insufficient_evidence": 1,
+    "needs_follow_up": 0
+  },
+  "items": [
+    {
+      "report_item_id": "018f2000-0000-7000-8000-000000000241",
+      "criterion_id": "018f2000-0000-7000-8000-000000000203",
+      "competency_model_version_id": "018f2000-0000-7000-8000-000000000202",
+      "assessment_state": "confirmed",
+      "observation": "지원자가 선택한 설계와 트레이드오프를 구체적으로 설명했습니다.",
+      "rationale": "확정된 지원자 답변과 자막·영상 구간이 관찰을 직접 뒷받침합니다.",
+      "sufficiency": "sufficient",
+      "uncertainty": "낮음",
+      "follow_up_question": null,
+      "evidence": [
+        {
+          "evidence_id": "018f2000-0000-7000-8000-000000000242",
+          "evidence_type": "applicant_answer",
+          "company_id": "018f2000-0000-7000-8000-000000000100",
+          "criterion_id": "018f2000-0000-7000-8000-000000000203",
+          "competency_model_version_id": "018f2000-0000-7000-8000-000000000202",
+          "answer_turn_id": "018f2000-0000-7000-8000-000000000231",
+          "answer_turn_speaker": "applicant",
+          "answer_turn_status": "final",
+          "transcript_segment_id": "018f2000-0000-7000-8000-000000000243",
+          "video_start_ms": 12000,
+          "video_end_ms": 16000,
+          "technical_failure_overlap": false,
+          "observation": "설계 선택과 대안의 장단점을 설명했습니다.",
+          "rationale": "답변 구간에 선택 이유와 트레이드오프가 함께 나타납니다.",
+          "sufficiency": "direct",
+          "generation_version": "report-generation-v1"
+        }
+      ]
+    },
+    {
+      "report_item_id": "018f2000-0000-7000-8000-000000000244",
+      "criterion_id": "018f2000-0000-7000-8000-000000000204",
+      "competency_model_version_id": "018f2000-0000-7000-8000-000000000202",
+      "assessment_state": "insufficient_evidence",
+      "observation": "해당 평가 항목을 판단할 답변 근거가 없습니다.",
+      "rationale": "제출 자료는 질문 출처일 뿐 평가 근거로 사용하지 않았습니다.",
+      "sufficiency": "insufficient",
+      "uncertainty": "높음",
+      "follow_up_question": "사람 면접에서 관련 경험을 추가로 확인해 주세요.",
+      "evidence": []
+    }
+  ],
+  "human_overrides": [
+    {
+      "human_review_id": "018f2000-0000-7000-8000-000000000245",
+      "company_user_id": "018f2000-0000-7000-8000-000000000246",
+      "review_type": "assessment_override",
+      "target_id": "018f2000-0000-7000-8000-000000000241",
+      "value": {"assessment_state": "partially_confirmed"},
+      "reason": "사람 검토자가 근거 충분도를 보수적으로 조정했습니다.",
+      "created_at": "2026-08-14T02:00:00Z"
+    }
+  ],
+  "human_decision_status": null,
+  "ai_original_immutable": true
+}

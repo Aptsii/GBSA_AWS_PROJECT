@@ -1,0 +1,30 @@
+{
+  "company_id": "018f2000-0000-7000-8000-000000000100",
+  "deletion_request_id": "018f2000-0000-7000-8000-000000000250",
+  "manifest_id": "018f2000-0000-7000-8000-000000000251",
+  "status": "retrying",
+  "expected_targets": 2,
+  "verified_targets": 1,
+  "targets": [
+    {
+      "target_id": "018f2000-0000-7000-8000-000000000252",
+      "owner_lane": "B",
+      "store": "opensearch",
+      "target_type": "submission_chunk",
+      "status": "verified_absent",
+      "attempts": 1,
+      "verified_at": "2026-08-14T01:02:00Z",
+      "error_code": null
+    },
+    {
+      "target_id": "018f2000-0000-7000-8000-000000000253",
+      "owner_lane": "C",
+      "store": "dynamodb",
+      "target_type": "session_hot_view",
+      "status": "retrying",
+      "attempts": 2,
+      "verified_at": null,
+      "error_code": "TEMPORARY_STORE_UNAVAILABLE"
+    }
+  ]
+}

@@ -1,0 +1,195 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SubmissionAnalysisSnapshotsV1",
+  "oneOf": [
+    {"$ref": "#/$defs/SubmissionAnalysisStatusSnapshot"},
+    {"$ref": "#/$defs/StrategySnapshot"},
+    {"$ref": "#/$defs/RetrievedContextSnapshot"},
+    {"$ref": "#/$defs/SourceReferenceSnapshot"},
+    {"$ref": "#/$defs/SubmissionDeletionTargetEnumerationSnapshot"},
+    {"$ref": "#/$defs/SubmissionDeletionTargetReceipt"}
+  ],
+  "$defs": {
+    "SubmissionAnalysisStatusSnapshot": {
+      "title": "SubmissionAnalysisStatusSnapshot",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["company_id", "invitation_id", "overall_status", "submissions", "strategy_ready"],
+      "properties": {
+        "company_id": {"type": "string", "format": "uuid"},
+        "invitation_id": {"type": "string", "format": "uuid"},
+        "overall_status": {"type": "string", "enum": ["waiting", "analyzing", "ready", "partial", "failed"]},
+        "submissions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["submission_id", "status", "impact_code"],
+            "properties": {
+              "submission_id": {"type": "string", "format": "uuid"},
+              "status": {"type": "string", "enum": ["received", "validating", "analyzing", "ready", "partial", "failed", "deleted"]},
+              "impact_code": {"type": ["string", "null"]}
+            }
+          }
+        },
+        "strategy_ready": {"type": "boolean"}
+      }
+    },
+    "StrategySnapshot": {
+      "title": "StrategySnapshot",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "company_id",
+        "invitation_id",
+        "interview_strategy_id",
+        "strategy_version",
+        "competency_model_version_id",
+        "status",
+        "common_topics",
+        "verification_points",
+        "follow_up_directions",
+        "time_budget",
+        "required_evidence_plan",
+        "source_reference_candidates",
+        "model_config_version"
+      ],
+      "properties": {
+        "company_id": {"type": "string", "format": "uuid"},
+        "invitation_id": {"type": "string", "format": "uuid"},
+        "interview_strategy_id": {"type": "string", "format": "uuid"},
+        "strategy_version": {"type": "integer", "minimum": 1},
+        "competency_model_version_id": {"type": "string", "format": "uuid"},
+        "status": {"type": "string", "enum": ["ready", "partial", "superseded"]},
+        "common_topics": {"type": "array", "items": {"type": "object"}},
+        "verification_points": {"type": "array", "items": {"type": "object"}},
+        "follow_up_directions": {"type": "object"},
+        "time_budget": {"type": "object"},
+        "required_evidence_plan": {"type": "object"},
+        "source_reference_candidates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["source_type", "source_id", "locator_version"],
+            "properties": {
+              "source_type": {"type": "string", "enum": ["submission_chunk", "candidate_code_unit"]},
+              "source_id": {"type": "string", "format": "uuid"},
+              "locator_version": {"type": "integer", "minimum": 1}
+            }
+          }
+        },
+        "model_config_version": {"type": "string"}
+      }
+    },
+    "SourceReferenceSnapshot": {
+      "title": "SourceReferenceSnapshot",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "company_id",
+        "source_type",
+        "source_id",
+        "source_version",
+        "source_location",
+        "ownership_confidence",
+        "source_hash",
+        "evidence_eligible"
+      ],
+      "properties": {
+        "company_id": {"type": "string", "format": "uuid"},
+        "source_type": {"type": "string", "enum": ["submission_chunk", "candidate_code_unit"]},
+        "source_id": {"type": "string", "format": "uuid"},
+        "source_version": {"type": "integer", "minimum": 1},
+        "source_location": {"type": "object"},
+        "ownership_confidence": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+        "source_hash": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "evidence_eligible": {"const": false}
+      }
+    },
+    "RetrievedContextSnapshot": {
+      "title": "RetrievedContextSnapshot",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "company_id",
+        "applicant_id",
+        "interview_session_id",
+        "criterion_id",
+        "retrieval_config_version",
+        "results"
+      ],
+      "properties": {
+        "company_id": {"type": "string", "format": "uuid"},
+        "applicant_id": {"type": "string", "format": "uuid"},
+        "interview_session_id": {"type": "string", "format": "uuid"},
+        "criterion_id": {"type": "string", "format": "uuid"},
+        "retrieval_config_version": {"type": "string", "minLength": 1},
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["rank", "score", "source_reference"],
+            "properties": {
+              "rank": {"type": "integer", "minimum": 1},
+              "score": {"type": "number", "minimum": 0},
+              "source_reference": {"$ref": "#/$defs/SourceReferenceSnapshot"}
+            }
+          }
+        }
+      }
+    },
+    "SubmissionDeletionTargetEnumerationSnapshot": {
+      "title": "SubmissionDeletionTargetEnumerationSnapshot",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["company_id", "scope_type", "scope_id", "owner_lane", "targets"],
+      "properties": {
+        "company_id": {"type": "string", "format": "uuid"},
+        "scope_type": {"type": "string", "enum": ["invitation", "applicant"]},
+        "scope_id": {"type": "string", "format": "uuid"},
+        "owner_lane": {"const": "B"},
+        "targets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["target_id", "target_type", "store", "target_version"],
+            "properties": {
+              "target_id": {"type": "string", "format": "uuid"},
+              "target_type": {"type": "string"},
+              "store": {"type": "string", "enum": ["aurora", "s3", "opensearch"]},
+              "target_version": {"type": "integer", "minimum": 1}
+            }
+          }
+        }
+      }
+    },
+    "SubmissionDeletionTargetReceipt": {
+      "title": "SubmissionDeletionTargetReceipt",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "company_id",
+        "deletion_request_id",
+        "target_id",
+        "owner_lane",
+        "status",
+        "attempts",
+        "verified_at",
+        "error_code"
+      ],
+      "properties": {
+        "company_id": {"type": "string", "format": "uuid"},
+        "deletion_request_id": {"type": "string", "format": "uuid"},
+        "target_id": {"type": "string", "format": "uuid"},
+        "owner_lane": {"const": "B"},
+        "status": {"type": "string", "enum": ["deleting", "retrying", "failed", "verified_absent"]},
+        "attempts": {"type": "integer", "minimum": 1},
+        "verified_at": {"type": ["string", "null"], "format": "date-time"},
+        "error_code": {"type": ["string", "null"]}
+      }
+    }
+  }
+}

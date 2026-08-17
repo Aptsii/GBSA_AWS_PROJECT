@@ -14,6 +14,9 @@ importers:
 
   apps/applicant-interview:
     dependencies:
+      '@interview-evidence/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@tanstack/react-query':
         specifier: 5.101.4
         version: 5.101.4(react@19.2.8)
@@ -78,6 +81,9 @@ importers:
 
   apps/company-console:
     dependencies:
+      '@interview-evidence/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@tanstack/react-query':
         specifier: 5.101.4
         version: 5.101.4(react@19.2.8)
@@ -139,6 +145,12 @@ importers:
       vitest:
         specifier: 4.1.10
         version: 4.1.10(jsdom@30.0.1)(vite@8.2.1)
+
+  packages/contracts:
+    devDependencies:
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
 
 packages:
 

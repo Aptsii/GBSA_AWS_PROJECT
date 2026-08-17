@@ -1,0 +1,14 @@
+{
+  "company_id": "018f2000-0000-7000-8000-000000000100",
+  "scope_type": "invitation",
+  "scope_id": "018f2000-0000-7000-8000-000000000210",
+  "owner_lane": "A",
+  "targets": [
+    {
+      "target_id": "018f2000-0000-7000-8000-000000000240",
+      "target_type": "consent_record",
+      "store": "aurora",
+      "target_version": 1
+    }
+  ]
+}

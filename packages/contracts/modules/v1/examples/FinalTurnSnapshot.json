@@ -1,0 +1,12 @@
+{
+  "company_id": "018f2000-0000-7000-8000-000000000100",
+  "interview_session_id": "018f2000-0000-7000-8000-000000000230",
+  "turn_id": "018f2000-0000-7000-8000-000000000231",
+  "sequence": 8,
+  "speaker": "applicant",
+  "status": "final",
+  "text": "확정된 지원자 답변",
+  "target_criterion_id": null,
+  "model_config_version": null,
+  "finalized_at": "2026-08-14T00:10:00Z"
+}

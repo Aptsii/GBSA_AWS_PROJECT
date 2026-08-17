@@ -1,0 +1,14 @@
+{
+  "company_id": "018f2000-0000-7000-8000-000000000100",
+  "scope_type": "applicant",
+  "scope_id": "018f2000-0000-7000-8000-000000000211",
+  "owner_lane": "B",
+  "targets": [
+    {
+      "target_id": "018f2000-0000-7000-8000-000000000260",
+      "target_type": "submission_chunk",
+      "store": "opensearch",
+      "target_version": 1
+    }
+  ]
+}

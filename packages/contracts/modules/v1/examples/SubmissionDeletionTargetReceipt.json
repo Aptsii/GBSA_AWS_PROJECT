@@ -1,0 +1,10 @@
+{
+  "company_id": "018f2000-0000-7000-8000-000000000100",
+  "deletion_request_id": "018f2000-0000-7000-8000-000000000250",
+  "target_id": "018f2000-0000-7000-8000-000000000260",
+  "owner_lane": "B",
+  "status": "verified_absent",
+  "attempts": 1,
+  "verified_at": "2026-08-14T01:02:00Z",
+  "error_code": null
+}

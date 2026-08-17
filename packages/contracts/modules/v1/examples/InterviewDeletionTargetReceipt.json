@@ -1,0 +1,10 @@
+{
+  "company_id": "018f2000-0000-7000-8000-000000000100",
+  "deletion_request_id": "018f2000-0000-7000-8000-000000000250",
+  "target_id": "018f2000-0000-7000-8000-000000000271",
+  "owner_lane": "C",
+  "status": "retrying",
+  "attempts": 2,
+  "verified_at": null,
+  "error_code": "TEMPORARY_STORE_UNAVAILABLE"
+}

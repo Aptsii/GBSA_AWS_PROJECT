@@ -1,0 +1,7390 @@
+{
+  "$defs": {
+    "AnalysisReadiness": {
+      "additionalProperties": false,
+      "properties": {
+        "impact_summary": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "interview_ready": {
+          "type": "boolean"
+        },
+        "overall_status": {
+          "enum": [
+            "waiting",
+            "analyzing",
+            "ready",
+            "partial",
+            "failed"
+          ],
+          "type": "string"
+        },
+        "strategy_id": {
+          "format": "uuid",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "strategy_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "submissions": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "created_at": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "failure_code": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "impact_summary": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "source_type": {
+                "type": "string"
+              },
+              "status": {
+                "enum": [
+                  "received",
+                  "validating",
+                  "analyzing",
+                  "ready",
+                  "partial",
+                  "failed",
+                  "deleted"
+                ],
+                "type": "string"
+              },
+              "submission_id": {
+                "format": "uuid",
+                "type": "string"
+              }
+            },
+            "required": [
+              "submission_id",
+              "source_type",
+              "status",
+              "created_at"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "overall_status",
+        "submissions",
+        "interview_ready"
+      ],
+      "type": "object"
+    },
+    "AnswerCompleteMessage": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "correlation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "idempotency_key": {
+          "maxLength": 128,
+          "minLength": 16,
+          "type": "string"
+        },
+        "message_type": {
+          "const": "answer.complete",
+          "minLength": 1,
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": false,
+          "properties": {
+            "answer_turn_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "expected_state": {
+              "const": "awaiting_answer"
+            },
+            "last_audio_chunk_sequence": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "last_recording_chunk_sequence": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "answer_turn_id",
+            "last_audio_chunk_sequence",
+            "last_recording_chunk_sequence",
+            "expected_state"
+          ],
+          "type": "object"
+        },
+        "protocol_version": {
+          "const": "1.0"
+        },
+        "sent_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "sequence": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "session_id": {
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "protocol_version",
+        "message_type",
+        "session_id",
+        "sequence",
+        "idempotency_key",
+        "correlation_id",
+        "sent_at",
+        "payload"
+      ],
+      "title": "AnswerCompleteMessage",
+      "type": "object",
+      "unevaluatedProperties": false
+    },
+    "ApplicantAccessState": {
+      "additionalProperties": false,
+      "properties": {
+        "expires_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "invitation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "required_actions": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "state": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "invitation_id",
+        "state",
+        "expires_at",
+        "required_actions"
+      ],
+      "type": "object"
+    },
+    "ApplicantIdentityVerification": {
+      "additionalProperties": false,
+      "properties": {
+        "display_name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "verification_value": {
+          "maxLength": 500,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "display_name",
+        "verification_value"
+      ],
+      "type": "object"
+    },
+    "ApplicantTokenExchange": {
+      "additionalProperties": false,
+      "properties": {
+        "invitation_token": {
+          "maxLength": 4096,
+          "minLength": 32,
+          "type": "string"
+        }
+      },
+      "required": [
+        "invitation_token"
+      ],
+      "type": "object"
+    },
+    "AssessmentState": {
+      "enum": [
+        "confirmed",
+        "partially_confirmed",
+        "insufficient_evidence",
+        "needs_follow_up"
+      ],
+      "type": "string"
+    },
+    "AudioChunkBeginMessage": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "correlation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "idempotency_key": {
+          "maxLength": 128,
+          "minLength": 16,
+          "type": "string"
+        },
+        "message_type": {
+          "const": "audio.chunk.begin",
+          "minLength": 1,
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": false,
+          "properties": {
+            "answer_turn_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "byte_length": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "channel_count": {
+              "maximum": 2,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "chunk_sequence": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "codec": {
+              "enum": [
+                "pcm_s16le",
+                "opus"
+              ],
+              "type": "string"
+            },
+            "sample_rate_hz": {
+              "maximum": 48000,
+              "minimum": 8000,
+              "type": "integer"
+            },
+            "sha256": {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "answer_turn_id",
+            "chunk_sequence",
+            "codec",
+            "sample_rate_hz",
+            "channel_count",
+            "byte_length",
+            "sha256"
+          ],
+          "type": "object"
+        },
+        "protocol_version": {
+          "const": "1.0"
+        },
+        "sent_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "sequence": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "session_id": {
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "protocol_version",
+        "message_type",
+        "session_id",
+        "sequence",
+        "idempotency_key",
+        "correlation_id",
+        "sent_at",
+        "payload"
+      ],
+      "title": "AudioChunkBeginMessage",
+      "type": "object",
+      "unevaluatedProperties": false
+    },
+    "AuditAppendReceipt": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "audit_event_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "company_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "resource_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "resource_type": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "result": {
+          "enum": [
+            "succeeded",
+            "denied",
+            "failed"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "company_id",
+        "audit_event_id",
+        "action",
+        "resource_type",
+        "resource_id",
+        "result"
+      ],
+      "title": "AuditAppendReceipt",
+      "type": "object"
+    },
+    "Campaign": {
+      "additionalProperties": false,
+      "properties": {
+        "campaign_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "candidate_instructions": {
+          "maxLength": 10000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "competency_model_version_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "position_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "published_at": {
+          "format": "date-time",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "row_version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "status": {
+          "enum": [
+            "draft",
+            "published",
+            "closed"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "position_id",
+        "competency_model_version_id",
+        "name",
+        "candidate_instructions",
+        "campaign_id",
+        "status",
+        "row_version"
+      ],
+      "type": "object",
+      "unevaluatedProperties": false
+    },
+    "CampaignCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "candidate_instructions": {
+          "maxLength": 10000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "competency_model_version_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "position_id": {
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "position_id",
+        "competency_model_version_id",
+        "name",
+        "candidate_instructions"
+      ],
+      "type": "object"
+    },
+    "CampaignSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "campaign_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "company_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "competency_model_version_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "interview_duration_minutes": {
+          "maximum": 120,
+          "minimum": 10,
+          "type": "integer"
+        },
+        "persona_definition": {
+          "type": "object"
+        },
+        "position_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "prohibited_topics": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "status": {
+          "enum": [
+            "draft",
+            "published",
+            "closed"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "company_id",
+        "campaign_id",
+        "position_id",
+        "competency_model_version_id",
+        "status",
+        "prohibited_topics",
+        "interview_duration_minutes",
+        "persona_definition"
+      ],
+      "title": "CampaignSnapshot",
+      "type": "object"
+    },
+    "ClientAckMessage": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "correlation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "idempotency_key": {
+          "maxLength": 128,
+          "minLength": 16,
+          "type": "string"
+        },
+        "message_type": {
+          "const": "client.ack",
+          "minLength": 1,
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": false,
+          "properties": {
+            "applied_sequence": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "server_event_id": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "server_event_id",
+            "applied_sequence"
+          ],
+          "type": "object"
+        },
+        "protocol_version": {
+          "const": "1.0"
+        },
+        "sent_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "sequence": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "session_id": {
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "protocol_version",
+        "message_type",
+        "session_id",
+        "sequence",
+        "idempotency_key",
+        "correlation_id",
+        "sent_at",
+        "payload"
+      ],
+      "title": "ClientAckMessage",
+      "type": "object",
+      "unevaluatedProperties": false
+    },
+    "CompanyDeletionTargetEnumerationSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "company_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "owner_lane": {
+          "const": "A"
+        },
+        "scope_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "scope_type": {
+          "enum": [
+            "invitation",
+            "applicant"
+          ],
+          "type": "string"
+        },
+        "targets": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "store": {
+                "const": "aurora"
+              },
+              "target_id": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "target_type": {
+                "enum": [
+                  "applicant",
+                  "audit_event",
+                  "consent_record",
+                  "invitation"
+                ],
+                "type": "string"
+              },
+              "target_version": {
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "target_id",
+              "target_type",
+              "store",
+              "target_version"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "company_id",
+        "scope_type",
+        "scope_id",
+        "owner_lane",
+        "targets"
+      ],
+      "title": "CompanyDeletionTargetEnumerationSnapshot",
+      "type": "object"
+    },
+    "CompanyDeletionTargetReceipt": {
+      "additionalProperties": false,
+      "properties": {
+        "attempts": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "company_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "deletion_request_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "error_code": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "owner_lane": {
+          "const": "A"
+        },
+        "status": {
+          "enum": [
+            "deleting",
+            "retrying",
+            "failed",
+            "verified_absent"
+          ],
+          "type": "string"
+        },
+        "target_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "verified_at": {
+          "format": "date-time",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "company_id",
+        "deletion_request_id",
+        "target_id",
+        "owner_lane",
+        "status",
+        "attempts",
+        "verified_at",
+        "error_code"
+      ],
+      "title": "CompanyDeletionTargetReceipt",
+      "type": "object"
+    },
+    "CompanyUserView": {
+      "additionalProperties": false,
+      "properties": {
+        "company_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "company_user_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "email": {
+          "format": "email",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "invited",
+            "active",
+            "disabled"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "company_user_id",
+        "company_id",
+        "email",
+        "status"
+      ],
+      "type": "object"
+    },
+    "CompetencyModelVersion": {
+      "additionalProperties": false,
+      "properties": {
+        "competency_model_version_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "criteria": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "abstain_guidance": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "code": {
+                "pattern": "^[A-Z0-9_-]{2,40}$",
+                "type": "string"
+              },
+              "common_questions": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "description": {
+                "maxLength": 4000,
+                "minLength": 1,
+                "type": "string"
+              },
+              "good_evidence": {
+                "type": "object"
+              },
+              "name": {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              "required": {
+                "type": "boolean"
+              },
+              "weak_evidence": {
+                "type": "object"
+              },
+              "weight": {
+                "minimum": 0,
+                "type": "number"
+              }
+            },
+            "required": [
+              "code",
+              "name",
+              "description",
+              "weight",
+              "good_evidence",
+              "weak_evidence",
+              "abstain_guidance",
+              "required"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "interview_duration_minutes": {
+          "maximum": 120,
+          "minimum": 10,
+          "type": "integer"
+        },
+        "persona_definition": {
+          "type": "object"
+        },
+        "position_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "prohibited_topics": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "published_at": {
+          "format": "date-time",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "row_version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "status": {
+          "enum": [
+            "draft",
+            "published",
+            "retired"
+          ],
+          "type": "string"
+        },
+        "version_number": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "criteria",
+        "prohibited_topics",
+        "interview_duration_minutes",
+        "persona_definition",
+        "competency_model_version_id",
+        "position_id",
+        "version_number",
+        "status",
+        "row_version"
+      ],
+      "type": "object",
+      "unevaluatedProperties": false
+    },
+    "CompetencyModelVersionCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "criteria": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "abstain_guidance": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "code": {
+                "pattern": "^[A-Z0-9_-]{2,40}$",
+                "type": "string"
+              },
+              "common_questions": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "description": {
+                "maxLength": 4000,
+                "minLength": 1,
+                "type": "string"
+              },
+              "good_evidence": {
+                "type": "object"
+              },
+              "name": {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              "required": {
+                "type": "boolean"
+              },
+              "weak_evidence": {
+                "type": "object"
+              },
+              "weight": {
+                "minimum": 0,
+                "type": "number"
+              }
+            },
+            "required": [
+              "code",
+              "name",
+              "description",
+              "weight",
+              "good_evidence",
+              "weak_evidence",
+              "abstain_guidance",
+              "required"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "interview_duration_minutes": {
+          "maximum": 120,
+          "minimum": 10,
+          "type": "integer"
+        },
+        "persona_definition": {
+          "type": "object"
+        },
+        "prohibited_topics": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "criteria",
+        "prohibited_topics",
+        "interview_duration_minutes",
+        "persona_definition"
+      ],
+      "type": "object"
+    },
+    "ConsentAuthorizationSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "accepted_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "authorized": {
+          "type": "boolean"
+        },
+        "company_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "consent_record_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "invitation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "policy_version": {
+          "type": "string"
+        },
+        "purpose_codes": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "reason_code": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "retention_days": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "withdrawn_at": {
+          "format": "date-time",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "company_id",
+        "invitation_id",
+        "consent_record_id",
+        "policy_version",
+        "purpose_codes",
+        "retention_days",
+        "accepted_at",
+        "withdrawn_at",
+        "authorized",
+        "reason_code"
+      ],
+      "title": "ConsentAuthorizationSnapshot",
+      "type": "object"
+    },
+    "ConsentCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "accepted_purposes": {
+          "items": {
+            "enum": [
+              "document_analysis",
+              "recording",
+              "ai_assessment"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "consent_content_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "policy_version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "policy_version",
+        "accepted_purposes",
+        "consent_content_digest"
+      ],
+      "type": "object"
+    },
+    "ConsentView": {
+      "additionalProperties": false,
+      "properties": {
+        "accepted_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "accepted_purposes": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "consent_record_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "policy_version": {
+          "type": "string"
+        },
+        "retention_days": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "consent_record_id",
+        "policy_version",
+        "accepted_purposes",
+        "retention_days",
+        "accepted_at"
+      ],
+      "type": "object"
+    },
+    "CriterionVersionSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "company_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "competency_model_version_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "criteria": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "abstain_guidance": {
+                "type": "string"
+              },
+              "code": {
+                "type": "string"
+              },
+              "common_questions": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "criterion_id": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "good_evidence": {
+                "type": "object"
+              },
+              "name": {
+                "type": "string"
+              },
+              "required": {
+                "type": "boolean"
+              },
+              "weak_evidence": {
+                "type": "object"
+              },
+              "weight": {
+                "minimum": 0,
+                "type": "number"
+              }
+            },
+            "required": [
+              "criterion_id",
+              "code",
+              "name",
+              "description",
+              "weight",
+              "good_evidence",
+              "weak_evidence",
+              "abstain_guidance",
+              "common_questions",
+              "required"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "position_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "published",
+            "retired"
+          ],
+          "type": "string"
+        },
+        "version_number": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "company_id",
+        "competency_model_version_id",
+        "position_id",
+        "version_number",
+        "status",
+        "criteria"
+      ],
+      "title": "CriterionVersionSnapshot",
+      "type": "object"
+    },
+    "DeletionRequestCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "scope_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "scope_type": {
+          "enum": [
+            "invitation",
+            "applicant"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "scope_type",
+        "scope_id",
+        "reason"
+      ],
+      "type": "object"
+    },
+    "DeletionRequestedEventV1": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "aggregate": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": {
+              "const": "deletion_request",
+              "minLength": 1,
+              "type": "string"
+            },
+            "version": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "type",
+            "id",
+            "version"
+          ],
+          "type": "object"
+        },
+        "causation_id": {
+          "format": "uuid",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "company_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "correlation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "event_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "event_type": {
+          "const": "deletion.requested",
+          "minLength": 1,
+          "type": "string"
+        },
+        "event_version": {
+          "const": 1,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 128,
+          "minLength": 16,
+          "type": "string"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": false,
+          "properties": {
+            "deletion_request_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "manifest_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "scope_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "scope_type": {
+              "enum": [
+                "applicant",
+                "invitation"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "deletion_request_id",
+            "manifest_id",
+            "scope_type",
+            "scope_id"
+          ],
+          "type": "object"
+        },
+        "trace_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "event_id",
+        "event_type",
+        "event_version",
+        "occurred_at",
+        "company_id",
+        "aggregate",
+        "idempotency_key",
+        "trace_id",
+        "correlation_id",
+        "causation_id",
+        "payload"
+      ],
+      "title": "DeletionRequestedEventV1",
+      "type": "object",
+      "unevaluatedProperties": false
+    },
+    "DeletionStatus": {
+      "additionalProperties": false,
+      "properties": {
+        "deletion_request_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "expected_targets": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "manifest_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "requested",
+            "enumerating",
+            "deleting",
+            "verifying",
+            "retrying",
+            "partially_completed",
+            "completed"
+          ],
+          "type": "string"
+        },
+        "targets": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "attempts": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "error_code": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "owner_lane": {
+                "enum": [
+                  "A",
+                  "B",
+                  "C",
+                  "D"
+                ],
+                "type": "string"
+              },
+              "status": {
+                "enum": [
+                  "pending",
+                  "deleting",
+                  "retrying",
+                  "failed",
+                  "verified_absent"
+                ],
+                "type": "string"
+              },
+              "store": {
+                "enum": [
+                  "aurora",
+                  "dynamodb",
+                  "s3",
+                  "opensearch"
+                ],
+                "type": "string"
+              },
+              "target_id": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "target_type": {
+                "type": "string"
+              },
+              "verified_at": {
+                "format": "date-time",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "target_id",
+              "owner_lane",
+              "store",
+              "target_type",
+              "status",
+              "attempts"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "verified_targets": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "deletion_request_id",
+        "manifest_id",
+        "status",
+        "expected_targets",
+        "verified_targets",
+        "targets"
+      ],
+      "type": "object"
+    },
+    "DeletionStatusSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "company_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "deletion_request_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "expected_targets": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "manifest_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "requested",
+            "enumerating",
+            "deleting",
+            "verifying",
+            "retrying",
+            "partially_completed",
+            "completed"
+          ],
+          "type": "string"
+        },
+        "targets": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "attempts": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "error_code": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "owner_lane": {
+                "enum": [
+                  "A",
+                  "B",
+                  "C",
+                  "D"
+                ],
+                "type": "string"
+              },
+              "status": {
+                "enum": [
+                  "pending",
+                  "deleting",
+                  "retrying",
+                  "failed",
+                  "verified_absent"
+                ],
+                "type": "string"
+              },
+              "store": {
+                "enum": [
+                  "aurora",
+                  "dynamodb",
+                  "s3",
+                  "opensearch"
+                ],
+                "type": "string"
+              },
+              "target_id": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "target_type": {
+                "type": "string"
+              },
+              "verified_at": {
+                "format": "date-time",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "target_id",
+              "owner_lane",
+              "store",
+              "target_type",
+              "status",
+              "attempts",
+              "verified_at",
+              "error_code"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "verified_targets": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "company_id",
+        "deletion_request_id",
+        "manifest_id",
+        "status",
+        "expected_targets",
+        "verified_targets",
+        "targets"
+      ],
+      "title": "DeletionStatusSnapshot",
+      "type": "object"
+    },
+    "DeletionTargetRequestedEventV1": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "aggregate": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": {
+              "const": "deletion_request",
+              "minLength": 1,
+              "type": "string"
+            },
+            "version": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "type",
+            "id",
+            "version"
+          ],
+          "type": "object"
+        },
+        "causation_id": {
+          "format": "uuid",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "company_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "correlation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "event_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "event_type": {
+          "const": "deletion.target_requested",
+          "minLength": 1,
+          "type": "string"
+        },
+        "event_version": {
+          "const": 1,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 128,
+          "minLength": 16,
+          "type": "string"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": false,
+          "properties": {
+            "deletion_request_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "manifest_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "owner_lane": {
+              "enum": [
+                "A",
+                "B",
+                "C",
+                "D"
+              ],
+              "type": "string"
+            },
+            "target_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "target_store": {
+              "enum": [
+                "aurora",
+                "dynamodb",
+                "s3",
+                "opensearch"
+              ],
+              "type": "string"
+            },
+            "target_type": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "target_version": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "verification_required": {
+              "const": true
+            }
+          },
+          "required": [
+            "deletion_request_id",
+            "manifest_id",
+            "owner_lane",
+            "target_id",
+            "target_type",
+            "target_store",
+            "target_version",
+            "verification_required"
+          ],
+          "type": "object"
+        },
+        "trace_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "event_id",
+        "event_type",
+        "event_version",
+        "occurred_at",
+        "company_id",
+        "aggregate",
+        "idempotency_key",
+        "trace_id",
+        "correlation_id",
+        "causation_id",
+        "payload"
+      ],
+      "title": "DeletionTargetRequestedEventV1",
+      "type": "object",
+      "unevaluatedProperties": false
+    },
+    "DeletionTargetVerifiedEventV1": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "aggregate": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": {
+              "const": "deletion_request",
+              "minLength": 1,
+              "type": "string"
+            },
+            "version": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "type",
+            "id",
+            "version"
+          ],
+          "type": "object"
+        },
+        "causation_id": {
+          "format": "uuid",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "company_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "correlation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "event_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "event_type": {
+          "const": "deletion.target_verified",
+          "minLength": 1,
+          "type": "string"
+        },
+        "event_version": {
+          "const": 1,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 128,
+          "minLength": 16,
+          "type": "string"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": false,
+          "properties": {
+            "deletion_request_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "status": {
+              "const": "verified_absent"
+            },
+            "target_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "verified_at": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          "required": [
+            "deletion_request_id",
+            "target_id",
+            "status",
+            "verified_at"
+          ],
+          "type": "object"
+        },
+        "trace_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "event_id",
+        "event_type",
+        "event_version",
+        "occurred_at",
+        "company_id",
+        "aggregate",
+        "idempotency_key",
+        "trace_id",
+        "correlation_id",
+        "causation_id",
+        "payload"
+      ],
+      "title": "DeletionTargetVerifiedEventV1",
+      "type": "object",
+      "unevaluatedProperties": false
+    },
+    "DeletionTargetView": {
+      "additionalProperties": false,
+      "properties": {
+        "attempts": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "error_code": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "owner_lane": {
+          "enum": [
+            "A",
+            "B",
+            "C",
+            "D"
+          ],
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "pending",
+            "deleting",
+            "retrying",
+            "failed",
+            "verified_absent"
+          ],
+          "type": "string"
+        },
+        "store": {
+          "enum": [
+            "aurora",
+            "dynamodb",
+            "s3",
+            "opensearch"
+          ],
+          "type": "string"
+        },
+        "target_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "target_type": {
+          "type": "string"
+        },
+        "verified_at": {
+          "format": "date-time",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "target_id",
+        "owner_lane",
+        "store",
+        "target_type",
+        "status",
+        "attempts"
+      ],
+      "type": "object"
+    },
+    "EquipmentCheck": {
+      "additionalProperties": false,
+      "properties": {
+        "camera": {
+          "additionalProperties": false,
+          "properties": {
+            "sanitized_code": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "status": {
+              "enum": [
+                "ready",
+                "warning",
+                "failed"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "status"
+          ],
+          "type": "object"
+        },
+        "checked_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "equipment_check_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "microphone": {
+          "additionalProperties": false,
+          "properties": {
+            "sanitized_code": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "status": {
+              "enum": [
+                "ready",
+                "warning",
+                "failed"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "status"
+          ],
+          "type": "object"
+        },
+        "network": {
+          "additionalProperties": false,
+          "properties": {
+            "sanitized_code": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "status": {
+              "enum": [
+                "ready",
+                "warning",
+                "failed"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "status"
+          ],
+          "type": "object"
+        },
+        "overall_status": {
+          "enum": [
+            "ready",
+            "warning",
+            "failed"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "camera",
+        "microphone",
+        "network",
+        "equipment_check_id",
+        "overall_status",
+        "checked_at"
+      ],
+      "type": "object",
+      "unevaluatedProperties": false
+    },
+    "EquipmentCheckCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "camera": {
+          "additionalProperties": false,
+          "properties": {
+            "sanitized_code": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "status": {
+              "enum": [
+                "ready",
+                "warning",
+                "failed"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "status"
+          ],
+          "type": "object"
+        },
+        "microphone": {
+          "additionalProperties": false,
+          "properties": {
+            "sanitized_code": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "status": {
+              "enum": [
+                "ready",
+                "warning",
+                "failed"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "status"
+          ],
+          "type": "object"
+        },
+        "network": {
+          "additionalProperties": false,
+          "properties": {
+            "sanitized_code": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "status": {
+              "enum": [
+                "ready",
+                "warning",
+                "failed"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "status"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "camera",
+        "microphone",
+        "network"
+      ],
+      "type": "object"
+    },
+    "EquipmentComponent": {
+      "additionalProperties": false,
+      "properties": {
+        "sanitized_code": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "status": {
+          "enum": [
+            "ready",
+            "warning",
+            "failed"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "type": "object"
+    },
+    "ErrorEnvelope": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "current_version": {
+          "type": "integer"
+        },
+        "detail": {
+          "type": "string"
+        },
+        "errors": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "field": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "field",
+              "code"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "request_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "integer"
+        },
+        "title": {
+          "type": "string"
+        },
+        "type": {
+          "format": "uri-reference",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "title",
+        "status",
+        "code",
+        "request_id",
+        "retryable"
+      ],
+      "type": "object"
+    },
+    "EvaluationCriterionInput": {
+      "additionalProperties": false,
+      "properties": {
+        "abstain_guidance": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "code": {
+          "pattern": "^[A-Z0-9_-]{2,40}$",
+          "type": "string"
+        },
+        "common_questions": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "description": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "good_evidence": {
+          "type": "object"
+        },
+        "name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "weak_evidence": {
+          "type": "object"
+        },
+        "weight": {
+          "minimum": 0,
+          "type": "number"
+        }
+      },
+      "required": [
+        "code",
+        "name",
+        "description",
+        "weight",
+        "good_evidence",
+        "weak_evidence",
+        "abstain_guidance",
+        "required"
+      ],
+      "type": "object"
+    },
+    "EvidenceView": {
+      "additionalProperties": false,
+      "properties": {
+        "answer_turn_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "evidence_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "observation": {
+          "type": "string"
+        },
+        "rationale": {
+          "type": "string"
+        },
+        "sufficiency": {
+          "enum": [
+            "direct",
+            "supporting",
+            "weak"
+          ],
+          "type": "string"
+        },
+        "transcript_segment_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "video_end_ms": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "video_start_ms": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "evidence_id",
+        "answer_turn_id",
+        "transcript_segment_id",
+        "video_start_ms",
+        "video_end_ms",
+        "observation",
+        "rationale",
+        "sufficiency"
+      ],
+      "type": "object"
+    },
+    "FinalDecisionCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "decision": {
+          "enum": [
+            "advance",
+            "reject",
+            "hold",
+            "withdrawn"
+          ],
+          "type": "string"
+        },
+        "reason": {
+          "maxLength": 5000,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "decision",
+        "reason"
+      ],
+      "type": "object"
+    },
+    "FinalTurnPageSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "company_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "interview_session_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "company_id": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "finalized_at": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "interview_session_id": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "model_config_version": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "sequence": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "speaker": {
+                "enum": [
+                  "interviewer",
+                  "applicant"
+                ],
+                "type": "string"
+              },
+              "status": {
+                "const": "final"
+              },
+              "target_criterion_id": {
+                "format": "uuid",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "text": {
+                "type": "string"
+              },
+              "turn_id": {
+                "format": "uuid",
+                "type": "string"
+              }
+            },
+            "required": [
+              "company_id",
+              "interview_session_id",
+              "turn_id",
+              "sequence",
+              "speaker",
+              "status",
+              "text",
+              "target_criterion_id",
+              "model_config_version",
+              "finalized_at"
+            ],
+            "title": "FinalTurnSnapshot",
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "maxLength": 512,
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "company_id",
+        "interview_session_id",
+        "items",
+        "next_cursor"
+      ],
+      "title": "FinalTurnPageSnapshot",
+      "type": "object"
+    },
+    "FinalTurnSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "company_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "finalized_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "interview_session_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "model_config_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sequence": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "speaker": {
+          "enum": [
+            "interviewer",
+            "applicant"
+          ],
+          "type": "string"
+        },
+        "status": {
+          "const": "final"
+        },
+        "target_criterion_id": {
+          "format": "uuid",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "text": {
+          "type": "string"
+        },
+        "turn_id": {
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "company_id",
+        "interview_session_id",
+        "turn_id",
+        "sequence",
+        "speaker",
+        "status",
+        "text",
+        "target_criterion_id",
+        "model_config_version",
+        "finalized_at"
+      ],
+      "title": "FinalTurnSnapshot",
+      "type": "object"
+    },
+    "HeartbeatPingMessage": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "correlation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "idempotency_key": {
+          "maxLength": 128,
+          "minLength": 16,
+          "type": "string"
+        },
+        "message_type": {
+          "const": "heartbeat.ping",
+          "minLength": 1,
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": false,
+          "properties": {
+            "client_monotonic_ms": {
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "client_monotonic_ms"
+          ],
+          "type": "object"
+        },
+        "protocol_version": {
+          "const": "1.0"
+        },
+        "sent_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "sequence": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "session_id": {
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "protocol_version",
+        "message_type",
+        "session_id",
+        "sequence",
+        "idempotency_key",
+        "correlation_id",
+        "sent_at",
+        "payload"
+      ],
+      "title": "HeartbeatPingMessage",
+      "type": "object",
+      "unevaluatedProperties": false
+    },
+    "HumanAssessmentReviewCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "assessment_state": {
+          "enum": [
+            "confirmed",
+            "partially_confirmed",
+            "insufficient_evidence",
+            "needs_follow_up"
+          ],
+          "type": "string"
+        },
+        "reason": {
+          "maxLength": 5000,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "assessment_state",
+        "reason"
+      ],
+      "type": "object"
+    },
+    "HumanReviewView": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "created_by": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "human_review_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "review_type": {
+          "enum": [
+            "assessment_override",
+            "note",
+            "bookmark",
+            "final_decision"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "human_review_id",
+        "review_type",
+        "created_by",
+        "created_at"
+      ],
+      "type": "object"
+    },
+    "InterviewCompletedEventV1": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "aggregate": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": {
+              "const": "interview_session",
+              "minLength": 1,
+              "type": "string"
+            },
+            "version": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "type",
+            "id",
+            "version"
+          ],
+          "type": "object"
+        },
+        "causation_id": {
+          "format": "uuid",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "company_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "correlation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "event_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "event_type": {
+          "const": "interview.completed",
+          "minLength": 1,
+          "type": "string"
+        },
+        "event_version": {
+          "const": 1,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 128,
+          "minLength": 16,
+          "type": "string"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": false,
+          "properties": {
+            "completed_at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "interview_session_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "invitation_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "last_turn_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "media_status": {
+              "enum": [
+                "ready",
+                "pending",
+                "partial"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "interview_session_id",
+            "invitation_id",
+            "last_turn_id",
+            "completed_at",
+            "media_status"
+          ],
+          "type": "object"
+        },
+        "trace_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "event_id",
+        "event_type",
+        "event_version",
+        "occurred_at",
+        "company_id",
+        "aggregate",
+        "idempotency_key",
+        "trace_id",
+        "correlation_id",
+        "causation_id",
+        "payload"
+      ],
+      "title": "InterviewCompletedEventV1",
+      "type": "object",
+      "unevaluatedProperties": false
+    },
+    "InterviewDeletionTargetEnumerationSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "company_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "owner_lane": {
+          "const": "C"
+        },
+        "scope_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "scope_type": {
+          "enum": [
+            "session",
+            "applicant"
+          ],
+          "type": "string"
+        },
+        "targets": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "store": {
+                "enum": [
+                  "aurora",
+                  "dynamodb",
+                  "s3"
+                ],
+                "type": "string"
+              },
+              "target_id": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "target_type": {
+                "type": "string"
+              },
+              "target_version": {
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "target_id",
+              "target_type",
+              "store",
+              "target_version"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "company_id",
+        "scope_type",
+        "scope_id",
+        "owner_lane",
+        "targets"
+      ],
+      "title": "InterviewDeletionTargetEnumerationSnapshot",
+      "type": "object"
+    },
+    "InterviewDeletionTargetReceipt": {
+      "additionalProperties": false,
+      "properties": {
+        "attempts": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "company_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "deletion_request_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "error_code": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "owner_lane": {
+          "const": "C"
+        },
+        "status": {
+          "enum": [
+            "deleting",
+            "retrying",
+            "failed",
+            "verified_absent"
+          ],
+          "type": "string"
+        },
+        "target_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "verified_at": {
+          "format": "date-time",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "company_id",
+        "deletion_request_id",
+        "target_id",
+        "owner_lane",
+        "status",
+        "attempts",
+        "verified_at",
+        "error_code"
+      ],
+      "title": "InterviewDeletionTargetReceipt",
+      "type": "object"
+    },
+    "InterviewResumeSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "degraded_modes": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "interview_session_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "last_final_turn_id": {
+          "format": "uuid",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "last_verified_recording_chunk_sequence": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pending_turn": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "server_sequence": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "state": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "interview_session_id",
+        "state",
+        "server_sequence",
+        "last_verified_recording_chunk_sequence"
+      ],
+      "type": "object"
+    },
+    "InterviewSessionCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "acknowledged_partial_analysis": {
+          "type": "boolean"
+        },
+        "equipment_check_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "strategy_id": {
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "equipment_check_id",
+        "strategy_id",
+        "acknowledged_partial_analysis"
+      ],
+      "type": "object"
+    },
+    "InterviewSessionPausedEventV1": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "aggregate": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": {
+              "const": "interview_session",
+              "minLength": 1,
+              "type": "string"
+            },
+            "version": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "type",
+            "id",
+            "version"
+          ],
+          "type": "object"
+        },
+        "causation_id": {
+          "format": "uuid",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "company_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "correlation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "event_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "event_type": {
+          "const": "interview.session_paused",
+          "minLength": 1,
+          "type": "string"
+        },
+        "event_version": {
+          "const": 1,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 128,
+          "minLength": 16,
+          "type": "string"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": false,
+          "properties": {
+            "interview_session_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "retryable": {
+              "type": "boolean"
+            },
+            "session_sequence": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "technical_reason_code": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "interview_session_id",
+            "session_sequence",
+            "technical_reason_code",
+            "retryable"
+          ],
+          "type": "object"
+        },
+        "trace_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "event_id",
+        "event_type",
+        "event_version",
+        "occurred_at",
+        "company_id",
+        "aggregate",
+        "idempotency_key",
+        "trace_id",
+        "correlation_id",
+        "causation_id",
+        "payload"
+      ],
+      "title": "InterviewSessionPausedEventV1",
+      "type": "object",
+      "unevaluatedProperties": false
+    },
+    "InterviewSessionView": {
+      "additionalProperties": false,
+      "properties": {
+        "interview_session_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "protocol_version": {
+          "const": "1.0",
+          "type": "string"
+        },
+        "session_sequence": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "state": {
+          "enum": [
+            "preparing",
+            "in_progress",
+            "awaiting_answer",
+            "preparing_question",
+            "paused",
+            "completed",
+            "report_generating",
+            "reviewable"
+          ],
+          "type": "string"
+        },
+        "websocket_path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "interview_session_id",
+        "state",
+        "session_sequence",
+        "websocket_path",
+        "protocol_version"
+      ],
+      "type": "object"
+    },
+    "InterviewTurnFinalizedEventV1": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "aggregate": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": {
+              "const": "interview_session",
+              "minLength": 1,
+              "type": "string"
+            },
+            "version": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "type",
+            "id",
+            "version"
+          ],
+          "type": "object"
+        },
+        "causation_id": {
+          "format": "uuid",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "company_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "correlation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "event_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "event_type": {
+          "const": "interview.turn_finalized",
+          "minLength": 1,
+          "type": "string"
+        },
+        "event_version": {
+          "const": 1,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 128,
+          "minLength": 16,
+          "type": "string"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": false,
+          "properties": {
+            "interview_session_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "recording_range_status": {
+              "enum": [
+                "ready",
+                "pending"
+              ],
+              "type": "string"
+            },
+            "speaker": {
+              "enum": [
+                "interviewer",
+                "applicant"
+              ],
+              "type": "string"
+            },
+            "transcript_status": {
+              "enum": [
+                "final",
+                "review_required"
+              ],
+              "type": "string"
+            },
+            "turn_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "turn_sequence": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "interview_session_id",
+            "turn_id",
+            "turn_sequence",
+            "speaker",
+            "transcript_status",
+            "recording_range_status"
+          ],
+          "type": "object"
+        },
+        "trace_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "event_id",
+        "event_type",
+        "event_version",
+        "occurred_at",
+        "company_id",
+        "aggregate",
+        "idempotency_key",
+        "trace_id",
+        "correlation_id",
+        "causation_id",
+        "payload"
+      ],
+      "title": "InterviewTurnFinalizedEventV1",
+      "type": "object",
+      "unevaluatedProperties": false
+    },
+    "InvitationAuthorizationSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "applicant_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "authorized": {
+          "type": "boolean"
+        },
+        "campaign_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "company_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "expires_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "invitation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "reason_code": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "state": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "company_id",
+        "invitation_id",
+        "applicant_id",
+        "campaign_id",
+        "state",
+        "expires_at",
+        "authorized",
+        "reason_code"
+      ],
+      "title": "InvitationAuthorizationSnapshot",
+      "type": "object"
+    },
+    "InvitationBatchCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "applicants": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "display_name": {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              "email": {
+                "format": "email",
+                "type": "string"
+              }
+            },
+            "required": [
+              "email",
+              "display_name"
+            ],
+            "type": "object"
+          },
+          "maxItems": 1000,
+          "minItems": 1,
+          "type": "array"
+        },
+        "expires_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "applicants",
+        "expires_at"
+      ],
+      "type": "object"
+    },
+    "InvitationBatchResult": {
+      "additionalProperties": false,
+      "properties": {
+        "accepted_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "invitations": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "analysis_status": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "applicant_email": {
+                "format": "email",
+                "type": "string"
+              },
+              "campaign_id": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "expires_at": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "interview_status": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "invitation_id": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "report_status": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "row_version": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "status": {
+                "enum": [
+                  "invited",
+                  "identity_verified",
+                  "consented",
+                  "materials_submitted",
+                  "analyzing",
+                  "ready",
+                  "interviewing",
+                  "interrupted",
+                  "completed",
+                  "reviewed",
+                  "expired",
+                  "revoked",
+                  "deleted"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "invitation_id",
+              "campaign_id",
+              "applicant_email",
+              "status",
+              "expires_at",
+              "row_version"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "rejected_count": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "accepted_count",
+        "rejected_count",
+        "invitations"
+      ],
+      "type": "object"
+    },
+    "InvitationConsentCompletedEventV1": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "aggregate": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": {
+              "const": "invitation",
+              "minLength": 1,
+              "type": "string"
+            },
+            "version": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "type",
+            "id",
+            "version"
+          ],
+          "type": "object"
+        },
+        "causation_id": {
+          "format": "uuid",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "company_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "correlation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "event_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "event_type": {
+          "const": "invitation.consent_completed",
+          "minLength": 1,
+          "type": "string"
+        },
+        "event_version": {
+          "const": 1,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 128,
+          "minLength": 16,
+          "type": "string"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": false,
+          "properties": {
+            "applicant_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "consent_record_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "invitation_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "purpose_codes": {
+              "items": {
+                "enum": [
+                  "document_analysis",
+                  "recording",
+                  "ai_assessment"
+                ],
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "retention_days": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "retention_policy_version": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "invitation_id",
+            "applicant_id",
+            "consent_record_id",
+            "purpose_codes",
+            "retention_policy_version",
+            "retention_days"
+          ],
+          "type": "object"
+        },
+        "trace_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "event_id",
+        "event_type",
+        "event_version",
+        "occurred_at",
+        "company_id",
+        "aggregate",
+        "idempotency_key",
+        "trace_id",
+        "correlation_id",
+        "causation_id",
+        "payload"
+      ],
+      "title": "InvitationConsentCompletedEventV1",
+      "type": "object",
+      "unevaluatedProperties": false
+    },
+    "InvitationEmailRequestedEventV1": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "aggregate": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": {
+              "const": "invitation",
+              "minLength": 1,
+              "type": "string"
+            },
+            "version": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "type",
+            "id",
+            "version"
+          ],
+          "type": "object"
+        },
+        "causation_id": {
+          "format": "uuid",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "company_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "correlation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "event_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "event_type": {
+          "const": "invitation.email_requested",
+          "minLength": 1,
+          "type": "string"
+        },
+        "event_version": {
+          "const": 1,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 128,
+          "minLength": 16,
+          "type": "string"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": false,
+          "properties": {
+            "applicant_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "campaign_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "email_delivery_request_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "expires_at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "invitation_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "link_resolution_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "template_id": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "invitation_id",
+            "applicant_id",
+            "campaign_id",
+            "email_delivery_request_id",
+            "template_id",
+            "link_resolution_id",
+            "expires_at"
+          ],
+          "type": "object"
+        },
+        "trace_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "event_id",
+        "event_type",
+        "event_version",
+        "occurred_at",
+        "company_id",
+        "aggregate",
+        "idempotency_key",
+        "trace_id",
+        "correlation_id",
+        "causation_id",
+        "payload"
+      ],
+      "title": "InvitationEmailRequestedEventV1",
+      "type": "object",
+      "unevaluatedProperties": false
+    },
+    "InvitationPage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "analysis_status": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "applicant_email": {
+                "format": "email",
+                "type": "string"
+              },
+              "campaign_id": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "expires_at": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "interview_status": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "invitation_id": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "report_status": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "row_version": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "status": {
+                "enum": [
+                  "invited",
+                  "identity_verified",
+                  "consented",
+                  "materials_submitted",
+                  "analyzing",
+                  "ready",
+                  "interviewing",
+                  "interrupted",
+                  "completed",
+                  "reviewed",
+                  "expired",
+                  "revoked",
+                  "deleted"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "invitation_id",
+              "campaign_id",
+              "applicant_email",
+              "status",
+              "expires_at",
+              "row_version"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "type": "object"
+    },
+    "InvitationStateTransitionSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "applied": {
+          "type": "boolean"
+        },
+        "company_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "idempotency_key": {
+          "maxLength": 128,
+          "minLength": 16,
+          "type": "string"
+        },
+        "invitation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "previous_state": {
+          "type": "string"
+        },
+        "row_version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "state": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "company_id",
+        "invitation_id",
+        "previous_state",
+        "state",
+        "row_version",
+        "applied",
+        "idempotency_key"
+      ],
+      "title": "InvitationStateTransitionSnapshot",
+      "type": "object"
+    },
+    "InvitationView": {
+      "additionalProperties": false,
+      "properties": {
+        "analysis_status": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "applicant_email": {
+          "format": "email",
+          "type": "string"
+        },
+        "campaign_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "expires_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "interview_status": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "invitation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "report_status": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "row_version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "status": {
+          "enum": [
+            "invited",
+            "identity_verified",
+            "consented",
+            "materials_submitted",
+            "analyzing",
+            "ready",
+            "interviewing",
+            "interrupted",
+            "completed",
+            "reviewed",
+            "expired",
+            "revoked",
+            "deleted"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "invitation_id",
+        "campaign_id",
+        "applicant_email",
+        "status",
+        "expires_at",
+        "row_version"
+      ],
+      "type": "object"
+    },
+    "MediaPostprocessRequestedEventV1": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "aggregate": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": {
+              "const": "recording_asset",
+              "minLength": 1,
+              "type": "string"
+            },
+            "version": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "type",
+            "id",
+            "version"
+          ],
+          "type": "object"
+        },
+        "causation_id": {
+          "format": "uuid",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "company_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "correlation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "event_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "event_type": {
+          "const": "media.postprocess_requested",
+          "minLength": 1,
+          "type": "string"
+        },
+        "event_version": {
+          "const": 1,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 128,
+          "minLength": 16,
+          "type": "string"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": false,
+          "properties": {
+            "interview_session_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "ordered_chunk_set_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "output_profile_version": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "interview_session_id",
+            "ordered_chunk_set_id",
+            "output_profile_version"
+          ],
+          "type": "object"
+        },
+        "trace_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "event_id",
+        "event_type",
+        "event_version",
+        "occurred_at",
+        "company_id",
+        "aggregate",
+        "idempotency_key",
+        "trace_id",
+        "correlation_id",
+        "causation_id",
+        "payload"
+      ],
+      "title": "MediaPostprocessRequestedEventV1",
+      "type": "object",
+      "unevaluatedProperties": false
+    },
+    "Position": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "description": {
+          "maxLength": 20000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "position_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "row_version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "status": {
+          "enum": [
+            "draft",
+            "active",
+            "closed"
+          ],
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "description",
+        "position_id",
+        "status",
+        "row_version",
+        "created_at"
+      ],
+      "type": "object",
+      "unevaluatedProperties": false
+    },
+    "PositionCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "maxLength": 20000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "description"
+      ],
+      "type": "object"
+    },
+    "PositionPage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "created_at": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "description": {
+                "maxLength": 20000,
+                "minLength": 1,
+                "type": "string"
+              },
+              "position_id": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "row_version": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "status": {
+                "enum": [
+                  "draft",
+                  "active",
+                  "closed"
+                ],
+                "type": "string"
+              },
+              "title": {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "title",
+              "description",
+              "position_id",
+              "status",
+              "row_version",
+              "created_at"
+            ],
+            "type": "object",
+            "unevaluatedProperties": false
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "type": "object"
+    },
+    "ProcessingStatus": {
+      "additionalProperties": false,
+      "properties": {
+        "message": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "retryable": {
+          "default": false,
+          "type": "boolean"
+        },
+        "status": {
+          "enum": [
+            "queued",
+            "running",
+            "partial",
+            "failed"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "type": "object"
+    },
+    "QuestionPreparingMessage": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "correlation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "idempotency_key": {
+          "maxLength": 128,
+          "minLength": 16,
+          "type": "string"
+        },
+        "message_type": {
+          "const": "question.preparing",
+          "minLength": 1,
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": false,
+          "properties": {
+            "degraded_mode": {
+              "enum": [
+                "none",
+                "search_fallback",
+                "text_only"
+              ],
+              "type": "string"
+            },
+            "stage": {
+              "enum": [
+                "retrieval",
+                "generation",
+                "policy",
+                "speech"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "stage",
+            "degraded_mode"
+          ],
+          "type": "object"
+        },
+        "protocol_version": {
+          "const": "1.0"
+        },
+        "sent_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "sequence": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "session_id": {
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "protocol_version",
+        "message_type",
+        "session_id",
+        "sequence",
+        "idempotency_key",
+        "correlation_id",
+        "sent_at",
+        "payload"
+      ],
+      "title": "QuestionPreparingMessage",
+      "type": "object",
+      "unevaluatedProperties": false
+    },
+    "QuestionReadyMessage": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "correlation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "idempotency_key": {
+          "maxLength": 128,
+          "minLength": 16,
+          "type": "string"
+        },
+        "message_type": {
+          "const": "question.ready",
+          "minLength": 1,
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": false,
+          "properties": {
+            "audio_expires_at": {
+              "format": "date-time",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "audio_url": {
+              "format": "uri",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "question_turn_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "source_reference_count": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "speech_marks_url": {
+              "format": "uri",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "target_criterion_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "text": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "text_only": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "question_turn_id",
+            "text",
+            "target_criterion_id",
+            "audio_url",
+            "audio_expires_at",
+            "speech_marks_url",
+            "source_reference_count",
+            "text_only"
+          ],
+          "type": "object"
+        },
+        "protocol_version": {
+          "const": "1.0"
+        },
+        "sent_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "sequence": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "session_id": {
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "protocol_version",
+        "message_type",
+        "session_id",
+        "sequence",
+        "idempotency_key",
+        "correlation_id",
+        "sent_at",
+        "payload"
+      ],
+      "title": "QuestionReadyMessage",
+      "type": "object",
+      "unevaluatedProperties": false
+    },
+    "QuestionRepeatMessage": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "correlation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "idempotency_key": {
+          "maxLength": 128,
+          "minLength": 16,
+          "type": "string"
+        },
+        "message_type": {
+          "const": "question.repeat",
+          "minLength": 1,
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": false,
+          "properties": {
+            "mode": {
+              "const": "repeat_or_clarify"
+            },
+            "question_turn_id": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "question_turn_id",
+            "mode"
+          ],
+          "type": "object"
+        },
+        "protocol_version": {
+          "const": "1.0"
+        },
+        "sent_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "sequence": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "session_id": {
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "protocol_version",
+        "message_type",
+        "session_id",
+        "sequence",
+        "idempotency_key",
+        "correlation_id",
+        "sent_at",
+        "payload"
+      ],
+      "title": "QuestionRepeatMessage",
+      "type": "object",
+      "unevaluatedProperties": false
+    },
+    "RecordingChunkSetSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "chunks": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "byte_size": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "content_hash": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "object_ref": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "recording_chunk_id": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "sequence": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "session_end_ms": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "session_start_ms": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "upload_status": {
+                "const": "verified"
+              }
+            },
+            "required": [
+              "recording_chunk_id",
+              "sequence",
+              "object_ref",
+              "content_hash",
+              "byte_size",
+              "session_start_ms",
+              "session_end_ms",
+              "upload_status"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "company_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "interview_session_id": {
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "company_id",
+        "interview_session_id",
+        "chunks"
+      ],
+      "title": "RecordingChunkSetSnapshot",
+      "type": "object"
+    },
+    "RecordingUploadIntentCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "byte_size": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "chunk_sequence": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "session_end_ms": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "session_start_ms": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "chunk_sequence",
+        "byte_size",
+        "sha256",
+        "session_start_ms",
+        "session_end_ms"
+      ],
+      "type": "object"
+    },
+    "ReportGenerationRequestedEventV1": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "aggregate": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": {
+              "const": "report",
+              "minLength": 1,
+              "type": "string"
+            },
+            "version": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "type",
+            "id",
+            "version"
+          ],
+          "type": "object"
+        },
+        "causation_id": {
+          "format": "uuid",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "company_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "correlation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "event_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "event_type": {
+          "const": "report.generation_requested",
+          "minLength": 1,
+          "type": "string"
+        },
+        "event_version": {
+          "const": 1,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 128,
+          "minLength": 16,
+          "type": "string"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": false,
+          "properties": {
+            "competency_model_version_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "interview_session_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "report_version": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "interview_session_id",
+            "report_version",
+            "competency_model_version_id"
+          ],
+          "type": "object"
+        },
+        "trace_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "event_id",
+        "event_type",
+        "event_version",
+        "occurred_at",
+        "company_id",
+        "aggregate",
+        "idempotency_key",
+        "trace_id",
+        "correlation_id",
+        "causation_id",
+        "payload"
+      ],
+      "title": "ReportGenerationRequestedEventV1",
+      "type": "object",
+      "unevaluatedProperties": false
+    },
+    "ReportItemView": {
+      "additionalProperties": false,
+      "properties": {
+        "assessment_state": {
+          "enum": [
+            "confirmed",
+            "partially_confirmed",
+            "insufficient_evidence",
+            "needs_follow_up"
+          ],
+          "type": "string"
+        },
+        "criterion_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "evidence": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "answer_turn_id": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "evidence_id": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "observation": {
+                "type": "string"
+              },
+              "rationale": {
+                "type": "string"
+              },
+              "sufficiency": {
+                "enum": [
+                  "direct",
+                  "supporting",
+                  "weak"
+                ],
+                "type": "string"
+              },
+              "transcript_segment_id": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "video_end_ms": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "video_start_ms": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "evidence_id",
+              "answer_turn_id",
+              "transcript_segment_id",
+              "video_start_ms",
+              "video_end_ms",
+              "observation",
+              "rationale",
+              "sufficiency"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "follow_up_question": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "observation": {
+          "type": "string"
+        },
+        "rationale": {
+          "type": "string"
+        },
+        "report_item_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "uncertainty": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "report_item_id",
+        "criterion_id",
+        "assessment_state",
+        "observation",
+        "rationale",
+        "evidence",
+        "uncertainty"
+      ],
+      "type": "object"
+    },
+    "ReportReadyEventV1": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "aggregate": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": {
+              "const": "report",
+              "minLength": 1,
+              "type": "string"
+            },
+            "version": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "type",
+            "id",
+            "version"
+          ],
+          "type": "object"
+        },
+        "causation_id": {
+          "format": "uuid",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "company_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "correlation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "event_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "event_type": {
+          "const": "report.ready",
+          "minLength": 1,
+          "type": "string"
+        },
+        "event_version": {
+          "const": 1,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 128,
+          "minLength": 16,
+          "type": "string"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": false,
+          "properties": {
+            "confirmed_count": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "insufficient_evidence_count": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "interview_session_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "needs_follow_up_count": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "partially_confirmed_count": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "report_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "report_version": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "status": {
+              "enum": [
+                "ready",
+                "partial"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "interview_session_id",
+            "report_id",
+            "report_version",
+            "status",
+            "confirmed_count",
+            "partially_confirmed_count",
+            "insufficient_evidence_count",
+            "needs_follow_up_count"
+          ],
+          "type": "object"
+        },
+        "trace_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "event_id",
+        "event_type",
+        "event_version",
+        "occurred_at",
+        "company_id",
+        "aggregate",
+        "idempotency_key",
+        "trace_id",
+        "correlation_id",
+        "causation_id",
+        "payload"
+      ],
+      "title": "ReportReadyEventV1",
+      "type": "object",
+      "unevaluatedProperties": false
+    },
+    "ReportSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "ai_original_immutable": {
+          "const": true
+        },
+        "assessment_counts": {
+          "additionalProperties": false,
+          "properties": {
+            "confirmed": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "insufficient_evidence": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "needs_follow_up": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "partially_confirmed": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "confirmed",
+            "partially_confirmed",
+            "insufficient_evidence",
+            "needs_follow_up"
+          ],
+          "type": "object"
+        },
+        "company_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "competency_model_version_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "human_decision_status": {
+          "enum": [
+            "advance",
+            "reject",
+            "hold",
+            "withdrawn",
+            null
+          ],
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "human_overrides": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "company_user_id": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "created_at": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "human_review_id": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "reason": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "review_type": {
+                "enum": [
+                  "assessment_override",
+                  "note",
+                  "bookmark",
+                  "final_decision"
+                ],
+                "type": "string"
+              },
+              "target_id": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "value": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "human_review_id",
+              "company_user_id",
+              "review_type",
+              "target_id",
+              "value",
+              "reason",
+              "created_at"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "interview_session_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "additionalProperties": false,
+            "if": {
+              "properties": {
+                "assessment_state": {
+                  "enum": [
+                    "confirmed",
+                    "partially_confirmed"
+                  ]
+                }
+              },
+              "required": [
+                "assessment_state"
+              ]
+            },
+            "properties": {
+              "assessment_state": {
+                "enum": [
+                  "confirmed",
+                  "partially_confirmed",
+                  "insufficient_evidence",
+                  "needs_follow_up"
+                ],
+                "type": "string"
+              },
+              "competency_model_version_id": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "criterion_id": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "evidence": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "answer_turn_id": {
+                      "format": "uuid",
+                      "type": "string"
+                    },
+                    "answer_turn_speaker": {
+                      "const": "applicant"
+                    },
+                    "answer_turn_status": {
+                      "const": "final"
+                    },
+                    "company_id": {
+                      "format": "uuid",
+                      "type": "string"
+                    },
+                    "competency_model_version_id": {
+                      "format": "uuid",
+                      "type": "string"
+                    },
+                    "criterion_id": {
+                      "format": "uuid",
+                      "type": "string"
+                    },
+                    "evidence_id": {
+                      "format": "uuid",
+                      "type": "string"
+                    },
+                    "evidence_type": {
+                      "const": "applicant_answer"
+                    },
+                    "generation_version": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "observation": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "rationale": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "sufficiency": {
+                      "enum": [
+                        "direct",
+                        "supporting",
+                        "weak"
+                      ],
+                      "type": "string"
+                    },
+                    "technical_failure_overlap": {
+                      "const": false
+                    },
+                    "transcript_segment_id": {
+                      "format": "uuid",
+                      "type": "string"
+                    },
+                    "video_end_ms": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "video_start_ms": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "evidence_id",
+                    "evidence_type",
+                    "company_id",
+                    "criterion_id",
+                    "competency_model_version_id",
+                    "answer_turn_id",
+                    "answer_turn_speaker",
+                    "answer_turn_status",
+                    "transcript_segment_id",
+                    "video_start_ms",
+                    "video_end_ms",
+                    "technical_failure_overlap",
+                    "observation",
+                    "rationale",
+                    "sufficiency",
+                    "generation_version"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "follow_up_question": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "observation": {
+                "type": "string"
+              },
+              "rationale": {
+                "type": "string"
+              },
+              "report_item_id": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "sufficiency": {
+                "enum": [
+                  "sufficient",
+                  "limited",
+                  "insufficient"
+                ],
+                "type": "string"
+              },
+              "uncertainty": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "report_item_id",
+              "criterion_id",
+              "competency_model_version_id",
+              "assessment_state",
+              "observation",
+              "rationale",
+              "sufficiency",
+              "uncertainty",
+              "follow_up_question",
+              "evidence"
+            ],
+            "then": {
+              "properties": {
+                "evidence": {
+                  "minItems": 1
+                }
+              }
+            },
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "report_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "report_version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "status": {
+          "enum": [
+            "generating",
+            "ready",
+            "partial",
+            "failed"
+          ],
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "company_id",
+        "interview_session_id",
+        "report_id",
+        "report_version",
+        "competency_model_version_id",
+        "status",
+        "summary",
+        "assessment_counts",
+        "items",
+        "human_overrides",
+        "human_decision_status",
+        "ai_original_immutable"
+      ],
+      "title": "ReportSnapshot",
+      "type": "object"
+    },
+    "ReportView": {
+      "additionalProperties": false,
+      "properties": {
+        "ai_original_immutable": {
+          "const": true,
+          "type": "boolean"
+        },
+        "human_reviews": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "created_at": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "created_by": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "human_review_id": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "review_type": {
+                "enum": [
+                  "assessment_override",
+                  "note",
+                  "bookmark",
+                  "final_decision"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "human_review_id",
+              "review_type",
+              "created_by",
+              "created_at"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "items": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "assessment_state": {
+                "enum": [
+                  "confirmed",
+                  "partially_confirmed",
+                  "insufficient_evidence",
+                  "needs_follow_up"
+                ],
+                "type": "string"
+              },
+              "criterion_id": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "evidence": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "answer_turn_id": {
+                      "format": "uuid",
+                      "type": "string"
+                    },
+                    "evidence_id": {
+                      "format": "uuid",
+                      "type": "string"
+                    },
+                    "observation": {
+                      "type": "string"
+                    },
+                    "rationale": {
+                      "type": "string"
+                    },
+                    "sufficiency": {
+                      "enum": [
+                        "direct",
+                        "supporting",
+                        "weak"
+                      ],
+                      "type": "string"
+                    },
+                    "transcript_segment_id": {
+                      "format": "uuid",
+                      "type": "string"
+                    },
+                    "video_end_ms": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "video_start_ms": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "evidence_id",
+                    "answer_turn_id",
+                    "transcript_segment_id",
+                    "video_start_ms",
+                    "video_end_ms",
+                    "observation",
+                    "rationale",
+                    "sufficiency"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "follow_up_question": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "observation": {
+                "type": "string"
+              },
+              "rationale": {
+                "type": "string"
+              },
+              "report_item_id": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "uncertainty": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "report_item_id",
+              "criterion_id",
+              "assessment_state",
+              "observation",
+              "rationale",
+              "evidence",
+              "uncertainty"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "report_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "report_version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "status": {
+          "enum": [
+            "generating",
+            "ready",
+            "partial",
+            "failed"
+          ],
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "report_id",
+        "report_version",
+        "status",
+        "summary",
+        "items",
+        "ai_original_immutable"
+      ],
+      "type": "object"
+    },
+    "ResumeSnapshotMessage": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "correlation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "idempotency_key": {
+          "maxLength": 128,
+          "minLength": 16,
+          "type": "string"
+        },
+        "message_type": {
+          "const": "resume.snapshot",
+          "minLength": 1,
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": false,
+          "properties": {
+            "allowed_client_messages": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "degraded_modes": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "last_final_turn_id": {
+              "format": "uuid",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "last_verified_recording_chunk_sequence": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "pending_turn": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "speaker": {
+                      "enum": [
+                        "interviewer",
+                        "applicant"
+                      ],
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "turn_id": {
+                      "format": "uuid",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "turn_id",
+                    "speaker",
+                    "status"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "server_sequence": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "state": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "state",
+            "server_sequence",
+            "last_final_turn_id",
+            "pending_turn",
+            "last_verified_recording_chunk_sequence",
+            "allowed_client_messages",
+            "degraded_modes"
+          ],
+          "type": "object"
+        },
+        "protocol_version": {
+          "const": "1.0"
+        },
+        "sent_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "sequence": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "session_id": {
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "protocol_version",
+        "message_type",
+        "session_id",
+        "sequence",
+        "idempotency_key",
+        "correlation_id",
+        "sent_at",
+        "payload"
+      ],
+      "title": "ResumeSnapshotMessage",
+      "type": "object",
+      "unevaluatedProperties": false
+    },
+    "RetentionExpiredEventV1": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "aggregate": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": {
+              "const": "invitation",
+              "minLength": 1,
+              "type": "string"
+            },
+            "version": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "type",
+            "id",
+            "version"
+          ],
+          "type": "object"
+        },
+        "causation_id": {
+          "format": "uuid",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "company_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "correlation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "event_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "event_type": {
+          "const": "retention.expired",
+          "minLength": 1,
+          "type": "string"
+        },
+        "event_version": {
+          "const": 1,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 128,
+          "minLength": 16,
+          "type": "string"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": false,
+          "properties": {
+            "applicant_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "expired_at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "invitation_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "policy_snapshot_id": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "invitation_id",
+            "applicant_id",
+            "policy_snapshot_id",
+            "expired_at"
+          ],
+          "type": "object"
+        },
+        "trace_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "event_id",
+        "event_type",
+        "event_version",
+        "occurred_at",
+        "company_id",
+        "aggregate",
+        "idempotency_key",
+        "trace_id",
+        "correlation_id",
+        "causation_id",
+        "payload"
+      ],
+      "title": "RetentionExpiredEventV1",
+      "type": "object",
+      "unevaluatedProperties": false
+    },
+    "RetrievedContextSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "applicant_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "company_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "criterion_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "interview_session_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "results": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "rank": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "score": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "source_reference": {
+                "additionalProperties": false,
+                "properties": {
+                  "company_id": {
+                    "format": "uuid",
+                    "type": "string"
+                  },
+                  "evidence_eligible": {
+                    "const": false
+                  },
+                  "ownership_confidence": {
+                    "maximum": 1,
+                    "minimum": 0,
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "source_hash": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "type": "string"
+                  },
+                  "source_id": {
+                    "format": "uuid",
+                    "type": "string"
+                  },
+                  "source_location": {
+                    "type": "object"
+                  },
+                  "source_type": {
+                    "enum": [
+                      "submission_chunk",
+                      "candidate_code_unit"
+                    ],
+                    "type": "string"
+                  },
+                  "source_version": {
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "company_id",
+                  "source_type",
+                  "source_id",
+                  "source_version",
+                  "source_location",
+                  "ownership_confidence",
+                  "source_hash",
+                  "evidence_eligible"
+                ],
+                "title": "SourceReferenceSnapshot",
+                "type": "object"
+              }
+            },
+            "required": [
+              "rank",
+              "score",
+              "source_reference"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "retrieval_config_version": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "company_id",
+        "applicant_id",
+        "interview_session_id",
+        "criterion_id",
+        "retrieval_config_version",
+        "results"
+      ],
+      "title": "RetrievedContextSnapshot",
+      "type": "object"
+    },
+    "ReviewArtifactCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "review_type": {
+          "enum": [
+            "note",
+            "bookmark"
+          ],
+          "type": "string"
+        },
+        "target_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "value": {
+          "maxLength": 10000,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "review_type",
+        "target_id",
+        "value"
+      ],
+      "type": "object"
+    },
+    "ReviewProjectionSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "company_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "human_decision_status": {
+          "enum": [
+            "advance",
+            "reject",
+            "hold",
+            "withdrawn",
+            null
+          ],
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "interview_session_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "invitation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "report_id": {
+          "format": "uuid",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "report_status": {
+          "enum": [
+            "queued",
+            "generating",
+            "ready",
+            "partial",
+            "failed"
+          ],
+          "type": "string"
+        },
+        "summary_status": {
+          "enum": [
+            "unavailable",
+            "processing",
+            "ready",
+            "partial"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "company_id",
+        "invitation_id",
+        "interview_session_id",
+        "report_id",
+        "report_status",
+        "summary_status",
+        "human_decision_status"
+      ],
+      "title": "ReviewProjectionSnapshot",
+      "type": "object"
+    },
+    "SessionCompletedMessage": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "correlation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "idempotency_key": {
+          "maxLength": 128,
+          "minLength": 16,
+          "type": "string"
+        },
+        "message_type": {
+          "const": "session.completed",
+          "minLength": 1,
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": false,
+          "properties": {
+            "completed_at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "last_turn_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "post_processing_status": {
+              "enum": [
+                "queued",
+                "running",
+                "partial",
+                "ready"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "completed_at",
+            "last_turn_id",
+            "post_processing_status"
+          ],
+          "type": "object"
+        },
+        "protocol_version": {
+          "const": "1.0"
+        },
+        "sent_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "sequence": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "session_id": {
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "protocol_version",
+        "message_type",
+        "session_id",
+        "sequence",
+        "idempotency_key",
+        "correlation_id",
+        "sent_at",
+        "payload"
+      ],
+      "title": "SessionCompletedMessage",
+      "type": "object",
+      "unevaluatedProperties": false
+    },
+    "SessionPausedMessage": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "correlation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "idempotency_key": {
+          "maxLength": 128,
+          "minLength": 16,
+          "type": "string"
+        },
+        "message_type": {
+          "const": "session.paused",
+          "minLength": 1,
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": false,
+          "properties": {
+            "next_retry_at": {
+              "format": "date-time",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "reason_code": {
+              "type": "string"
+            },
+            "retryable": {
+              "type": "boolean"
+            },
+            "user_message": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "reason_code",
+            "retryable",
+            "next_retry_at",
+            "user_message"
+          ],
+          "type": "object"
+        },
+        "protocol_version": {
+          "const": "1.0"
+        },
+        "sent_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "sequence": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "session_id": {
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "protocol_version",
+        "message_type",
+        "session_id",
+        "sequence",
+        "idempotency_key",
+        "correlation_id",
+        "sent_at",
+        "payload"
+      ],
+      "title": "SessionPausedMessage",
+      "type": "object",
+      "unevaluatedProperties": false
+    },
+    "SessionResumeMessage": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "correlation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "idempotency_key": {
+          "maxLength": 128,
+          "minLength": 16,
+          "type": "string"
+        },
+        "message_type": {
+          "const": "session.resume",
+          "minLength": 1,
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": false,
+          "properties": {
+            "last_applied_server_sequence": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "last_final_turn_id": {
+              "format": "uuid",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "last_uploaded_recording_chunk_sequence": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "last_applied_server_sequence",
+            "last_final_turn_id",
+            "last_uploaded_recording_chunk_sequence"
+          ],
+          "type": "object"
+        },
+        "protocol_version": {
+          "const": "1.0"
+        },
+        "sent_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "sequence": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "session_id": {
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "protocol_version",
+        "message_type",
+        "session_id",
+        "sequence",
+        "idempotency_key",
+        "correlation_id",
+        "sent_at",
+        "payload"
+      ],
+      "title": "SessionResumeMessage",
+      "type": "object",
+      "unevaluatedProperties": false
+    },
+    "SessionSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "applicant_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "company_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "competency_model_version_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "degraded_modes": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "interview_session_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "interview_strategy_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "invitation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "last_final_turn_id": {
+          "format": "uuid",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "last_verified_recording_chunk_sequence": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "session_sequence": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "state": {
+          "enum": [
+            "preparing",
+            "in_progress",
+            "awaiting_answer",
+            "preparing_question",
+            "paused",
+            "completed",
+            "report_generating",
+            "reviewable"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "company_id",
+        "interview_session_id",
+        "invitation_id",
+        "applicant_id",
+        "interview_strategy_id",
+        "competency_model_version_id",
+        "state",
+        "session_sequence",
+        "last_final_turn_id",
+        "last_verified_recording_chunk_sequence",
+        "degraded_modes"
+      ],
+      "title": "SessionSnapshot",
+      "type": "object"
+    },
+    "SessionStartMessage": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "correlation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "idempotency_key": {
+          "maxLength": 128,
+          "minLength": 16,
+          "type": "string"
+        },
+        "message_type": {
+          "const": "session.start",
+          "minLength": 1,
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": false,
+          "properties": {
+            "equipment_check_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "expected_state": {
+              "const": "preparing"
+            }
+          },
+          "required": [
+            "equipment_check_id",
+            "expected_state"
+          ],
+          "type": "object"
+        },
+        "protocol_version": {
+          "const": "1.0"
+        },
+        "sent_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "sequence": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "session_id": {
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "protocol_version",
+        "message_type",
+        "session_id",
+        "sequence",
+        "idempotency_key",
+        "correlation_id",
+        "sent_at",
+        "payload"
+      ],
+      "title": "SessionStartMessage",
+      "type": "object",
+      "unevaluatedProperties": false
+    },
+    "SessionStateChangedMessage": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "correlation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "idempotency_key": {
+          "maxLength": 128,
+          "minLength": 16,
+          "type": "string"
+        },
+        "message_type": {
+          "const": "session.state_changed",
+          "minLength": 1,
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": false,
+          "properties": {
+            "checkpoint_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "previous_state": {
+              "type": "string"
+            },
+            "reason_code": {
+              "type": "string"
+            },
+            "state": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "previous_state",
+            "state",
+            "reason_code",
+            "checkpoint_id"
+          ],
+          "type": "object"
+        },
+        "protocol_version": {
+          "const": "1.0"
+        },
+        "sent_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "sequence": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "session_id": {
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "protocol_version",
+        "message_type",
+        "session_id",
+        "sequence",
+        "idempotency_key",
+        "correlation_id",
+        "sent_at",
+        "payload"
+      ],
+      "title": "SessionStateChangedMessage",
+      "type": "object",
+      "unevaluatedProperties": false
+    },
+    "SourceReferenceSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "company_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "evidence_eligible": {
+          "const": false
+        },
+        "ownership_confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "source_hash": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "source_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "source_location": {
+          "type": "object"
+        },
+        "source_type": {
+          "enum": [
+            "submission_chunk",
+            "candidate_code_unit"
+          ],
+          "type": "string"
+        },
+        "source_version": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "company_id",
+        "source_type",
+        "source_id",
+        "source_version",
+        "source_location",
+        "ownership_confidence",
+        "source_hash",
+        "evidence_eligible"
+      ],
+      "title": "SourceReferenceSnapshot",
+      "type": "object"
+    },
+    "StrategyReadyEventV1": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "aggregate": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": {
+              "const": "interview_strategy",
+              "minLength": 1,
+              "type": "string"
+            },
+            "version": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "type",
+            "id",
+            "version"
+          ],
+          "type": "object"
+        },
+        "causation_id": {
+          "format": "uuid",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "company_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "correlation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "event_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "event_type": {
+          "const": "strategy.ready",
+          "minLength": 1,
+          "type": "string"
+        },
+        "event_version": {
+          "const": 1,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 128,
+          "minLength": 16,
+          "type": "string"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": false,
+          "properties": {
+            "competency_model_version_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "interview_strategy_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "invitation_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "status": {
+              "enum": [
+                "ready",
+                "partial"
+              ],
+              "type": "string"
+            },
+            "strategy_version": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "invitation_id",
+            "interview_strategy_id",
+            "strategy_version",
+            "competency_model_version_id",
+            "status"
+          ],
+          "type": "object"
+        },
+        "trace_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "event_id",
+        "event_type",
+        "event_version",
+        "occurred_at",
+        "company_id",
+        "aggregate",
+        "idempotency_key",
+        "trace_id",
+        "correlation_id",
+        "causation_id",
+        "payload"
+      ],
+      "title": "StrategyReadyEventV1",
+      "type": "object",
+      "unevaluatedProperties": false
+    },
+    "StrategySnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "common_topics": {
+          "items": {
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "company_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "competency_model_version_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "follow_up_directions": {
+          "type": "object"
+        },
+        "interview_strategy_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "invitation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "model_config_version": {
+          "type": "string"
+        },
+        "required_evidence_plan": {
+          "type": "object"
+        },
+        "source_reference_candidates": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "locator_version": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "source_id": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "source_type": {
+                "enum": [
+                  "submission_chunk",
+                  "candidate_code_unit"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "source_type",
+              "source_id",
+              "locator_version"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "status": {
+          "enum": [
+            "ready",
+            "partial",
+            "superseded"
+          ],
+          "type": "string"
+        },
+        "strategy_version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "time_budget": {
+          "type": "object"
+        },
+        "verification_points": {
+          "items": {
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "company_id",
+        "invitation_id",
+        "interview_strategy_id",
+        "strategy_version",
+        "competency_model_version_id",
+        "status",
+        "common_topics",
+        "verification_points",
+        "follow_up_directions",
+        "time_budget",
+        "required_evidence_plan",
+        "source_reference_candidates",
+        "model_config_version"
+      ],
+      "title": "StrategySnapshot",
+      "type": "object"
+    },
+    "SubmissionAnalysisCompletedEventV1": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "aggregate": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": {
+              "const": "submission",
+              "minLength": 1,
+              "type": "string"
+            },
+            "version": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "type",
+            "id",
+            "version"
+          ],
+          "type": "object"
+        },
+        "causation_id": {
+          "format": "uuid",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "company_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "correlation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "event_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "event_type": {
+          "const": "submission.analysis_completed",
+          "minLength": 1,
+          "type": "string"
+        },
+        "event_version": {
+          "const": 1,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 128,
+          "minLength": 16,
+          "type": "string"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": false,
+          "properties": {
+            "analysis_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "impact_code": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "invitation_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "status": {
+              "enum": [
+                "ready",
+                "partial",
+                "failed"
+              ],
+              "type": "string"
+            },
+            "submission_id": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "invitation_id",
+            "submission_id",
+            "analysis_id",
+            "status",
+            "impact_code"
+          ],
+          "type": "object"
+        },
+        "trace_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "event_id",
+        "event_type",
+        "event_version",
+        "occurred_at",
+        "company_id",
+        "aggregate",
+        "idempotency_key",
+        "trace_id",
+        "correlation_id",
+        "causation_id",
+        "payload"
+      ],
+      "title": "SubmissionAnalysisCompletedEventV1",
+      "type": "object",
+      "unevaluatedProperties": false
+    },
+    "SubmissionAnalysisRequestedEventV1": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "aggregate": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": {
+              "const": "submission",
+              "minLength": 1,
+              "type": "string"
+            },
+            "version": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "type",
+            "id",
+            "version"
+          ],
+          "type": "object"
+        },
+        "causation_id": {
+          "format": "uuid",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "company_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "correlation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "event_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "event_type": {
+          "const": "submission.analysis_requested",
+          "minLength": 1,
+          "type": "string"
+        },
+        "event_version": {
+          "const": 1,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 128,
+          "minLength": 16,
+          "type": "string"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": false,
+          "properties": {
+            "analysis_version": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "limits_config_version": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "source_object_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "source_type": {
+              "enum": [
+                "cover_letter",
+                "resume",
+                "pdf",
+                "public_git",
+                "public_url"
+              ],
+              "type": "string"
+            },
+            "submission_id": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "submission_id",
+            "analysis_version",
+            "source_type",
+            "source_object_id",
+            "limits_config_version"
+          ],
+          "type": "object"
+        },
+        "trace_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "event_id",
+        "event_type",
+        "event_version",
+        "occurred_at",
+        "company_id",
+        "aggregate",
+        "idempotency_key",
+        "trace_id",
+        "correlation_id",
+        "causation_id",
+        "payload"
+      ],
+      "title": "SubmissionAnalysisRequestedEventV1",
+      "type": "object",
+      "unevaluatedProperties": false
+    },
+    "SubmissionAnalysisStatusSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "company_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "invitation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "overall_status": {
+          "enum": [
+            "waiting",
+            "analyzing",
+            "ready",
+            "partial",
+            "failed"
+          ],
+          "type": "string"
+        },
+        "strategy_ready": {
+          "type": "boolean"
+        },
+        "submissions": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "impact_code": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "status": {
+                "enum": [
+                  "received",
+                  "validating",
+                  "analyzing",
+                  "ready",
+                  "partial",
+                  "failed",
+                  "deleted"
+                ],
+                "type": "string"
+              },
+              "submission_id": {
+                "format": "uuid",
+                "type": "string"
+              }
+            },
+            "required": [
+              "submission_id",
+              "status",
+              "impact_code"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "company_id",
+        "invitation_id",
+        "overall_status",
+        "submissions",
+        "strategy_ready"
+      ],
+      "title": "SubmissionAnalysisStatusSnapshot",
+      "type": "object"
+    },
+    "SubmissionCreate": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "source_type": {
+              "enum": [
+                "cover_letter",
+                "resume",
+                "pdf"
+              ],
+              "type": "string"
+            },
+            "upload_id": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "source_type",
+            "upload_id"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "candidate_identity_inputs": {
+              "type": "object"
+            },
+            "public_url": {
+              "format": "uri",
+              "type": "string"
+            },
+            "source_type": {
+              "enum": [
+                "public_git",
+                "public_url"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "source_type",
+            "public_url"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "SubmissionDeletionTargetEnumerationSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "company_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "owner_lane": {
+          "const": "B"
+        },
+        "scope_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "scope_type": {
+          "enum": [
+            "invitation",
+            "applicant"
+          ],
+          "type": "string"
+        },
+        "targets": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "store": {
+                "enum": [
+                  "aurora",
+                  "s3",
+                  "opensearch"
+                ],
+                "type": "string"
+              },
+              "target_id": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "target_type": {
+                "type": "string"
+              },
+              "target_version": {
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "target_id",
+              "target_type",
+              "store",
+              "target_version"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "company_id",
+        "scope_type",
+        "scope_id",
+        "owner_lane",
+        "targets"
+      ],
+      "title": "SubmissionDeletionTargetEnumerationSnapshot",
+      "type": "object"
+    },
+    "SubmissionDeletionTargetReceipt": {
+      "additionalProperties": false,
+      "properties": {
+        "attempts": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "company_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "deletion_request_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "error_code": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "owner_lane": {
+          "const": "B"
+        },
+        "status": {
+          "enum": [
+            "deleting",
+            "retrying",
+            "failed",
+            "verified_absent"
+          ],
+          "type": "string"
+        },
+        "target_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "verified_at": {
+          "format": "date-time",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "company_id",
+        "deletion_request_id",
+        "target_id",
+        "owner_lane",
+        "status",
+        "attempts",
+        "verified_at",
+        "error_code"
+      ],
+      "title": "SubmissionDeletionTargetReceipt",
+      "type": "object"
+    },
+    "SubmissionView": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "failure_code": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "impact_summary": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_type": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "received",
+            "validating",
+            "analyzing",
+            "ready",
+            "partial",
+            "failed",
+            "deleted"
+          ],
+          "type": "string"
+        },
+        "submission_id": {
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "submission_id",
+        "source_type",
+        "status",
+        "created_at"
+      ],
+      "type": "object"
+    },
+    "TimelineView": {
+      "additionalProperties": false,
+      "properties": {
+        "entries": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "end_ms": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "entry_id": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "entry_type": {
+                "enum": [
+                  "question",
+                  "answer",
+                  "event",
+                  "evidence"
+                ],
+                "type": "string"
+              },
+              "start_ms": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "technical_failure": {
+                "default": false,
+                "type": "boolean"
+              },
+              "text": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "entry_id",
+              "entry_type",
+              "start_ms",
+              "end_ms"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "playback": {
+          "additionalProperties": false,
+          "properties": {
+            "expires_at": {
+              "format": "date-time",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "status": {
+              "enum": [
+                "ready",
+                "partial",
+                "processing",
+                "unavailable"
+              ],
+              "type": "string"
+            },
+            "url": {
+              "format": "uri",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "url",
+            "expires_at",
+            "status"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "entries",
+        "playback"
+      ],
+      "type": "object"
+    },
+    "TranscriptFinalMessage": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "correlation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "idempotency_key": {
+          "maxLength": 128,
+          "minLength": 16,
+          "type": "string"
+        },
+        "message_type": {
+          "const": "transcript.final",
+          "minLength": 1,
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": false,
+          "properties": {
+            "answer_turn_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "confidence": {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "end_ms": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "is_final": {
+              "const": true
+            },
+            "review_required": {
+              "type": "boolean"
+            },
+            "segment_sequence": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "start_ms": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "text": {
+              "type": "string"
+            },
+            "transcript_segment_id": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "answer_turn_id",
+            "transcript_segment_id",
+            "segment_sequence",
+            "text",
+            "start_ms",
+            "end_ms",
+            "confidence",
+            "is_final",
+            "review_required"
+          ],
+          "type": "object"
+        },
+        "protocol_version": {
+          "const": "1.0"
+        },
+        "sent_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "sequence": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "session_id": {
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "protocol_version",
+        "message_type",
+        "session_id",
+        "sequence",
+        "idempotency_key",
+        "correlation_id",
+        "sent_at",
+        "payload"
+      ],
+      "title": "TranscriptFinalMessage",
+      "type": "object",
+      "unevaluatedProperties": false
+    },
+    "TranscriptPartialMessage": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "correlation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "idempotency_key": {
+          "maxLength": 128,
+          "minLength": 16,
+          "type": "string"
+        },
+        "message_type": {
+          "const": "transcript.partial",
+          "minLength": 1,
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": false,
+          "properties": {
+            "answer_turn_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "confidence": {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "end_ms": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "is_final": {
+              "const": false
+            },
+            "segment_sequence": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "start_ms": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "answer_turn_id",
+            "segment_sequence",
+            "text",
+            "start_ms",
+            "end_ms",
+            "confidence",
+            "is_final"
+          ],
+          "type": "object"
+        },
+        "protocol_version": {
+          "const": "1.0"
+        },
+        "sent_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "sequence": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "session_id": {
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "protocol_version",
+        "message_type",
+        "session_id",
+        "sequence",
+        "idempotency_key",
+        "correlation_id",
+        "sent_at",
+        "payload"
+      ],
+      "title": "TranscriptPartialMessage",
+      "type": "object",
+      "unevaluatedProperties": false
+    },
+    "UploadIntent": {
+      "additionalProperties": false,
+      "properties": {
+        "expires_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "method": {
+          "enum": [
+            "PUT"
+          ],
+          "type": "string"
+        },
+        "required_headers": {
+          "type": "object"
+        },
+        "upload_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "url": {
+          "format": "uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "upload_id",
+        "method",
+        "url",
+        "required_headers",
+        "expires_at"
+      ],
+      "type": "object"
+    },
+    "UploadIntentCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "byte_size": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "filename": {
+          "maxLength": 255,
+          "minLength": 1,
+          "type": "string"
+        },
+        "media_type": {
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "source_type": {
+          "enum": [
+            "cover_letter",
+            "resume",
+            "pdf"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_type",
+        "filename",
+        "media_type",
+        "byte_size",
+        "sha256"
+      ],
+      "type": "object"
+    },
+    "WebSocketErrorMessage": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "correlation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "idempotency_key": {
+          "maxLength": 128,
+          "minLength": 16,
+          "type": "string"
+        },
+        "message_type": {
+          "const": "error",
+          "minLength": 1,
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "current_sequence": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "current_state": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            },
+            "retryable": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "code",
+            "message",
+            "retryable",
+            "current_state",
+            "current_sequence"
+          ],
+          "type": "object"
+        },
+        "protocol_version": {
+          "const": "1.0"
+        },
+        "sent_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "sequence": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "session_id": {
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "protocol_version",
+        "message_type",
+        "session_id",
+        "sequence",
+        "idempotency_key",
+        "correlation_id",
+        "sent_at",
+        "payload"
+      ],
+      "title": "WebSocketErrorMessage",
+      "type": "object",
+      "unevaluatedProperties": false
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Interview Evidence Platform Generated Contract Bundle"
+}

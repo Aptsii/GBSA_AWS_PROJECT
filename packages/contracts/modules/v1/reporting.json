@@ -1,0 +1,232 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ReportingSnapshotsV1",
+  "oneOf": [
+    {"$ref": "#/$defs/ReviewProjectionSnapshot"},
+    {"$ref": "#/$defs/ReportSnapshot"},
+    {"$ref": "#/$defs/DeletionStatusSnapshot"}
+  ],
+  "$defs": {
+    "ReviewProjectionSnapshot": {
+      "title": "ReviewProjectionSnapshot",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "company_id",
+        "invitation_id",
+        "interview_session_id",
+        "report_id",
+        "report_status",
+        "summary_status",
+        "human_decision_status"
+      ],
+      "properties": {
+        "company_id": {"type": "string", "format": "uuid"},
+        "invitation_id": {"type": "string", "format": "uuid"},
+        "interview_session_id": {"type": "string", "format": "uuid"},
+        "report_id": {"type": ["string", "null"], "format": "uuid"},
+        "report_status": {"type": "string", "enum": ["queued", "generating", "ready", "partial", "failed"]},
+        "summary_status": {"type": "string", "enum": ["unavailable", "processing", "ready", "partial"]},
+        "human_decision_status": {"type": ["string", "null"], "enum": ["advance", "reject", "hold", "withdrawn", null]}
+      }
+    },
+    "ReportSnapshot": {
+      "title": "ReportSnapshot",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "company_id",
+        "interview_session_id",
+        "report_id",
+        "report_version",
+        "competency_model_version_id",
+        "status",
+        "summary",
+        "assessment_counts",
+        "items",
+        "human_overrides",
+        "human_decision_status",
+        "ai_original_immutable"
+      ],
+      "properties": {
+        "company_id": {"type": "string", "format": "uuid"},
+        "interview_session_id": {"type": "string", "format": "uuid"},
+        "report_id": {"type": "string", "format": "uuid"},
+        "report_version": {"type": "integer", "minimum": 1},
+        "competency_model_version_id": {"type": "string", "format": "uuid"},
+        "status": {"type": "string", "enum": ["generating", "ready", "partial", "failed"]},
+        "summary": {"type": "string"},
+        "assessment_counts": {"$ref": "#/$defs/AssessmentCountsSnapshot"},
+        "items": {"type": "array", "items": {"$ref": "#/$defs/ReportItemSnapshot"}},
+        "human_overrides": {"type": "array", "items": {"$ref": "#/$defs/HumanReviewSnapshot"}},
+        "human_decision_status": {"type": ["string", "null"], "enum": ["advance", "reject", "hold", "withdrawn", null]},
+        "ai_original_immutable": {"const": true}
+      }
+    },
+    "AssessmentCountsSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["confirmed", "partially_confirmed", "insufficient_evidence", "needs_follow_up"],
+      "properties": {
+        "confirmed": {"type": "integer", "minimum": 0},
+        "partially_confirmed": {"type": "integer", "minimum": 0},
+        "insufficient_evidence": {"type": "integer", "minimum": 0},
+        "needs_follow_up": {"type": "integer", "minimum": 0}
+      }
+    },
+    "ReportItemSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "report_item_id",
+        "criterion_id",
+        "competency_model_version_id",
+        "assessment_state",
+        "observation",
+        "rationale",
+        "sufficiency",
+        "uncertainty",
+        "follow_up_question",
+        "evidence"
+      ],
+      "properties": {
+        "report_item_id": {"type": "string", "format": "uuid"},
+        "criterion_id": {"type": "string", "format": "uuid"},
+        "competency_model_version_id": {"type": "string", "format": "uuid"},
+        "assessment_state": {"type": "string", "enum": ["confirmed", "partially_confirmed", "insufficient_evidence", "needs_follow_up"]},
+        "observation": {"type": "string"},
+        "rationale": {"type": "string"},
+        "sufficiency": {"type": "string", "enum": ["sufficient", "limited", "insufficient"]},
+        "uncertainty": {"type": "string"},
+        "follow_up_question": {"type": ["string", "null"]},
+        "evidence": {"type": "array", "items": {"$ref": "#/$defs/EvidenceSnapshot"}}
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["assessment_state"],
+            "properties": {
+              "assessment_state": {"enum": ["confirmed", "partially_confirmed"]}
+            }
+          },
+          "then": {
+            "properties": {
+              "evidence": {"minItems": 1}
+            }
+          }
+        }
+      ]
+    },
+    "EvidenceSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidence_id",
+        "evidence_type",
+        "company_id",
+        "criterion_id",
+        "competency_model_version_id",
+        "answer_turn_id",
+        "answer_turn_speaker",
+        "answer_turn_status",
+        "transcript_segment_id",
+        "video_start_ms",
+        "video_end_ms",
+        "technical_failure_overlap",
+        "observation",
+        "rationale",
+        "sufficiency",
+        "generation_version"
+      ],
+      "properties": {
+        "evidence_id": {"type": "string", "format": "uuid"},
+        "evidence_type": {"const": "applicant_answer"},
+        "company_id": {"type": "string", "format": "uuid"},
+        "criterion_id": {"type": "string", "format": "uuid"},
+        "competency_model_version_id": {"type": "string", "format": "uuid"},
+        "answer_turn_id": {"type": "string", "format": "uuid"},
+        "answer_turn_speaker": {"const": "applicant"},
+        "answer_turn_status": {"const": "final"},
+        "transcript_segment_id": {"type": "string", "format": "uuid"},
+        "video_start_ms": {"type": "integer", "minimum": 0},
+        "video_end_ms": {"type": "integer", "minimum": 1},
+        "technical_failure_overlap": {"const": false},
+        "observation": {"type": "string", "minLength": 1},
+        "rationale": {"type": "string", "minLength": 1},
+        "sufficiency": {"type": "string", "enum": ["direct", "supporting", "weak"]},
+        "generation_version": {"type": "string", "minLength": 1}
+      }
+    },
+    "HumanReviewSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "human_review_id",
+        "company_user_id",
+        "review_type",
+        "target_id",
+        "value",
+        "reason",
+        "created_at"
+      ],
+      "properties": {
+        "human_review_id": {"type": "string", "format": "uuid"},
+        "company_user_id": {"type": "string", "format": "uuid"},
+        "review_type": {"type": "string", "enum": ["assessment_override", "note", "bookmark", "final_decision"]},
+        "target_id": {"type": "string", "format": "uuid"},
+        "value": {"type": "object"},
+        "reason": {"type": "string", "minLength": 1},
+        "created_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "DeletionStatusSnapshot": {
+      "title": "DeletionStatusSnapshot",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "company_id",
+        "deletion_request_id",
+        "manifest_id",
+        "status",
+        "expected_targets",
+        "verified_targets",
+        "targets"
+      ],
+      "properties": {
+        "company_id": {"type": "string", "format": "uuid"},
+        "deletion_request_id": {"type": "string", "format": "uuid"},
+        "manifest_id": {"type": "string", "format": "uuid"},
+        "status": {"type": "string", "enum": ["requested", "enumerating", "deleting", "verifying", "retrying", "partially_completed", "completed"]},
+        "expected_targets": {"type": "integer", "minimum": 0},
+        "verified_targets": {"type": "integer", "minimum": 0},
+        "targets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "target_id",
+              "owner_lane",
+              "store",
+              "target_type",
+              "status",
+              "attempts",
+              "verified_at",
+              "error_code"
+            ],
+            "properties": {
+              "target_id": {"type": "string", "format": "uuid"},
+              "owner_lane": {"type": "string", "enum": ["A", "B", "C", "D"]},
+              "store": {"type": "string", "enum": ["aurora", "dynamodb", "s3", "opensearch"]},
+              "target_type": {"type": "string"},
+              "status": {"type": "string", "enum": ["pending", "deleting", "retrying", "failed", "verified_absent"]},
+              "attempts": {"type": "integer", "minimum": 0},
+              "verified_at": {"type": ["string", "null"], "format": "date-time"},
+              "error_code": {"type": ["string", "null"]}
+            }
+          }
+        }
+      }
+    }
+  }
+}

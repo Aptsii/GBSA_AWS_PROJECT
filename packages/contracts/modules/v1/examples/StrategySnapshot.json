@@ -1,0 +1,21 @@
+{
+  "company_id": "018f2000-0000-7000-8000-000000000100",
+  "invitation_id": "018f2000-0000-7000-8000-000000000210",
+  "interview_strategy_id": "018f2000-0000-7000-8000-000000000221",
+  "strategy_version": 1,
+  "competency_model_version_id": "018f2000-0000-7000-8000-000000000202",
+  "status": "partial",
+  "common_topics": [{"criterion_id": "018f2000-0000-7000-8000-000000000203"}],
+  "verification_points": [{"criterion_id": "018f2000-0000-7000-8000-000000000203"}],
+  "follow_up_directions": {"max_per_topic": 2},
+  "time_budget": {"minutes": 30},
+  "required_evidence_plan": {"required_criteria": 1},
+  "source_reference_candidates": [
+    {
+      "source_type": "submission_chunk",
+      "source_id": "018f2000-0000-7000-8000-000000000222",
+      "locator_version": 1
+    }
+  ],
+  "model_config_version": "strategy-model-v1"
+}

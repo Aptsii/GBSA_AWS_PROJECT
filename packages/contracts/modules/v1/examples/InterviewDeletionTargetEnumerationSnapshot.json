@@ -1,0 +1,14 @@
+{
+  "company_id": "018f2000-0000-7000-8000-000000000100",
+  "scope_type": "session",
+  "scope_id": "018f2000-0000-7000-8000-000000000230",
+  "owner_lane": "C",
+  "targets": [
+    {
+      "target_id": "018f2000-0000-7000-8000-000000000271",
+      "target_type": "session_hot_view",
+      "store": "dynamodb",
+      "target_version": 1
+    }
+  ]
+}

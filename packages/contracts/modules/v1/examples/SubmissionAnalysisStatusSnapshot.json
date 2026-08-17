@@ -1,0 +1,13 @@
+{
+  "company_id": "018f2000-0000-7000-8000-000000000100",
+  "invitation_id": "018f2000-0000-7000-8000-000000000210",
+  "overall_status": "partial",
+  "submissions": [
+    {
+      "submission_id": "018f2000-0000-7000-8000-000000000220",
+      "status": "partial",
+      "impact_code": "ONE_SOURCE_UNAVAILABLE"
+    }
+  ],
+  "strategy_ready": true
+}

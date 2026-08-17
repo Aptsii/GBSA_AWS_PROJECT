@@ -1,0 +1,190 @@
+{
+  "version": "1.0.0",
+  "common_types": "./common.json#/$defs",
+  "snapshots": [
+    {
+      "name": "CampaignSnapshot",
+      "owner": "A",
+      "consumers": ["B", "C", "D"],
+      "interfaces": ["get_campaign_snapshot"],
+      "schema": "./company_management.json#/$defs/CampaignSnapshot",
+      "example": "./examples/CampaignSnapshot.json"
+    },
+    {
+      "name": "CriterionVersionSnapshot",
+      "owner": "A",
+      "consumers": ["B", "C", "D"],
+      "interfaces": ["get_criterion_version"],
+      "schema": "./company_management.json#/$defs/CriterionVersionSnapshot",
+      "example": "./examples/CriterionVersionSnapshot.json"
+    },
+    {
+      "name": "InvitationAuthorizationSnapshot",
+      "owner": "A",
+      "consumers": ["B", "C", "D"],
+      "interfaces": ["authorize_invitation"],
+      "schema": "./company_management.json#/$defs/InvitationAuthorizationSnapshot",
+      "example": "./examples/InvitationAuthorizationSnapshot.json"
+    },
+    {
+      "name": "ConsentAuthorizationSnapshot",
+      "owner": "A",
+      "consumers": ["B", "C", "D"],
+      "interfaces": ["get_consent_authorization"],
+      "schema": "./company_management.json#/$defs/ConsentAuthorizationSnapshot",
+      "example": "./examples/ConsentAuthorizationSnapshot.json"
+    },
+    {
+      "name": "InvitationStateTransitionSnapshot",
+      "owner": "A",
+      "consumers": ["B", "C", "D"],
+      "interfaces": ["advance_invitation_state"],
+      "schema": "./company_management.json#/$defs/InvitationStateTransitionSnapshot",
+      "example": "./examples/InvitationStateTransitionSnapshot.json"
+    },
+    {
+      "name": "AuditAppendReceipt",
+      "owner": "A",
+      "consumers": ["A", "B", "C", "D"],
+      "interfaces": ["append_audit_event"],
+      "schema": "./company_management.json#/$defs/AuditAppendReceipt",
+      "example": "./examples/AuditAppendReceipt.json"
+    },
+    {
+      "name": "CompanyDeletionTargetEnumerationSnapshot",
+      "owner": "A",
+      "consumers": ["D"],
+      "interfaces": ["enumerate_company_deletion_targets"],
+      "schema": "./company_management.json#/$defs/CompanyDeletionTargetEnumerationSnapshot",
+      "example": "./examples/CompanyDeletionTargetEnumerationSnapshot.json"
+    },
+    {
+      "name": "CompanyDeletionTargetReceipt",
+      "owner": "A",
+      "consumers": ["D"],
+      "interfaces": ["delete_company_target"],
+      "schema": "./company_management.json#/$defs/CompanyDeletionTargetReceipt",
+      "example": "./examples/CompanyDeletionTargetReceipt.json"
+    },
+    {
+      "name": "SubmissionAnalysisStatusSnapshot",
+      "owner": "B",
+      "consumers": ["A", "C"],
+      "interfaces": ["get_analysis_status"],
+      "schema": "./submission_analysis.json#/$defs/SubmissionAnalysisStatusSnapshot",
+      "example": "./examples/SubmissionAnalysisStatusSnapshot.json"
+    },
+    {
+      "name": "StrategySnapshot",
+      "owner": "B",
+      "consumers": ["C"],
+      "interfaces": ["get_strategy_snapshot"],
+      "schema": "./submission_analysis.json#/$defs/StrategySnapshot",
+      "example": "./examples/StrategySnapshot.json"
+    },
+    {
+      "name": "RetrievedContextSnapshot",
+      "owner": "B",
+      "consumers": ["C"],
+      "interfaces": ["retrieve_context"],
+      "schema": "./submission_analysis.json#/$defs/RetrievedContextSnapshot",
+      "example": "./examples/RetrievedContextSnapshot.json"
+    },
+    {
+      "name": "SourceReferenceSnapshot",
+      "owner": "B",
+      "consumers": ["C", "D"],
+      "interfaces": ["resolve_source_reference"],
+      "schema": "./submission_analysis.json#/$defs/SourceReferenceSnapshot",
+      "example": "./examples/SourceReferenceSnapshot.json"
+    },
+    {
+      "name": "SubmissionDeletionTargetEnumerationSnapshot",
+      "owner": "B",
+      "consumers": ["D"],
+      "interfaces": ["enumerate_submission_deletion_targets"],
+      "schema": "./submission_analysis.json#/$defs/SubmissionDeletionTargetEnumerationSnapshot",
+      "example": "./examples/SubmissionDeletionTargetEnumerationSnapshot.json"
+    },
+    {
+      "name": "SubmissionDeletionTargetReceipt",
+      "owner": "B",
+      "consumers": ["D"],
+      "interfaces": ["delete_submission_target"],
+      "schema": "./submission_analysis.json#/$defs/SubmissionDeletionTargetReceipt",
+      "example": "./examples/SubmissionDeletionTargetReceipt.json"
+    },
+    {
+      "name": "SessionSnapshot",
+      "owner": "C",
+      "consumers": ["A", "D"],
+      "interfaces": ["get_session_snapshot"],
+      "schema": "./interview_engine.json#/$defs/SessionSnapshot",
+      "example": "./examples/SessionSnapshot.json"
+    },
+    {
+      "name": "FinalTurnSnapshot",
+      "owner": "C",
+      "consumers": ["D"],
+      "interfaces": ["get_final_turn"],
+      "schema": "./interview_engine.json#/$defs/FinalTurnSnapshot",
+      "example": "./examples/FinalTurnSnapshot.json"
+    },
+    {
+      "name": "FinalTurnPageSnapshot",
+      "owner": "C",
+      "consumers": ["D"],
+      "interfaces": ["list_final_turns"],
+      "schema": "./interview_engine.json#/$defs/FinalTurnPageSnapshot",
+      "example": "./examples/FinalTurnPageSnapshot.json"
+    },
+    {
+      "name": "RecordingChunkSetSnapshot",
+      "owner": "C",
+      "consumers": ["D"],
+      "interfaces": ["resolve_recording_chunks"],
+      "schema": "./interview_engine.json#/$defs/RecordingChunkSetSnapshot",
+      "example": "./examples/RecordingChunkSetSnapshot.json"
+    },
+    {
+      "name": "InterviewDeletionTargetEnumerationSnapshot",
+      "owner": "C",
+      "consumers": ["D"],
+      "interfaces": ["enumerate_interview_deletion_targets"],
+      "schema": "./interview_engine.json#/$defs/InterviewDeletionTargetEnumerationSnapshot",
+      "example": "./examples/InterviewDeletionTargetEnumerationSnapshot.json"
+    },
+    {
+      "name": "InterviewDeletionTargetReceipt",
+      "owner": "C",
+      "consumers": ["D"],
+      "interfaces": ["delete_interview_target"],
+      "schema": "./interview_engine.json#/$defs/InterviewDeletionTargetReceipt",
+      "example": "./examples/InterviewDeletionTargetReceipt.json"
+    },
+    {
+      "name": "ReviewProjectionSnapshot",
+      "owner": "D",
+      "consumers": ["A"],
+      "interfaces": ["get_review_projection"],
+      "schema": "./reporting.json#/$defs/ReviewProjectionSnapshot",
+      "example": "./examples/ReviewProjectionSnapshot.json"
+    },
+    {
+      "name": "ReportSnapshot",
+      "owner": "D",
+      "consumers": ["A"],
+      "interfaces": ["get_report"],
+      "schema": "./reporting.json#/$defs/ReportSnapshot",
+      "example": "./examples/ReportSnapshot.json"
+    },
+    {
+      "name": "DeletionStatusSnapshot",
+      "owner": "D",
+      "consumers": ["A"],
+      "interfaces": ["request_deletion", "get_deletion_status"],
+      "schema": "./reporting.json#/$defs/DeletionStatusSnapshot",
+      "example": "./examples/DeletionStatusSnapshot.json"
+    }
+  ]
+}

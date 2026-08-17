@@ -1,0 +1,21 @@
+{
+  "name": "@interview-evidence/contracts",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "types": "generated/typescript/index.ts",
+  "exports": {
+    ".": {
+      "types": "./generated/typescript/index.ts"
+    }
+  },
+  "scripts": {
+    "generate": "uv run python scripts/generate_contracts.py",
+    "check": "uv run python scripts/generate_contracts.py --check",
+    "test": "uv run python scripts/generate_contracts.py --check",
+    "typecheck": "tsc --noEmit --strict --skipLibCheck --target ES2023 --module ESNext --moduleResolution Bundler generated/typescript/index.ts"
+  },
+  "devDependencies": {
+    "typescript": "6.0.3"
+  }
+}

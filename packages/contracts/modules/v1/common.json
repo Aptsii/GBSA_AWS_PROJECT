@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ModuleBoundaryCommonTypesV1",
+  "$defs": {
+    "TenantContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["company_id", "actor_type", "actor_id", "request_id", "trace_id"],
+      "properties": {
+        "company_id": {"type": "string", "format": "uuid"},
+        "actor_type": {"type": "string", "enum": ["company_user", "applicant", "system"]},
+        "actor_id": {"type": "string", "format": "uuid"},
+        "request_id": {"type": "string", "format": "uuid"},
+        "trace_id": {"type": "string", "minLength": 1, "maxLength": 128}
+      }
+    },
+    "EntityRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["company_id", "entity_type", "entity_id"],
+      "properties": {
+        "company_id": {"type": "string", "format": "uuid"},
+        "entity_type": {"type": "string", "minLength": 1},
+        "entity_id": {"type": "string", "format": "uuid"},
+        "version": {"type": "integer", "minimum": 1}
+      }
+    },
+    "CommandMeta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["idempotency_key", "occurred_at"],
+      "properties": {
+        "idempotency_key": {"type": "string", "minLength": 16, "maxLength": 128},
+        "expected_version": {"type": "integer", "minimum": 1},
+        "occurred_at": {"type": "string", "format": "date-time"}
+      }
+    }
+  }
+}

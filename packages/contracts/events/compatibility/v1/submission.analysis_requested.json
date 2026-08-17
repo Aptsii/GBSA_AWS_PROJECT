@@ -1,0 +1,113 @@
+{
+  "event_type": "submission.analysis_requested",
+  "event_version": 1,
+  "messages": {
+    "full": {
+      "aggregate": {
+        "id": "018f1000-0000-7000-8000-000000000210",
+        "type": "submission",
+        "version": 1
+      },
+      "causation_id": "018f1000-0000-7000-8000-000000000001",
+      "company_id": "018f1000-0000-7000-8000-000000000100",
+      "correlation_id": "018f1000-0000-7000-8000-000000000310",
+      "event_id": "018f1000-0000-7000-8000-000000000010",
+      "event_type": "submission.analysis_requested",
+      "event_version": 1,
+      "idempotency_key": "analysis-requested-001",
+      "occurred_at": "2026-08-14T00:01:00Z",
+      "payload": {
+        "analysis_version": 1,
+        "limits_config_version": "analysis-limits-v1",
+        "source_object_id": "018f1000-0000-7000-8000-000000000211",
+        "source_type": "pdf",
+        "submission_id": "018f1000-0000-7000-8000-000000000210"
+      },
+      "trace_id": "trace-analysis-001"
+    },
+    "minimum": {
+      "aggregate": {
+        "id": "018f1000-0000-7000-8000-000000000210",
+        "type": "submission",
+        "version": 1
+      },
+      "causation_id": "018f1000-0000-7000-8000-000000000001",
+      "company_id": "018f1000-0000-7000-8000-000000000100",
+      "correlation_id": "018f1000-0000-7000-8000-000000000310",
+      "event_id": "018f1000-0000-7000-8000-000000000010",
+      "event_type": "submission.analysis_requested",
+      "event_version": 1,
+      "idempotency_key": "analysis-requested-001",
+      "occurred_at": "2026-08-14T00:01:00Z",
+      "payload": {
+        "analysis_version": 1,
+        "limits_config_version": "analysis-limits-v1",
+        "source_object_id": "018f1000-0000-7000-8000-000000000211",
+        "source_type": "pdf",
+        "submission_id": "018f1000-0000-7000-8000-000000000210"
+      },
+      "trace_id": "trace-analysis-001"
+    },
+    "unsupported_version": {
+      "aggregate": {
+        "id": "018f1000-0000-7000-8000-000000000210",
+        "type": "submission",
+        "version": 1
+      },
+      "causation_id": "018f1000-0000-7000-8000-000000000001",
+      "company_id": "018f1000-0000-7000-8000-000000000100",
+      "correlation_id": "018f1000-0000-7000-8000-000000000310",
+      "event_id": "018f1000-0000-7000-8000-000000000010",
+      "event_type": "submission.analysis_requested",
+      "event_version": 2,
+      "idempotency_key": "analysis-requested-001",
+      "occurred_at": "2026-08-14T00:01:00Z",
+      "payload": {
+        "analysis_version": 1,
+        "limits_config_version": "analysis-limits-v1",
+        "source_object_id": "018f1000-0000-7000-8000-000000000211",
+        "source_type": "pdf",
+        "submission_id": "018f1000-0000-7000-8000-000000000210"
+      },
+      "trace_id": "trace-analysis-001"
+    }
+  },
+  "scenarios": {
+    "duplicate": {
+      "delivery_count": 2,
+      "expectation": "idempotent_replay",
+      "message": "full"
+    },
+    "full": {
+      "expectation": "accepted",
+      "message": "full"
+    },
+    "minimum": {
+      "expectation": "accepted",
+      "message": "minimum"
+    },
+    "non_retryable_failure": {
+      "expectation": "rejected",
+      "failure_code": "BUSINESS_REJECTION",
+      "message": "full",
+      "retryable": false
+    },
+    "retryable_failure": {
+      "expectation": "retry",
+      "failure_code": "DEPENDENCY_TIMEOUT",
+      "message": "full",
+      "retryable": true
+    },
+    "unsupported_version": {
+      "error_code": "UNSUPPORTED_EVENT_VERSION",
+      "expectation": "quarantined",
+      "message": "unsupported_version"
+    },
+    "wrong_tenant": {
+      "error_code": "TENANT_SCOPE_MISMATCH",
+      "expectation": "rejected",
+      "message": "full",
+      "tenant_context_company_id": "018f1000-0000-7000-8000-999999999999"
+    }
+  }
+}

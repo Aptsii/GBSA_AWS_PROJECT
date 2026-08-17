@@ -1,0 +1,23 @@
+{
+  "company_id": "018f2000-0000-7000-8000-000000000100",
+  "applicant_id": "018f2000-0000-7000-8000-000000000211",
+  "interview_session_id": "018f2000-0000-7000-8000-000000000230",
+  "criterion_id": "018f2000-0000-7000-8000-000000000203",
+  "retrieval_config_version": "hybrid-retrieval-v1",
+  "results": [
+    {
+      "rank": 1,
+      "score": 0.91,
+      "source_reference": {
+        "company_id": "018f2000-0000-7000-8000-000000000100",
+        "source_type": "submission_chunk",
+        "source_id": "018f2000-0000-7000-8000-000000000222",
+        "source_version": 1,
+        "source_location": {"page": 2, "section": "프로젝트 경험"},
+        "ownership_confidence": null,
+        "source_hash": "1111111111111111111111111111111111111111111111111111111111111111",
+        "evidence_eligible": false
+      }
+    }
+  ]
+}

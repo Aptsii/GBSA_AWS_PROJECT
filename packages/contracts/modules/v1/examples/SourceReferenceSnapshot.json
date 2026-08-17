@@ -1,0 +1,10 @@
+{
+  "company_id": "018f2000-0000-7000-8000-000000000100",
+  "source_type": "submission_chunk",
+  "source_id": "018f2000-0000-7000-8000-000000000222",
+  "source_version": 1,
+  "source_location": {"page": 2, "section": "프로젝트 경험"},
+  "ownership_confidence": null,
+  "source_hash": "1111111111111111111111111111111111111111111111111111111111111111",
+  "evidence_eligible": false
+}
