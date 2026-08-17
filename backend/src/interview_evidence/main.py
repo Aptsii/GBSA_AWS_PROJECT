@@ -57,6 +57,7 @@ from interview_evidence.shared.errors import (
     SafeApplicationError,
 )
 from interview_evidence.shared.ids import OpaqueId, UUID7Generator
+from interview_evidence.shared.metrics import OperationalMetrics, OperationalMetricsMiddleware
 from interview_evidence.shared.observability import configure_structured_logging
 from interview_evidence.shared.runtime import (
     DatabaseTransactionMiddleware,
@@ -344,8 +345,10 @@ def create_app(
     engine: Engine | None = None,
     object_storage: ObjectStoragePort | None = None,
     company_authenticator: CompanyAuthenticator | None = None,
+    metrics: OperationalMetrics | None = None,
 ) -> FastAPI:
     configure_structured_logging()
+    active_metrics = metrics or OperationalMetrics()
     resources: ProductionResources | None = None
     if routers is None:
         active_settings = settings or _load_settings()
@@ -374,6 +377,8 @@ def create_app(
     if resources is not None:
         app.add_middleware(DatabaseTransactionMiddleware, registry=resources.sessions)
         app.state.production_resources = resources
+    app.add_middleware(OperationalMetricsMiddleware, metrics=active_metrics)
+    app.state.operational_metrics = active_metrics
 
     @app.exception_handler(SafeApplicationError)
     async def safe_application_error(

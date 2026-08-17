@@ -7,6 +7,11 @@ from threading import Event
 from interview_evidence.shared.database import metadata
 from interview_evidence.shared.errors import ErrorCode, SafeApplicationError
 from interview_evidence.shared.ids import FixedClock
+from interview_evidence.shared.metrics import (
+    InMemoryMetricSink,
+    MetricName,
+    OperationalMetrics,
+)
 from interview_evidence.shared.persistence import ProcessedMessageRow
 from interview_evidence.shared.tenant import TenantContext
 from interview_evidence.workers.__main__ import QueueEvent, QueueWorker
@@ -46,8 +51,13 @@ class _FakeSQS:
 
 
 class _Handler:
-    def __init__(self, failure: SafeApplicationError | None = None) -> None:
+    def __init__(
+        self,
+        failure: SafeApplicationError | None = None,
+        outcome: dict[str, object] | None = None,
+    ) -> None:
         self.failure = failure
+        self.outcome = outcome or {"status": "succeeded"}
         self.events: list[tuple[TenantContext, QueueEvent]] = []
 
     def handle_event(
@@ -58,20 +68,29 @@ class _Handler:
         self.events.append((context, event))
         if self.failure is not None:
             raise self.failure
-        return {"status": "succeeded"}
+        return self.outcome
 
 
-def _message(*, receive_count: int = 1, event_version: int = 1) -> dict[str, object]:
+def _message(
+    *,
+    receive_count: int = 1,
+    event_version: int = 1,
+    occurred_at: str = "2026-08-17T08:59:55Z",
+    sent_timestamp_ms: int = 1_786_957_198_000,
+) -> dict[str, object]:
     return {
         "MessageId": EVENT_ID,
         "ReceiptHandle": f"receipt-{receive_count}",
-        "Attributes": {"ApproximateReceiveCount": str(receive_count)},
+        "Attributes": {
+            "ApproximateReceiveCount": str(receive_count),
+            "SentTimestamp": str(sent_timestamp_ms),
+        },
         "Body": json.dumps(
             {
                 "event_id": EVENT_ID,
                 "event_type": "submission.analysis_requested",
                 "event_version": event_version,
-                "occurred_at": "2026-08-17T09:00:00Z",
+                "occurred_at": occurred_at,
                 "company_id": COMPANY_ID,
                 "aggregate": {
                     "type": "submission",
@@ -102,6 +121,7 @@ def _worker(
     sqs: _FakeSQS,
     handler: _Handler,
     factory: sessionmaker[Session],
+    metrics: OperationalMetrics | None = None,
 ) -> QueueWorker:
     return QueueWorker(
         sqs=sqs,
@@ -112,6 +132,7 @@ def _worker(
         clock=FixedClock(NOW),
         max_attempts=3,
         wait_time_seconds=0,
+        metrics=metrics,
     )
 
 
@@ -155,6 +176,36 @@ def test_retryable_failure_extends_visibility_without_acknowledging() -> None:
     assert sqs.deleted == []
     assert sqs.dead_letters == []
     assert sqs.visibility == [("receipt-2", 4)]
+
+
+def test_worker_boundary_records_queue_reconciliation_degraded_and_stage_metrics() -> None:
+    factory = _session_factory()
+    sqs = _FakeSQS([_message()])
+    sink = InMemoryMetricSink()
+    metrics = OperationalMetrics(sink, clock=FixedClock(NOW))
+    handler = _Handler(outcome={"status": "succeeded", "degraded_mode": "search_fallback"})
+
+    _worker(sqs, handler, factory, metrics).run_once()
+
+    by_name = {metric.name: metric for metric in sink.metrics}
+    assert by_name[MetricName.QUEUE_AGE].value == 2_000
+    assert by_name[MetricName.RECONCILIATION_LAG].value == 5_000
+    assert by_name[MetricName.DEGRADED_MODE].mode == "search_fallback"
+    assert by_name[MetricName.STAGE_LATENCY].operation_version == "event-v1"
+
+
+def test_worker_retry_action_emits_versioned_retry_metric() -> None:
+    factory = _session_factory()
+    sqs = _FakeSQS([_message(receive_count=2)])
+    sink = InMemoryMetricSink()
+    metrics = OperationalMetrics(sink, clock=FixedClock(NOW))
+    handler = _Handler(SafeApplicationError(ErrorCode.DEPENDENCY_TIMEOUT))
+
+    _worker(sqs, handler, factory, metrics).run_once()
+
+    retry = next(metric for metric in sink.metrics if metric.name is MetricName.RETRY)
+    assert retry.stage == "submission.analysis_requested"
+    assert retry.operation_version == "event-v1"
 
 
 def test_exhausted_or_unsupported_delivery_moves_to_dlq_and_acks() -> None:

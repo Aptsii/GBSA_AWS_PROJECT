@@ -18,6 +18,11 @@ from interview_evidence.shared.config import RuntimeEnvironment, Settings
 from interview_evidence.shared.database import metadata
 from interview_evidence.shared.errors import ErrorCode, SafeApplicationError
 from interview_evidence.shared.ids import FixedClock, OpaqueId
+from interview_evidence.shared.metrics import (
+    InMemoryMetricSink,
+    MetricName,
+    OperationalMetrics,
+)
 from interview_evidence.shared.observability import inject_trace_context
 from interview_evidence.shared.security.principals import CompanyPrincipal, FakeCompanyAuthenticator
 from pydantic import BaseModel, Field
@@ -209,6 +214,35 @@ def test_inbound_trace_context_reaches_outbound_carriers() -> None:
     )
 
     assert response.json()["traceparent"].split("-")[1] == traceparent.split("-")[1]
+
+
+def test_api_boundary_records_versioned_latency_retry_reconciliation_and_degraded_metrics() -> None:
+    router = APIRouter()
+
+    @router.get("/interview-sessions/{session_id}/resume")
+    def resume(session_id: str) -> dict[str, object]:
+        del session_id
+        return {
+            "degraded_modes": ["search_fallback"],
+            "retry_count": 2,
+            "reconciliation_lag_ms": 750,
+        }
+
+    sink = InMemoryMetricSink()
+    metrics = OperationalMetrics(sink)
+    response = TestClient(create_app(routers=(router,), metrics=metrics)).get(
+        "/v1/interview-sessions/018f2000-0000-7000-8000-000000000300/resume"
+    )
+
+    assert response.status_code == 200
+    assert {metric.name for metric in sink.metrics} == {
+        MetricName.STAGE_LATENCY,
+        MetricName.RETRY,
+        MetricName.RECONCILIATION_LAG,
+        MetricName.DEGRADED_MODE,
+    }
+    assert all(metric.operation_version == "api-v1" for metric in sink.metrics)
+    assert all(metric.stage == "interview" for metric in sink.metrics)
 
 
 def test_safe_application_errors_render_as_problem_json_without_the_cause() -> None:

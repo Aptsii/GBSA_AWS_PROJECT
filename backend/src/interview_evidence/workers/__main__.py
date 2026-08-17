@@ -7,10 +7,11 @@ import os
 import re
 import signal
 import sys
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from threading import Event
+from time import perf_counter
 from typing import Protocol
 
 import boto3  # type: ignore[import-untyped]
@@ -21,6 +22,11 @@ from interview_evidence.main import create_worker_registry
 from interview_evidence.shared.config import Settings
 from interview_evidence.shared.errors import ErrorCode, SafeApplicationError
 from interview_evidence.shared.ids import Clock, OpaqueId, SystemClock
+from interview_evidence.shared.metrics import (
+    MetricBoundary,
+    OperationalMetrics,
+    extract_operational_signals,
+)
 from interview_evidence.shared.persistence import SQLAlchemyProcessedMessageStore
 from interview_evidence.shared.tenant import ActorType, TenantContext
 
@@ -176,6 +182,8 @@ class QueueWorker:
         max_attempts: int = 5,
         wait_time_seconds: int = 20,
         visibility_timeout_seconds: int = 60,
+        metrics: OperationalMetrics | None = None,
+        monotonic: Callable[[], float] = perf_counter,
     ) -> None:
         if not queue_url or not dlq_url:
             raise ValueError("source queue and DLQ URLs are required")
@@ -194,6 +202,8 @@ class QueueWorker:
         self._max_attempts = max_attempts
         self._wait_time_seconds = wait_time_seconds
         self._visibility_timeout_seconds = visibility_timeout_seconds
+        self._metrics = metrics or OperationalMetrics(clock=self._clock)
+        self._monotonic = monotonic
 
     def run(self, shutdown: Event) -> None:
         while not shutdown.is_set():
@@ -225,54 +235,96 @@ class QueueWorker:
         return len(messages)
 
     def _process_message(self, message: dict[str, object]) -> None:
+        started_at = self._monotonic()
         receipt_handle = str(message.get("ReceiptHandle", ""))
         body = message.get("Body")
         receive_count = _receive_count(message)
+        event: QueueEvent | None = None
+        result = "failed"
         if not receipt_handle or not isinstance(body, str):
             self._dead_letter(message, "INVALID_REQUEST", receive_count)
-            return
-        try:
-            event = QueueEvent.from_body(body)
-            if event.event_version != 1:
-                raise UnsupportedEventVersion
-            handler = self._registry.get(event.event_type)
-            if handler is None:
-                raise UnsupportedEventType
-            context = event.context()
-            with self._session_factory() as session:
-                store = SQLAlchemyProcessedMessageStore(session)
-                existing = store.find(
-                    context,
-                    consumer_name=event.event_type,
-                    event_id=event.event_id,
-                    event_version=event.event_version,
-                    idempotency_key=event.idempotency_key,
+        else:
+            try:
+                event = QueueEvent.from_body(body)
+                stage = event.event_type
+                operation_version = f"event-v{event.event_version}"
+                self._metrics.record_queue_age(
+                    stage=stage,
+                    operation_version=operation_version,
+                    age_ms=_queue_age_ms(message, self._clock.now(), event.occurred_at),
                 )
-                if existing is None:
-                    outcome = _invoke_handler(handler, context, event)
-                    store.record_outcome(
+                if event.event_version != 1:
+                    raise UnsupportedEventVersion
+                handler = self._registry.get(event.event_type)
+                if handler is None:
+                    raise UnsupportedEventType
+                context = event.context()
+                outcome: Mapping[str, object] | None = None
+                with self._session_factory() as session:
+                    store = SQLAlchemyProcessedMessageStore(session)
+                    existing = store.find(
                         context,
                         consumer_name=event.event_type,
                         event_id=event.event_id,
                         event_version=event.event_version,
                         idempotency_key=event.idempotency_key,
-                        first_processed_at=self._clock.now(),
-                        outcome=outcome,
                     )
-                    session.commit()
-            self._ack(receipt_handle)
-        except SafeApplicationError as error:
-            if error.code in _RETRYABLE_CODES and receive_count < self._max_attempts:
-                self._retry(receipt_handle, receive_count)
-                return
-            self._dead_letter(message, error.code.value, receive_count)
-        except (UnsupportedEventType, UnsupportedEventVersion):
-            self._dead_letter(message, "UNSUPPORTED_EVENT", receive_count)
-        except Exception:
-            if receive_count < self._max_attempts:
-                self._retry(receipt_handle, receive_count)
-                return
-            self._dead_letter(message, ErrorCode.INTERNAL_ERROR.value, receive_count)
+                    if existing is None:
+                        outcome = _invoke_handler(handler, context, event)
+                        store.record_outcome(
+                            context,
+                            consumer_name=event.event_type,
+                            event_id=event.event_id,
+                            event_version=event.event_version,
+                            idempotency_key=event.idempotency_key,
+                            first_processed_at=self._clock.now(),
+                            outcome=outcome,
+                        )
+                        session.commit()
+                self._ack(receipt_handle)
+                result = "succeeded"
+                self._metrics.record_reconciliation_lag(
+                    boundary=MetricBoundary.WORKER,
+                    stage=stage,
+                    operation_version=operation_version,
+                    lag_ms=_elapsed_ms(event.occurred_at, self._clock.now()),
+                )
+                if outcome is not None:
+                    for mode in extract_operational_signals(outcome).degraded_modes:
+                        self._metrics.record_degraded_mode(
+                            boundary=MetricBoundary.WORKER,
+                            stage=stage,
+                            operation_version=operation_version,
+                            mode=mode,
+                        )
+            except SafeApplicationError as error:
+                if error.code in _RETRYABLE_CODES and receive_count < self._max_attempts:
+                    self._record_retry(event)
+                    self._retry(receipt_handle, receive_count)
+                else:
+                    self._dead_letter(message, error.code.value, receive_count)
+            except (UnsupportedEventType, UnsupportedEventVersion):
+                self._dead_letter(message, "UNSUPPORTED_EVENT", receive_count)
+            except Exception:
+                if receive_count < self._max_attempts:
+                    self._record_retry(event)
+                    self._retry(receipt_handle, receive_count)
+                else:
+                    self._dead_letter(message, ErrorCode.INTERNAL_ERROR.value, receive_count)
+        self._metrics.record_stage_latency(
+            boundary=MetricBoundary.WORKER,
+            stage=event.event_type if event is not None else "queue_message",
+            operation_version=f"event-v{event.event_version}" if event is not None else "event-v0",
+            elapsed_ms=max(0.0, (self._monotonic() - started_at) * 1000),
+            result=result,
+        )
+
+    def _record_retry(self, event: QueueEvent | None) -> None:
+        self._metrics.record_retry(
+            boundary=MetricBoundary.WORKER,
+            stage=event.event_type if event is not None else "queue_message",
+            operation_version=f"event-v{event.event_version}" if event is not None else "event-v0",
+        )
 
     def _retry(self, receipt_handle: str, receive_count: int) -> None:
         delay = min(900, max(1, 2**receive_count))
@@ -364,6 +416,26 @@ def _receive_count(message: Mapping[str, object]) -> int:
         return max(1, int(str(attributes.get("ApproximateReceiveCount", "1"))))
     except ValueError:
         return 1
+
+
+def _queue_age_ms(
+    message: Mapping[str, object],
+    now: datetime,
+    fallback: datetime,
+) -> float:
+    attributes = message.get("Attributes")
+    if isinstance(attributes, Mapping):
+        try:
+            sent_at_ms = int(str(attributes.get("SentTimestamp", "")))
+        except ValueError:
+            sent_at_ms = -1
+        if sent_at_ms >= 0:
+            return max(0.0, (now.timestamp() * 1000) - sent_at_ms)
+    return _elapsed_ms(fallback, now)
+
+
+def _elapsed_ms(started_at: datetime, completed_at: datetime) -> float:
+    return max(0.0, (completed_at - started_at).total_seconds() * 1000)
 
 
 def main() -> int:
