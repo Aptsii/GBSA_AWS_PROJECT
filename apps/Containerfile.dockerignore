@@ -1,0 +1,9 @@
+*
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!apps/
+!apps/**
+!packages/
+!packages/contracts/
+!packages/contracts/**

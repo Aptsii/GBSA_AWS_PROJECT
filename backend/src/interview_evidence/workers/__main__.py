@@ -1,13 +1,29 @@
-"""Fail-closed worker entrypoint until Integration task T176 wires handlers."""
+"""Worker process entrypoint with fail-closed handler registration."""
 
 from __future__ import annotations
 
+import signal
 import sys
+from threading import Event
+
+from interview_evidence.main import create_worker_registry
 
 
 def main() -> int:
-    sys.stderr.write("No worker handlers are registered; complete T176 before launch.\n")
-    return 2
+    registry = create_worker_registry()
+    if not registry:
+        sys.stderr.write("No worker handlers are registered.\n")
+        return 2
+
+    shutdown = Event()
+
+    def stop(_signal_number: int, _frame: object) -> None:
+        shutdown.set()
+
+    signal.signal(signal.SIGINT, stop)
+    signal.signal(signal.SIGTERM, stop)
+    shutdown.wait()
+    return 0
 
 
 if __name__ == "__main__":
