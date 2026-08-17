@@ -156,20 +156,144 @@ class ReportingRepository:
         self.session = session
 
     def report_row(self, context: TenantContext, report_id: str | OpaqueId) -> ReportRow:
+        row = self.session.get(ReportRow, str(OpaqueId(report_id)))
+        if row is None:
+            raise SafeApplicationError(ErrorCode.RESOURCE_NOT_FOUND)
+        ensure_company_scope(context, row.company_id)
+        return row
+
+    def report_items(
+        self, context: TenantContext, report_id: str | OpaqueId
+    ) -> tuple[ReportItemRow, ...]:
+        self.report_row(context, report_id)
+        rows = self.session.scalars(
+            select(ReportItemRow)
+            .where(
+                ReportItemRow.company_id == str(context.company_id),
+                ReportItemRow.report_id == str(OpaqueId(report_id)),
+            )
+            .order_by(ReportItemRow.criterion_id, ReportItemRow.report_item_id)
+        ).all()
+        return tuple(rows)
+
+    def transcript_rows(
+        self, context: TenantContext, session_id: str | OpaqueId
+    ) -> tuple[TranscriptSegmentRow, ...]:
+        ensure_company_scope(context, context.company_id)
+        rows = self.session.scalars(
+            select(TranscriptSegmentRow)
+            .where(
+                TranscriptSegmentRow.company_id == str(context.company_id),
+                TranscriptSegmentRow.interview_session_id == str(OpaqueId(session_id)),
+            )
+            .order_by(
+                TranscriptSegmentRow.session_start_ms,
+                TranscriptSegmentRow.transcript_segment_id,
+            )
+        ).all()
+        return tuple(rows)
+
+    def recording_asset_rows(
+        self, context: TenantContext, session_id: str | OpaqueId
+    ) -> tuple[RecordingAssetRow, ...]:
+        ensure_company_scope(context, context.company_id)
+        rows = self.session.scalars(
+            select(RecordingAssetRow)
+            .where(
+                RecordingAssetRow.company_id == str(context.company_id),
+                RecordingAssetRow.interview_session_id == str(OpaqueId(session_id)),
+            )
+            .order_by(RecordingAssetRow.created_at, RecordingAssetRow.recording_asset_id)
+        ).all()
+        return tuple(rows)
+
+    def session_event_rows(
+        self, context: TenantContext, session_id: str | OpaqueId
+    ) -> tuple[SessionEventRow, ...]:
+        ensure_company_scope(context, context.company_id)
+        rows = self.session.scalars(
+            select(SessionEventRow)
+            .where(
+                SessionEventRow.company_id == str(context.company_id),
+                SessionEventRow.interview_session_id == str(OpaqueId(session_id)),
+            )
+            .order_by(SessionEventRow.session_start_ms, SessionEventRow.session_event_id)
+        ).all()
+        return tuple(rows)
+
+    def evidence_rows(
+        self, context: TenantContext, report_item_id: str | OpaqueId
+    ) -> tuple[EvidenceRow, ...]:
+        ensure_company_scope(context, context.company_id)
+        rows = self.session.scalars(
+            select(EvidenceRow)
+            .where(
+                EvidenceRow.company_id == str(context.company_id),
+                EvidenceRow.report_item_id == str(OpaqueId(report_item_id)),
+            )
+            .order_by(EvidenceRow.video_start_ms, EvidenceRow.evidence_id)
+        ).all()
+        return tuple(rows)
+
+    def human_review_rows(
+        self, context: TenantContext, report_id: str | OpaqueId
+    ) -> tuple[HumanReviewRow, ...]:
+        self.report_row(context, report_id)
+        rows = self.session.scalars(
+            select(HumanReviewRow)
+            .where(
+                HumanReviewRow.company_id == str(context.company_id),
+                HumanReviewRow.report_id == str(OpaqueId(report_id)),
+            )
+            .order_by(HumanReviewRow.created_at, HumanReviewRow.human_review_id)
+        ).all()
+        return tuple(rows)
+
+    def deletion_request_row(
+        self, context: TenantContext, deletion_request_id: str | OpaqueId
+    ) -> DeletionRequestRow:
+        row = self.session.get(DeletionRequestRow, str(OpaqueId(deletion_request_id)))
+        if row is None:
+            raise SafeApplicationError(ErrorCode.RESOURCE_NOT_FOUND)
+        ensure_company_scope(context, row.company_id)
+        return row
+
+    def deletion_manifest_row(
+        self, context: TenantContext, deletion_request_id: str | OpaqueId
+    ) -> DeletionManifestRow:
+        self.deletion_request_row(context, deletion_request_id)
         row = self.session.scalar(
-            select(ReportRow).where(
-                ReportRow.report_id == str(OpaqueId(report_id)),
-                ReportRow.company_id == str(context.company_id),
+            select(DeletionManifestRow).where(
+                DeletionManifestRow.company_id == str(context.company_id),
+                DeletionManifestRow.deletion_request_id == str(OpaqueId(deletion_request_id)),
             )
         )
         if row is None:
             raise SafeApplicationError(ErrorCode.RESOURCE_NOT_FOUND)
         return row
 
+    def deletion_target_rows(
+        self, context: TenantContext, manifest_id: str | OpaqueId
+    ) -> tuple[DeletionTargetRow, ...]:
+        checked_manifest_id = str(OpaqueId(manifest_id))
+        manifest = self.session.get(DeletionManifestRow, checked_manifest_id)
+        if manifest is None:
+            raise SafeApplicationError(ErrorCode.RESOURCE_NOT_FOUND)
+        ensure_company_scope(context, manifest.company_id)
+        rows = self.session.scalars(
+            select(DeletionTargetRow)
+            .where(
+                DeletionTargetRow.company_id == str(context.company_id),
+                DeletionTargetRow.manifest_id == checked_manifest_id,
+            )
+            .order_by(DeletionTargetRow.target_id)
+        ).all()
+        return tuple(rows)
+
     def add(self, context: TenantContext, row: Base) -> None:
-        ensure_company_scope(context, context.company_id)
         company_id = getattr(row, "company_id", None)
-        if company_id != str(context.company_id):
-            raise SafeApplicationError(ErrorCode.TENANT_SCOPE_DENIED)
+        if not isinstance(company_id, str):
+            raise ValueError("reporting rows require company_id")
+        ensure_company_scope(context, company_id)
         self.session.add(row)
         self.session.flush()

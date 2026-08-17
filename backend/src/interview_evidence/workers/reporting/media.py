@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 from datetime import UTC, datetime
 
-from interview_evidence.reporting.domain.timeline import RecordingAsset
+from interview_evidence.reporting.domain.timeline import AssetStatus, AssetType, RecordingAsset
 from interview_evidence.shared.ids import OpaqueId, UUID7Generator
 
 
@@ -36,11 +36,11 @@ class MediaProcessor:
             asset_id,
             OpaqueId(company_id),
             OpaqueId(session_id),
-            "final_video",
+            AssetType.FINAL_VIDEO,
             f"reporting/{company_id}/{session_id}/{asset_id}",
             hashlib.sha256(payload).hexdigest(),
             cursor,
-            "partial" if missing else "ready",
+            AssetStatus.PARTIAL if missing else AssetStatus.READY,
             tuple(missing),
             datetime.now(UTC),
         )

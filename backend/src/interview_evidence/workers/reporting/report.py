@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from interview_evidence.reporting.domain.report import AssessmentState, Report, ReportItem
+from interview_evidence.reporting.domain.report import AssessmentState, Evidence, Report, ReportItem
 from interview_evidence.shared.ids import OpaqueId, UUID7Generator
 
 
@@ -17,7 +17,7 @@ class ReportGenerator:
         session_id: str | OpaqueId,
         model_id: str | OpaqueId,
         criteria: tuple[tuple[str, str], ...],
-        evidence_by_criterion: dict[str, tuple[object, ...]],
+        evidence_by_criterion: dict[str, tuple[Evidence, ...]],
     ) -> Report:
         report_id = self._ids.new()
         items = tuple(

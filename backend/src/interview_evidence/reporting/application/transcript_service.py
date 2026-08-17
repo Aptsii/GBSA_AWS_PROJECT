@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from interview_evidence.reporting.domain.timeline import TranscriptSegment
+from interview_evidence.reporting.domain.timeline import TimelineSpeaker, TranscriptSegment
 from interview_evidence.shared.ids import OpaqueId, UUID7Generator
 from interview_evidence.shared.tenant import TenantContext, ensure_company_scope
 
@@ -19,7 +19,7 @@ class TranscriptService:
         company_id: str | OpaqueId,
         interview_session_id: str | OpaqueId,
         turn_id: str | OpaqueId,
-        speaker: str,
+        speaker: str | TimelineSpeaker,
         final_turn: bool,
         text: str,
         confidence: float,
@@ -35,7 +35,7 @@ class TranscriptService:
             OpaqueId(company_id),
             OpaqueId(interview_session_id),
             OpaqueId(turn_id),
-            speaker,
+            TimelineSpeaker(speaker),
             text,
             confidence,
             start_ms,
