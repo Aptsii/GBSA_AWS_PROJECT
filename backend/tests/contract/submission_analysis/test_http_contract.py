@@ -5,12 +5,12 @@ from typing import Any
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-
 from interview_evidence.shared.tenant import ApplicantScope, TenantContext
 from interview_evidence.submission_analysis.api.applicant_routes import (
     ApplicantRouteRuntime,
     create_applicant_router,
 )
+
 from tests.fixtures.shared.factories import (
     APPLICANT_ID,
     COMPANY_ID,
