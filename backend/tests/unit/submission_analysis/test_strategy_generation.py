@@ -25,10 +25,15 @@ def _scope() -> ApplicantScope:
     return ApplicantScope(COMPANY_ID, APPLICANT_ID, INVITATION_ID)
 
 
+def _id_generator(clock: FixedClock, value: int) -> UUID7Generator:
+    return UUID7Generator(clock, randbytes=lambda size: bytes([value]) * size)
+
+
 def test_strategy_generation_keeps_fixed_criteria_and_source_provenance() -> None:
+    clock = FixedClock(datetime(2026, 8, 17, tzinfo=UTC))
     service = StrategyService(
-        clock=FixedClock(datetime(2026, 8, 17, tzinfo=UTC)),
-        id_generator=UUID7Generator(seed=44),
+        clock=clock,
+        id_generator=_id_generator(clock, 44),
     )
     source = SourceReference(
         company_id=COMPANY_ID,
@@ -65,9 +70,10 @@ def test_strategy_generation_keeps_fixed_criteria_and_source_provenance() -> Non
 
 
 def test_strategy_rejects_verification_point_outside_fixed_criteria() -> None:
+    clock = FixedClock(datetime(2026, 8, 17, tzinfo=UTC))
     service = StrategyService(
-        clock=FixedClock(datetime(2026, 8, 17, tzinfo=UTC)),
-        id_generator=UUID7Generator(seed=45),
+        clock=clock,
+        id_generator=_id_generator(clock, 45),
     )
     with pytest.raises(ValueError, match="fixed criterion"):
         service.generate(
