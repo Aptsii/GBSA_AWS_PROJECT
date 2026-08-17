@@ -9,6 +9,7 @@
 .venv/
 __pycache__/
 *.py[cod]
+*.egg-info/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
@@ -18,9 +19,11 @@ htmlcov/
 # JavaScript
 node_modules/
 dist/
+build/
 coverage/
 playwright-report/
 test-results/
+*.log
 
 # Terraform
 .terraform/
@@ -31,6 +34,9 @@ crash.log
 
 # Editors and operating systems
 .DS_Store
+Thumbs.db
+*.tmp
+*.swp
 .idea/
 .vscode/
 

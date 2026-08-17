@@ -1,0 +1,14 @@
+.agents/
+.specify/
+**/dist/
+**/node_modules/
+**/coverage/
+packages/contracts/generated/
+packages/contracts/events/
+packages/contracts/modules/
+packages/contracts/openapi/
+specs/
+AI_구조화_면접_플랫폼_프로젝트_기획서.md
+compose.yaml
+pnpm-lock.yaml
+uv.lock
