@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CommonDomainEventsV1",
+  "oneOf": [
+    {"$ref": "#/$defs/InvitationConsentCompletedEventV1"},
+    {"$ref": "#/$defs/InvitationEmailRequestedEventV1"},
+    {"$ref": "#/$defs/RetentionExpiredEventV1"}
+  ],
+  "$defs": {
+    "InvitationConsentCompletedEventV1": {
+      "title": "InvitationConsentCompletedEventV1",
+      "allOf": [
+        {"$ref": "./envelope.json"},
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {"const": "invitation.consent_completed"},
+            "event_version": {"const": 1},
+            "aggregate": {
+              "type": "object",
+              "properties": {"type": {"const": "invitation"}}
+            },
+            "payload": {"$ref": "#/$defs/InvitationConsentCompletedPayloadV1"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "InvitationConsentCompletedPayloadV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "invitation_id",
+        "applicant_id",
+        "consent_record_id",
+        "purpose_codes",
+        "retention_policy_version",
+        "retention_days"
+      ],
+      "properties": {
+        "invitation_id": {"type": "string", "format": "uuid"},
+        "applicant_id": {"type": "string", "format": "uuid"},
+        "consent_record_id": {"type": "string", "format": "uuid"},
+        "purpose_codes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "enum": ["document_analysis", "recording", "ai_assessment"]}
+        },
+        "retention_policy_version": {"type": "string", "minLength": 1},
+        "retention_days": {"type": "integer", "minimum": 1}
+      }
+    },
+    "InvitationEmailRequestedEventV1": {
+      "title": "InvitationEmailRequestedEventV1",
+      "allOf": [
+        {"$ref": "./envelope.json"},
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {"const": "invitation.email_requested"},
+            "event_version": {"const": 1},
+            "aggregate": {
+              "type": "object",
+              "properties": {"type": {"const": "invitation"}}
+            },
+            "payload": {"$ref": "#/$defs/InvitationEmailRequestedPayloadV1"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "InvitationEmailRequestedPayloadV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "invitation_id",
+        "applicant_id",
+        "campaign_id",
+        "email_delivery_request_id",
+        "template_id",
+        "link_resolution_id",
+        "expires_at"
+      ],
+      "properties": {
+        "invitation_id": {"type": "string", "format": "uuid"},
+        "applicant_id": {"type": "string", "format": "uuid"},
+        "campaign_id": {"type": "string", "format": "uuid"},
+        "email_delivery_request_id": {"type": "string", "format": "uuid"},
+        "template_id": {"type": "string", "format": "uuid"},
+        "link_resolution_id": {"type": "string", "format": "uuid"},
+        "expires_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "RetentionExpiredEventV1": {
+      "title": "RetentionExpiredEventV1",
+      "allOf": [
+        {"$ref": "./envelope.json"},
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {"const": "retention.expired"},
+            "event_version": {"const": 1},
+            "aggregate": {
+              "type": "object",
+              "properties": {"type": {"const": "invitation"}}
+            },
+            "payload": {"$ref": "#/$defs/RetentionExpiredPayloadV1"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "RetentionExpiredPayloadV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["invitation_id", "applicant_id", "policy_snapshot_id", "expired_at"],
+      "properties": {
+        "invitation_id": {"type": "string", "format": "uuid"},
+        "applicant_id": {"type": "string", "format": "uuid"},
+        "policy_snapshot_id": {"type": "string", "format": "uuid"},
+        "expired_at": {"type": "string", "format": "date-time"}
+      }
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "event_id": "018f1000-0000-7000-8000-000000000035",
+  "event_type": "deletion.target_verified",
+  "event_version": 1,
+  "occurred_at": "2026-08-14T01:02:00Z",
+  "company_id": "018f1000-0000-7000-8000-000000000100",
+  "aggregate": {"type": "deletion_request", "id": "018f1000-0000-7000-8000-000000000260", "version": 3},
+  "idempotency_key": "target-verified-0001",
+  "trace_id": "trace-deletion-001",
+  "correlation_id": "018f1000-0000-7000-8000-000000000333",
+  "causation_id": "018f1000-0000-7000-8000-000000000034",
+  "payload": {
+    "deletion_request_id": "018f1000-0000-7000-8000-000000000260",
+    "target_id": "018f1000-0000-7000-8000-000000000262",
+    "status": "verified_absent",
+    "verified_at": "2026-08-14T01:02:00Z"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "event_id": "018f1000-0000-7000-8000-000000000010",
+  "event_type": "submission.analysis_requested",
+  "event_version": 1,
+  "occurred_at": "2026-08-14T00:01:00Z",
+  "company_id": "018f1000-0000-7000-8000-000000000100",
+  "aggregate": {"type": "submission", "id": "018f1000-0000-7000-8000-000000000210", "version": 1},
+  "idempotency_key": "analysis-requested-001",
+  "trace_id": "trace-analysis-001",
+  "correlation_id": "018f1000-0000-7000-8000-000000000310",
+  "causation_id": "018f1000-0000-7000-8000-000000000001",
+  "payload": {
+    "submission_id": "018f1000-0000-7000-8000-000000000210",
+    "analysis_version": 1,
+    "source_type": "pdf",
+    "source_object_id": "018f1000-0000-7000-8000-000000000211",
+    "limits_config_version": "analysis-limits-v1"
+  }
+}

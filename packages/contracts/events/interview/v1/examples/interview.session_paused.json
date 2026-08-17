@@ -1,0 +1,18 @@
+{
+  "event_id": "018f1000-0000-7000-8000-000000000021",
+  "event_type": "interview.session_paused",
+  "event_version": 1,
+  "occurred_at": "2026-08-14T00:11:00Z",
+  "company_id": "018f1000-0000-7000-8000-000000000100",
+  "aggregate": {"type": "interview_session", "id": "018f1000-0000-7000-8000-000000000230", "version": 9},
+  "idempotency_key": "session-paused-00009",
+  "trace_id": "trace-interview-001",
+  "correlation_id": "018f1000-0000-7000-8000-000000000320",
+  "causation_id": "018f1000-0000-7000-8000-000000000020",
+  "payload": {
+    "interview_session_id": "018f1000-0000-7000-8000-000000000230",
+    "session_sequence": 9,
+    "technical_reason_code": "NETWORK_INTERRUPTION",
+    "retryable": true
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "event_id": "018f1000-0000-7000-8000-000000000002",
+  "event_type": "invitation.email_requested",
+  "event_version": 1,
+  "occurred_at": "2026-08-14T00:00:30Z",
+  "company_id": "018f1000-0000-7000-8000-000000000100",
+  "aggregate": {
+    "type": "invitation",
+    "id": "018f1000-0000-7000-8000-000000000210",
+    "version": 1
+  },
+  "idempotency_key": "invitation-email-0001",
+  "trace_id": "trace-invitation-email-001",
+  "correlation_id": "018f1000-0000-7000-8000-000000000302",
+  "causation_id": null,
+  "payload": {
+    "invitation_id": "018f1000-0000-7000-8000-000000000210",
+    "applicant_id": "018f1000-0000-7000-8000-000000000211",
+    "campaign_id": "018f1000-0000-7000-8000-000000000200",
+    "email_delivery_request_id": "018f1000-0000-7000-8000-000000000212",
+    "template_id": "018f1000-0000-7000-8000-000000000213",
+    "link_resolution_id": "018f1000-0000-7000-8000-000000000214",
+    "expires_at": "2026-08-21T00:00:30Z"
+  }
+}

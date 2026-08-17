@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SubmissionDomainEventsV1",
+  "oneOf": [
+    {"$ref": "#/$defs/SubmissionAnalysisRequestedEventV1"},
+    {"$ref": "#/$defs/SubmissionAnalysisCompletedEventV1"},
+    {"$ref": "#/$defs/StrategyReadyEventV1"}
+  ],
+  "$defs": {
+    "SubmissionAnalysisRequestedEventV1": {
+      "title": "SubmissionAnalysisRequestedEventV1",
+      "allOf": [
+        {"$ref": "../../common/v1/envelope.json"},
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {"const": "submission.analysis_requested"},
+            "event_version": {"const": 1},
+            "aggregate": {"type": "object", "properties": {"type": {"const": "submission"}}},
+            "payload": {"$ref": "#/$defs/SubmissionAnalysisRequestedPayloadV1"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "SubmissionAnalysisRequestedPayloadV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "submission_id",
+        "analysis_version",
+        "source_type",
+        "source_object_id",
+        "limits_config_version"
+      ],
+      "properties": {
+        "submission_id": {"type": "string", "format": "uuid"},
+        "analysis_version": {"type": "integer", "minimum": 1},
+        "source_type": {"type": "string", "enum": ["cover_letter", "resume", "pdf", "public_git", "public_url"]},
+        "source_object_id": {"type": "string", "format": "uuid"},
+        "limits_config_version": {"type": "string", "minLength": 1}
+      }
+    },
+    "SubmissionAnalysisCompletedEventV1": {
+      "title": "SubmissionAnalysisCompletedEventV1",
+      "allOf": [
+        {"$ref": "../../common/v1/envelope.json"},
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {"const": "submission.analysis_completed"},
+            "event_version": {"const": 1},
+            "aggregate": {"type": "object", "properties": {"type": {"const": "submission"}}},
+            "payload": {"$ref": "#/$defs/SubmissionAnalysisCompletedPayloadV1"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "SubmissionAnalysisCompletedPayloadV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["invitation_id", "submission_id", "analysis_id", "status", "impact_code"],
+      "properties": {
+        "invitation_id": {"type": "string", "format": "uuid"},
+        "submission_id": {"type": "string", "format": "uuid"},
+        "analysis_id": {"type": "string", "format": "uuid"},
+        "status": {"type": "string", "enum": ["ready", "partial", "failed"]},
+        "impact_code": {"type": ["string", "null"]}
+      }
+    },
+    "StrategyReadyEventV1": {
+      "title": "StrategyReadyEventV1",
+      "allOf": [
+        {"$ref": "../../common/v1/envelope.json"},
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {"const": "strategy.ready"},
+            "event_version": {"const": 1},
+            "aggregate": {"type": "object", "properties": {"type": {"const": "interview_strategy"}}},
+            "payload": {"$ref": "#/$defs/StrategyReadyPayloadV1"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "StrategyReadyPayloadV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "invitation_id",
+        "interview_strategy_id",
+        "strategy_version",
+        "competency_model_version_id",
+        "status"
+      ],
+      "properties": {
+        "invitation_id": {"type": "string", "format": "uuid"},
+        "interview_strategy_id": {"type": "string", "format": "uuid"},
+        "strategy_version": {"type": "integer", "minimum": 1},
+        "competency_model_version_id": {"type": "string", "format": "uuid"},
+        "status": {"type": "string", "enum": ["ready", "partial"]}
+      }
+    }
+  }
+}

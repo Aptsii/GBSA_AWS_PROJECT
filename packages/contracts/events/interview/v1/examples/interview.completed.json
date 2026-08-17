@@ -1,0 +1,19 @@
+{
+  "event_id": "018f1000-0000-7000-8000-000000000022",
+  "event_type": "interview.completed",
+  "event_version": 1,
+  "occurred_at": "2026-08-14T00:30:00Z",
+  "company_id": "018f1000-0000-7000-8000-000000000100",
+  "aggregate": {"type": "interview_session", "id": "018f1000-0000-7000-8000-000000000230", "version": 60},
+  "idempotency_key": "interview-complete-060",
+  "trace_id": "trace-interview-001",
+  "correlation_id": "018f1000-0000-7000-8000-000000000320",
+  "causation_id": "018f1000-0000-7000-8000-000000000020",
+  "payload": {
+    "interview_session_id": "018f1000-0000-7000-8000-000000000230",
+    "invitation_id": "018f1000-0000-7000-8000-000000000200",
+    "last_turn_id": "018f1000-0000-7000-8000-000000000239",
+    "completed_at": "2026-08-14T00:30:00Z",
+    "media_status": "pending"
+  }
+}

@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "InterviewDomainEventsV1",
+  "oneOf": [
+    {"$ref": "#/$defs/InterviewTurnFinalizedEventV1"},
+    {"$ref": "#/$defs/InterviewSessionPausedEventV1"},
+    {"$ref": "#/$defs/InterviewCompletedEventV1"}
+  ],
+  "$defs": {
+    "InterviewTurnFinalizedEventV1": {
+      "title": "InterviewTurnFinalizedEventV1",
+      "allOf": [
+        {"$ref": "../../common/v1/envelope.json"},
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {"const": "interview.turn_finalized"},
+            "event_version": {"const": 1},
+            "aggregate": {"type": "object", "properties": {"type": {"const": "interview_session"}}},
+            "payload": {"$ref": "#/$defs/InterviewTurnFinalizedPayloadV1"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "InterviewTurnFinalizedPayloadV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "interview_session_id",
+        "turn_id",
+        "turn_sequence",
+        "speaker",
+        "transcript_status",
+        "recording_range_status"
+      ],
+      "properties": {
+        "interview_session_id": {"type": "string", "format": "uuid"},
+        "turn_id": {"type": "string", "format": "uuid"},
+        "turn_sequence": {"type": "integer", "minimum": 1},
+        "speaker": {"type": "string", "enum": ["interviewer", "applicant"]},
+        "transcript_status": {"type": "string", "enum": ["final", "review_required"]},
+        "recording_range_status": {"type": "string", "enum": ["ready", "pending"]}
+      }
+    },
+    "InterviewSessionPausedEventV1": {
+      "title": "InterviewSessionPausedEventV1",
+      "allOf": [
+        {"$ref": "../../common/v1/envelope.json"},
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {"const": "interview.session_paused"},
+            "event_version": {"const": 1},
+            "aggregate": {"type": "object", "properties": {"type": {"const": "interview_session"}}},
+            "payload": {"$ref": "#/$defs/InterviewSessionPausedPayloadV1"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "InterviewSessionPausedPayloadV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["interview_session_id", "session_sequence", "technical_reason_code", "retryable"],
+      "properties": {
+        "interview_session_id": {"type": "string", "format": "uuid"},
+        "session_sequence": {"type": "integer", "minimum": 0},
+        "technical_reason_code": {"type": "string", "minLength": 1},
+        "retryable": {"type": "boolean"}
+      }
+    },
+    "InterviewCompletedEventV1": {
+      "title": "InterviewCompletedEventV1",
+      "allOf": [
+        {"$ref": "../../common/v1/envelope.json"},
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {"const": "interview.completed"},
+            "event_version": {"const": 1},
+            "aggregate": {"type": "object", "properties": {"type": {"const": "interview_session"}}},
+            "payload": {"$ref": "#/$defs/InterviewCompletedPayloadV1"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "InterviewCompletedPayloadV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "interview_session_id",
+        "invitation_id",
+        "last_turn_id",
+        "completed_at",
+        "media_status"
+      ],
+      "properties": {
+        "interview_session_id": {"type": "string", "format": "uuid"},
+        "invitation_id": {"type": "string", "format": "uuid"},
+        "last_turn_id": {"type": "string", "format": "uuid"},
+        "completed_at": {"type": "string", "format": "date-time"},
+        "media_status": {"type": "string", "enum": ["ready", "pending", "partial"]}
+      }
+    }
+  }
+}

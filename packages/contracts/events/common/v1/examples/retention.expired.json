@@ -1,0 +1,18 @@
+{
+  "event_id": "018f1000-0000-7000-8000-000000000002",
+  "event_type": "retention.expired",
+  "event_version": 1,
+  "occurred_at": "2026-08-14T00:00:00Z",
+  "company_id": "018f1000-0000-7000-8000-000000000100",
+  "aggregate": {"type": "invitation", "id": "018f1000-0000-7000-8000-000000000200", "version": 9},
+  "idempotency_key": "retention-expired-001",
+  "trace_id": "trace-retention-001",
+  "correlation_id": "018f1000-0000-7000-8000-000000000301",
+  "causation_id": null,
+  "payload": {
+    "invitation_id": "018f1000-0000-7000-8000-000000000200",
+    "applicant_id": "018f1000-0000-7000-8000-000000000201",
+    "policy_snapshot_id": "018f1000-0000-7000-8000-000000000203",
+    "expired_at": "2026-08-14T00:00:00Z"
+  }
+}

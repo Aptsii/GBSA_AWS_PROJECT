@@ -1,0 +1,200 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ReportingDomainEventsV1",
+  "oneOf": [
+    {"$ref": "#/$defs/MediaPostprocessRequestedEventV1"},
+    {"$ref": "#/$defs/ReportGenerationRequestedEventV1"},
+    {"$ref": "#/$defs/ReportReadyEventV1"},
+    {"$ref": "#/$defs/DeletionRequestedEventV1"},
+    {"$ref": "#/$defs/DeletionTargetRequestedEventV1"},
+    {"$ref": "#/$defs/DeletionTargetVerifiedEventV1"}
+  ],
+  "$defs": {
+    "MediaPostprocessRequestedEventV1": {
+      "title": "MediaPostprocessRequestedEventV1",
+      "allOf": [
+        {"$ref": "../../common/v1/envelope.json"},
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {"const": "media.postprocess_requested"},
+            "event_version": {"const": 1},
+            "aggregate": {"type": "object", "properties": {"type": {"const": "recording_asset"}}},
+            "payload": {"$ref": "#/$defs/MediaPostprocessRequestedPayloadV1"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "MediaPostprocessRequestedPayloadV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["interview_session_id", "ordered_chunk_set_id", "output_profile_version"],
+      "properties": {
+        "interview_session_id": {"type": "string", "format": "uuid"},
+        "ordered_chunk_set_id": {"type": "string", "format": "uuid"},
+        "output_profile_version": {"type": "string", "minLength": 1}
+      }
+    },
+    "ReportGenerationRequestedEventV1": {
+      "title": "ReportGenerationRequestedEventV1",
+      "allOf": [
+        {"$ref": "../../common/v1/envelope.json"},
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {"const": "report.generation_requested"},
+            "event_version": {"const": 1},
+            "aggregate": {"type": "object", "properties": {"type": {"const": "report"}}},
+            "payload": {"$ref": "#/$defs/ReportGenerationRequestedPayloadV1"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "ReportGenerationRequestedPayloadV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["interview_session_id", "report_version", "competency_model_version_id"],
+      "properties": {
+        "interview_session_id": {"type": "string", "format": "uuid"},
+        "report_version": {"type": "integer", "minimum": 1},
+        "competency_model_version_id": {"type": "string", "format": "uuid"}
+      }
+    },
+    "ReportReadyEventV1": {
+      "title": "ReportReadyEventV1",
+      "allOf": [
+        {"$ref": "../../common/v1/envelope.json"},
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {"const": "report.ready"},
+            "event_version": {"const": 1},
+            "aggregate": {"type": "object", "properties": {"type": {"const": "report"}}},
+            "payload": {"$ref": "#/$defs/ReportReadyPayloadV1"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "ReportReadyPayloadV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "interview_session_id",
+        "report_id",
+        "report_version",
+        "status",
+        "confirmed_count",
+        "partially_confirmed_count",
+        "insufficient_evidence_count",
+        "needs_follow_up_count"
+      ],
+      "properties": {
+        "interview_session_id": {"type": "string", "format": "uuid"},
+        "report_id": {"type": "string", "format": "uuid"},
+        "report_version": {"type": "integer", "minimum": 1},
+        "status": {"type": "string", "enum": ["ready", "partial"]},
+        "confirmed_count": {"type": "integer", "minimum": 0},
+        "partially_confirmed_count": {"type": "integer", "minimum": 0},
+        "insufficient_evidence_count": {"type": "integer", "minimum": 0},
+        "needs_follow_up_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "DeletionRequestedEventV1": {
+      "title": "DeletionRequestedEventV1",
+      "allOf": [
+        {"$ref": "../../common/v1/envelope.json"},
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {"const": "deletion.requested"},
+            "event_version": {"const": 1},
+            "aggregate": {"type": "object", "properties": {"type": {"const": "deletion_request"}}},
+            "payload": {"$ref": "#/$defs/DeletionRequestedPayloadV1"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "DeletionRequestedPayloadV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["deletion_request_id", "manifest_id", "scope_type", "scope_id"],
+      "properties": {
+        "deletion_request_id": {"type": "string", "format": "uuid"},
+        "manifest_id": {"type": "string", "format": "uuid"},
+        "scope_type": {"type": "string", "enum": ["applicant", "invitation"]},
+        "scope_id": {"type": "string", "format": "uuid"}
+      }
+    },
+    "DeletionTargetRequestedEventV1": {
+      "title": "DeletionTargetRequestedEventV1",
+      "allOf": [
+        {"$ref": "../../common/v1/envelope.json"},
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {"const": "deletion.target_requested"},
+            "event_version": {"const": 1},
+            "aggregate": {"type": "object", "properties": {"type": {"const": "deletion_request"}}},
+            "payload": {"$ref": "#/$defs/DeletionTargetRequestedPayloadV1"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "DeletionTargetRequestedPayloadV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "deletion_request_id",
+        "manifest_id",
+        "owner_lane",
+        "target_id",
+        "target_type",
+        "target_store",
+        "target_version",
+        "verification_required"
+      ],
+      "properties": {
+        "deletion_request_id": {"type": "string", "format": "uuid"},
+        "manifest_id": {"type": "string", "format": "uuid"},
+        "owner_lane": {"type": "string", "enum": ["A", "B", "C", "D"]},
+        "target_id": {"type": "string", "format": "uuid"},
+        "target_type": {"type": "string", "minLength": 1},
+        "target_store": {"type": "string", "enum": ["aurora", "dynamodb", "s3", "opensearch"]},
+        "target_version": {"type": "integer", "minimum": 1},
+        "verification_required": {"const": true}
+      }
+    },
+    "DeletionTargetVerifiedEventV1": {
+      "title": "DeletionTargetVerifiedEventV1",
+      "allOf": [
+        {"$ref": "../../common/v1/envelope.json"},
+        {
+          "type": "object",
+          "properties": {
+            "event_type": {"const": "deletion.target_verified"},
+            "event_version": {"const": 1},
+            "aggregate": {"type": "object", "properties": {"type": {"const": "deletion_request"}}},
+            "payload": {"$ref": "#/$defs/DeletionTargetVerifiedPayloadV1"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "DeletionTargetVerifiedPayloadV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["deletion_request_id", "target_id", "status", "verified_at"],
+      "properties": {
+        "deletion_request_id": {"type": "string", "format": "uuid"},
+        "target_id": {"type": "string", "format": "uuid"},
+        "status": {"const": "verified_absent"},
+        "verified_at": {"type": "string", "format": "date-time"}
+      }
+    }
+  }
+}

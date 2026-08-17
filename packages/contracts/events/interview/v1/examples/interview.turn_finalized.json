@@ -1,0 +1,20 @@
+{
+  "event_id": "018f1000-0000-7000-8000-000000000020",
+  "event_type": "interview.turn_finalized",
+  "event_version": 1,
+  "occurred_at": "2026-08-14T00:10:00Z",
+  "company_id": "018f1000-0000-7000-8000-000000000100",
+  "aggregate": {"type": "interview_session", "id": "018f1000-0000-7000-8000-000000000230", "version": 8},
+  "idempotency_key": "turn-finalized-00008",
+  "trace_id": "trace-interview-001",
+  "correlation_id": "018f1000-0000-7000-8000-000000000320",
+  "causation_id": "018f1000-0000-7000-8000-000000000019",
+  "payload": {
+    "interview_session_id": "018f1000-0000-7000-8000-000000000230",
+    "turn_id": "018f1000-0000-7000-8000-000000000231",
+    "turn_sequence": 8,
+    "speaker": "applicant",
+    "transcript_status": "review_required",
+    "recording_range_status": "ready"
+  }
+}

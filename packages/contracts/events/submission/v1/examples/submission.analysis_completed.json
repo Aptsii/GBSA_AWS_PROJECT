@@ -1,0 +1,19 @@
+{
+  "event_id": "018f1000-0000-7000-8000-000000000011",
+  "event_type": "submission.analysis_completed",
+  "event_version": 1,
+  "occurred_at": "2026-08-14T00:02:00Z",
+  "company_id": "018f1000-0000-7000-8000-000000000100",
+  "aggregate": {"type": "submission", "id": "018f1000-0000-7000-8000-000000000210", "version": 2},
+  "idempotency_key": "analysis-completed-001",
+  "trace_id": "trace-analysis-001",
+  "correlation_id": "018f1000-0000-7000-8000-000000000310",
+  "causation_id": "018f1000-0000-7000-8000-000000000010",
+  "payload": {
+    "invitation_id": "018f1000-0000-7000-8000-000000000200",
+    "submission_id": "018f1000-0000-7000-8000-000000000210",
+    "analysis_id": "018f1000-0000-7000-8000-000000000212",
+    "status": "partial",
+    "impact_code": "ONE_SOURCE_UNAVAILABLE"
+  }
+}

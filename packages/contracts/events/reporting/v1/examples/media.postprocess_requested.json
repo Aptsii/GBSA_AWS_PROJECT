@@ -1,0 +1,17 @@
+{
+  "event_id": "018f1000-0000-7000-8000-000000000030",
+  "event_type": "media.postprocess_requested",
+  "event_version": 1,
+  "occurred_at": "2026-08-14T00:30:01Z",
+  "company_id": "018f1000-0000-7000-8000-000000000100",
+  "aggregate": {"type": "recording_asset", "id": "018f1000-0000-7000-8000-000000000240", "version": 1},
+  "idempotency_key": "media-postprocess-001",
+  "trace_id": "trace-reporting-001",
+  "correlation_id": "018f1000-0000-7000-8000-000000000330",
+  "causation_id": "018f1000-0000-7000-8000-000000000022",
+  "payload": {
+    "interview_session_id": "018f1000-0000-7000-8000-000000000230",
+    "ordered_chunk_set_id": "018f1000-0000-7000-8000-000000000241",
+    "output_profile_version": "review-media-v1"
+  }
+}

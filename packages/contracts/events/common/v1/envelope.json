@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AsyncEventEnvelopeV1",
+  "type": "object",
+  "required": [
+    "event_id",
+    "event_type",
+    "event_version",
+    "occurred_at",
+    "company_id",
+    "aggregate",
+    "idempotency_key",
+    "trace_id",
+    "correlation_id",
+    "causation_id",
+    "payload"
+  ],
+  "properties": {
+    "event_id": {"type": "string", "format": "uuid"},
+    "event_type": {"type": "string", "minLength": 1},
+    "event_version": {"type": "integer", "minimum": 1},
+    "occurred_at": {"type": "string", "format": "date-time"},
+    "company_id": {"type": "string", "format": "uuid"},
+    "aggregate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id", "version"],
+      "properties": {
+        "type": {"type": "string", "minLength": 1},
+        "id": {"type": "string", "format": "uuid"},
+        "version": {"type": "integer", "minimum": 1}
+      }
+    },
+    "idempotency_key": {"type": "string", "minLength": 16, "maxLength": 128},
+    "trace_id": {"type": "string", "minLength": 1, "maxLength": 128},
+    "correlation_id": {"type": "string", "format": "uuid"},
+    "causation_id": {"type": ["string", "null"], "format": "uuid"},
+    "payload": {"type": "object"}
+  }
+}
