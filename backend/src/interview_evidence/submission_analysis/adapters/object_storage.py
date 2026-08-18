@@ -74,15 +74,24 @@ class SubmissionObjectStorage:
             expires_at=expires_at,
         )
         self._intents[(scope.company_id, upload_id)] = record
+        import asyncio
+
+        signed = asyncio.run(
+            self._storage.authorize_upload(
+                context,
+                record.object_ref,
+                media_type=media_type,
+                content_hash=sha256,
+                byte_size=byte_size,
+                expires_at=expires_at,
+            )
+        )
         return {
             "upload_id": str(upload_id),
-            "method": "PUT",
-            "url": f"https://uploads.invalid/{upload_id}",
-            "required_headers": {
-                "content-type": media_type,
-                "x-content-sha256": sha256,
-            },
-            "expires_at": expires_at,
+            "method": signed.method,
+            "url": signed.url,
+            "required_headers": dict(signed.required_headers),
+            "expires_at": signed.expires_at,
         }
 
     def intent(
@@ -132,6 +141,29 @@ class SubmissionObjectStorage:
             raise SafeApplicationError(ErrorCode.INVALID_REQUEST)
         asyncio.run(self._put(context, record, content))
         record.uploaded = True
+
+    def verify_upload(
+        self,
+        context: TenantContext,
+        scope: ApplicantScope,
+        upload_id: str | OpaqueId,
+    ) -> UploadIntentRecord:
+        import asyncio
+
+        record = self.intent(context, scope, upload_id)
+        if self._clock.now() > record.expires_at:
+            raise SafeApplicationError(ErrorCode.AUTHENTICATION_EXPIRED)
+        asyncio.run(
+            self._storage.verify_upload(
+                context,
+                record.object_ref,
+                media_type=record.media_type,
+                content_hash=record.expected_sha256,
+                byte_size=record.expected_byte_size,
+            )
+        )
+        record.uploaded = True
+        return record
 
     async def _get(self, context: TenantContext, record: UploadIntentRecord) -> ProtectedBytes:
         return await self._storage.get(context, record.object_ref)

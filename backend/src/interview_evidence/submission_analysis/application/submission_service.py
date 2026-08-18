@@ -138,9 +138,7 @@ class SubmissionApplicationService:
             return replay
         if source_type in {SourceType.COVER_LETTER, SourceType.RESUME, SourceType.PDF}:
             upload_id = str(arguments["upload_id"])
-            intent = self._object_storage.intent(context, scope, upload_id)
-            if not intent.uploaded:
-                raise SafeApplicationError(ErrorCode.CONFLICT)
+            intent = self._object_storage.verify_upload(context, scope, upload_id)
             source_uri = f"upload:{upload_id}"
             original_filename = intent.filename
             content_hash = intent.expected_sha256

@@ -100,6 +100,7 @@ def test_lane_b_quickstart_creates_scoped_strategy_and_deletes_derived_data() ->
             byte_size=len(document_content),
             sha256=hashlib.sha256(document_content).hexdigest(),
         )
+        assert intent["url"] != "https://uploads.invalid"
         object_storage.accept_upload(
             _context(),
             _scope(),
