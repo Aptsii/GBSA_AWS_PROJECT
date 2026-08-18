@@ -3,8 +3,10 @@ import { expect, test } from "@playwright/test";
 const companyOrigin = process.env.IEP_COMPANY_ORIGIN ?? "http://localhost:5173";
 const applicantOrigin =
   process.env.IEP_APPLICANT_ORIGIN ?? "http://localhost:5174";
-const companyBearer =
-  process.env.IEP_LOCAL_COMPANY_BEARER ?? "local-company-token";
+const companyEmail =
+  process.env.IEP_LOCAL_COMPANY_EMAIL ?? "local-owner@example.test";
+const companyPassword =
+  process.env.IEP_LOCAL_COMPANY_PASSWORD ?? "local-development-password";
 
 test("company campaign reaches applicant consent and an explicit human decision", async ({
   browser,
@@ -16,8 +18,9 @@ test("company campaign reaches applicant consent and an explicit human decision"
   const companyPage = await companyContext.newPage();
 
   await companyPage.goto(`${companyOrigin}/hiring`);
-  await companyPage.getByLabel("기업 Bearer 토큰").fill(companyBearer);
-  await companyPage.getByRole("button", { name: "기업 API 연결" }).click();
+  await companyPage.getByLabel("기업 이메일").fill(companyEmail);
+  await companyPage.getByLabel("비밀번호").fill(companyPassword);
+  await companyPage.getByRole("button", { name: "로그인" }).click();
   await expect(
     companyPage.getByText("local-owner@example.test 연결됨"),
   ).toBeVisible();
@@ -76,20 +79,28 @@ test("company campaign reaches applicant consent and an explicit human decision"
     companyPage.getByText("초대 1건이 API에서 접수되었습니다."),
   ).toBeVisible();
 
+  const localSessionResponse = await companyPage.request.post(
+    `${companyOrigin}/v1/local/company-sessions`,
+    { data: { email: companyEmail, password: companyPassword } },
+  );
+  expect(localSessionResponse.ok()).toBeTruthy();
+  const localSession = (await localSessionResponse.json()) as {
+    access_token: string;
+  };
   const fixtureResponse = await companyPage.request.get(
     `${companyOrigin}/v1/local/browser-fixtures/campaigns/${campaign.campaign_id}/invitations/${invitationId}`,
-    { headers: { Authorization: `Bearer ${companyBearer}` } },
+    { headers: { Authorization: `Bearer ${localSession.access_token}` } },
   );
   expect(fixtureResponse.ok()).toBeTruthy();
   const fixture = (await fixtureResponse.json()) as {
-    invitation_token: string;
+    invitation_url: string;
   };
 
   const applicantContext = await browser.newContext();
   const applicantPage = await applicantContext.newPage();
-  await applicantPage.goto(`${applicantOrigin}/access`);
-  await applicantPage.getByLabel("초대 코드").fill(fixture.invitation_token);
-  await applicantPage.getByRole("button", { name: "초대 확인" }).click();
+  await applicantPage.goto(fixture.invitation_url);
+  await expect(applicantPage.getByLabel("이름")).toBeVisible();
+  await expect(applicantPage).toHaveURL(`${applicantOrigin}/access`);
   await applicantPage.getByLabel("이름").fill(applicantName);
   await applicantPage
     .getByLabel("본인 확인 값")

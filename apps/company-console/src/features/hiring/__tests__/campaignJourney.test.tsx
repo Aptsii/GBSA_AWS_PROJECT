@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { HiringApi } from "../api";
 import { HiringJourney } from "../index";
+import type { CompanyIdentitySession } from "../../company/identity";
 
 describe("기업 채용 캠페인 여정", () => {
   it("실제 API gateway를 통해 직무, 기준, 캠페인과 초대를 구성한다", async () => {
@@ -52,13 +53,26 @@ describe("기업 채용 캠페인 여정", () => {
         invitations: [],
       }),
     };
-    render(<HiringJourney api={api} onBearerChange={vi.fn()} />);
+    const identity: CompanyIdentitySession = {
+      getBearer: vi.fn().mockResolvedValue("company-session-token"),
+      hasSession: vi.fn().mockReturnValue(false),
+      signIn: vi.fn().mockResolvedValue(undefined),
+      signOut: vi.fn(),
+    };
+    render(<HiringJourney api={api} identity={identity} />);
 
-    fireEvent.change(screen.getByLabelText("기업 Bearer 토큰"), {
-      target: { value: "local-company-token" },
+    fireEvent.change(screen.getByLabelText("기업 이메일"), {
+      target: { value: "owner@example.com" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "기업 API 연결" }));
+    fireEvent.change(screen.getByLabelText("비밀번호"), {
+      target: { value: "ValidPassword!123" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "로그인" }));
     expect(await screen.findByText("owner@example.com 연결됨")).toBeDefined();
+    expect(identity.signIn).toHaveBeenCalledWith(
+      "owner@example.com",
+      "ValidPassword!123",
+    );
 
     fireEvent.change(screen.getByLabelText("직무명"), {
       target: { value: "백엔드 엔지니어" },

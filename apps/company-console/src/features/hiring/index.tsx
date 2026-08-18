@@ -5,29 +5,32 @@ import type {
   Position,
 } from "@interview-evidence/contracts";
 import { ApiProblem } from "@interview-evidence/web-client";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
-import { getCompanyBearer, setCompanyBearer } from "../../app/api";
+import { companyIdentitySession } from "../../app/api";
+import type { CompanyIdentitySession } from "../company/identity";
 import { hiringApi, type HiringApi } from "./api";
 
 interface HiringJourneyProps {
   readonly api?: HiringApi;
-  readonly onBearerChange?: (value: string) => void;
+  readonly identity?: CompanyIdentitySession;
 }
 
 export function HiringJourney({
   api = hiringApi,
-  onBearerChange = setCompanyBearer,
+  identity = companyIdentitySession,
 }: HiringJourneyProps) {
-  const [bearerToken, setBearerToken] = useState(
-    () => getCompanyBearer() ?? "",
-  );
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [user, setUser] = useState<CompanyUserView | null>(null);
   const [position, setPosition] = useState<Position | null>(null);
   const [criterionVersion, setCriterionVersion] =
     useState<CompetencyModelVersion | null>(null);
   const [campaign, setCampaign] = useState<Campaign | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
+  const [restoreOnMount] = useState(() => identity.hasSession());
+  const [busy, setBusy] = useState<string | null>(() =>
+    restoreOnMount ? "restore" : null,
+  );
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
 
@@ -41,6 +44,28 @@ export function HiringJourney({
   );
   const [applicantName, setApplicantName] = useState("");
   const [applicantEmail, setApplicantEmail] = useState("");
+
+  useEffect(() => {
+    if (!restoreOnMount) return;
+    let active = true;
+    void api
+      .loadWorkspace()
+      .then((workspace) => {
+        if (!active) return;
+        setUser(workspace.user);
+        setPosition(workspace.positions[0] ?? null);
+        setStatus(`${workspace.user.email} 세션 복원됨`);
+      })
+      .catch(() => {
+        identity.signOut();
+      })
+      .finally(() => {
+        if (active) setBusy(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [api, identity, restoreOnMount]);
 
   async function run(action: string, operation: () => Promise<void>) {
     setBusy(action);
@@ -78,29 +103,59 @@ export function HiringJourney({
 
       <form
         onSubmit={(event) =>
-          submit(event, "connect", async () => {
-            onBearerChange(bearerToken);
+          submit(event, "login", async () => {
+            await identity.signIn(email, password);
             const workspace = await api.loadWorkspace();
             setUser(workspace.user);
             setPosition(workspace.positions[0] ?? null);
+            setPassword("");
             setStatus(`${workspace.user.email} 연결됨`);
           })
         }
       >
-        <h2>0. 기업 API 연결</h2>
-        <label htmlFor="company-bearer">기업 Bearer 토큰</label>
+        <h2>0. 기업 로그인</h2>
+        <label htmlFor="company-email">기업 이메일</label>
         <input
-          id="company-bearer"
-          type="password"
-          autoComplete="off"
-          value={bearerToken}
-          onChange={(event) => setBearerToken(event.target.value)}
+          id="company-email"
+          type="email"
+          autoComplete="username"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
           required
         />
-        <button type="submit" disabled={!bearerToken.trim() || busy !== null}>
-          {busy === "connect" ? "연결 중" : "기업 API 연결"}
+        <label htmlFor="company-password">비밀번호</label>
+        <input
+          id="company-password"
+          type="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          required
+        />
+        <button
+          type="submit"
+          disabled={!email.includes("@") || !password || busy !== null}
+        >
+          {busy === "login" ? "로그인 중" : "로그인"}
         </button>
-        {user && <p>연결 계정: {user.email}</p>}
+        {user && (
+          <p>
+            연결 계정: {user.email}{" "}
+            <button
+              type="button"
+              onClick={() => {
+                identity.signOut();
+                setUser(null);
+                setPosition(null);
+                setCriterionVersion(null);
+                setCampaign(null);
+                setStatus("로그아웃되었습니다.");
+              }}
+            >
+              로그아웃
+            </button>
+          </p>
+        )}
       </form>
 
       <form
@@ -286,5 +341,6 @@ function problemMessage(caught: unknown): string {
       ? `${caught.message}: ${caught.detail}`
       : caught.message;
   }
+  if (caught instanceof Error) return caught.message;
   return "API 요청 중 예상하지 못한 오류가 발생했습니다.";
 }

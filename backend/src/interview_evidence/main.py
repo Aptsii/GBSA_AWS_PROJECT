@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import hmac
 import os
 import re
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from datetime import timedelta
 from types import MappingProxyType
+from urllib.parse import urlencode, urljoin
 
 import boto3  # type: ignore[import-untyped]
 from fastapi import APIRouter, FastAPI, Request, WebSocket
@@ -14,6 +16,7 @@ from fastapi.responses import JSONResponse
 from opentelemetry import context as otel_context
 from opentelemetry import propagate
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
@@ -177,8 +180,37 @@ def create_application_routers(runtimes: ApplicationRuntimes) -> tuple[APIRouter
     )
 
 
-def create_local_browser_fixture_router(runtime: CompanyRouteRuntime) -> APIRouter:
+class _LocalCompanySessionCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: str = Field(min_length=3, max_length=320)
+    password: str = Field(min_length=1, max_length=512)
+
+
+def create_local_browser_fixture_router(
+    runtime: CompanyRouteRuntime,
+    settings: Settings,
+) -> APIRouter:
     router = APIRouter()
+    company_bearer = os.getenv("IEP_LOCAL_COMPANY_BEARER", "")
+    company_email = os.getenv("IEP_LOCAL_COMPANY_EMAIL", "local-owner@example.test")
+    company_password = os.getenv("IEP_LOCAL_COMPANY_PASSWORD", "local-development-password")
+
+    @router.post("/local/company-sessions", include_in_schema=False)
+    def create_local_company_session(
+        payload: _LocalCompanySessionCreate,
+    ) -> dict[str, str]:
+        email_matches = hmac.compare_digest(
+            payload.email.strip().lower(), company_email.strip().lower()
+        )
+        password_matches = hmac.compare_digest(payload.password, company_password)
+        if not company_bearer or not email_matches or not password_matches:
+            raise SafeApplicationError(ErrorCode.AUTHENTICATION_REQUIRED)
+        principal = runtime.authenticator.authenticate(company_bearer)
+        return {
+            "access_token": company_bearer,
+            "expires_at": principal.expires_at.isoformat().replace("+00:00", "Z"),
+        }
 
     @router.get(
         "/local/browser-fixtures/campaigns/{campaign_id}/invitations/{invitation_id}",
@@ -197,9 +229,13 @@ def create_local_browser_fixture_router(runtime: CompanyRouteRuntime) -> APIRout
         invitations = runtime.hiring_service.list_invitations(context, campaign_id)
         if not any(str(item.invitation_id) == invitation_id for item in invitations):
             raise SafeApplicationError(ErrorCode.RESOURCE_NOT_FOUND)
+        invitation_token = runtime.hiring_service.get_test_delivery_token(invitation_id)
+        invitation_url = urljoin(str(settings.invitation_public_base_url), "access")
+        invitation_query = urlencode({"invitation_token": invitation_token})
         return {
             "invitation_id": invitation_id,
-            "invitation_token": runtime.hiring_service.get_test_delivery_token(invitation_id),
+            "invitation_token": invitation_token,
+            "invitation_url": f"{invitation_url}?{invitation_query}",
         }
 
     return router
@@ -541,7 +577,10 @@ def create_app(
         )
         routers = create_application_routers(runtimes)
         if company_authenticator is None and local_company_authenticator is not None:
-            routers = (*routers, create_local_browser_fixture_router(runtimes.company))
+            routers = (
+                *routers,
+                create_local_browser_fixture_router(runtimes.company, active_settings),
+            )
     app = FastAPI(
         title="Interview Evidence Platform API",
         version="1.0.0",

@@ -29,15 +29,19 @@ class JWTCompanyAuthenticator:
                 algorithms=["RS256", "ES256"],
                 audience=self._audience,
                 issuer=self._issuer,
-                options={"require": ["exp", "iat", "sub", "company_id", "company_user_id"]},
+                options={"require": ["exp", "iat", "sub"]},
             )
-            roles = claims.get("roles", [])
+            company_id = claims.get("company_id", claims.get("custom:company_id"))
+            company_user_id = claims.get("company_user_id", claims.get("custom:company_user_id"))
+            roles = claims.get("roles", claims.get("cognito:groups", []))
+            if isinstance(roles, str):
+                roles = [role.strip() for role in roles.split(",") if role.strip()]
             if not isinstance(roles, list) or not all(isinstance(role, str) for role in roles):
                 raise ValueError("roles claim is invalid")
             return CompanyPrincipal(
-                company_id=OpaqueId(str(claims["company_id"])),
-                company_user_id=OpaqueId(str(claims["company_user_id"])),
-                identity_subject=str(claims["sub"]),
+                company_id=OpaqueId(str(company_id)),
+                company_user_id=OpaqueId(str(company_user_id)),
+                identity_subject=str(claims.get("email", claims["sub"])),
                 roles=frozenset(roles),
                 issued_at=datetime.fromtimestamp(int(claims["iat"]), tz=UTC),
                 expires_at=datetime.fromtimestamp(int(claims["exp"]), tz=UTC),

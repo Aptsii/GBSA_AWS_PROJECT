@@ -149,6 +149,8 @@ def test_local_browser_fixture_releases_invitation_token_only_to_local_company(
 ) -> None:
     credential = "local-browser-fixture-token"
     monkeypatch.setenv("IEP_LOCAL_COMPANY_BEARER", credential)
+    monkeypatch.setenv("IEP_LOCAL_COMPANY_EMAIL", "owner@example.test")
+    monkeypatch.setenv("IEP_LOCAL_COMPANY_PASSWORD", "local-password")
     settings = Settings(
         environment=RuntimeEnvironment.LOCAL,
         database_url="sqlite+pysqlite:///:memory:",
@@ -175,6 +177,18 @@ def test_local_browser_fixture_releases_invitation_token_only_to_local_company(
             object_storage=FakeObjectStorage(),
         )
     )
+    invalid_login = client.post(
+        "/v1/local/company-sessions",
+        json={"email": "owner@example.test", "password": "wrong-password"},
+    )
+    assert invalid_login.status_code == 401
+    login = client.post(
+        "/v1/local/company-sessions",
+        json={"email": "owner@example.test", "password": "local-password"},
+    )
+    assert login.status_code == 200
+    assert login.json()["access_token"] == credential
+    assert login.json()["expires_at"]
     headers = {
         "Authorization": f"Bearer {credential}",
         "Idempotency-Key": "local-browser-position-0001",
@@ -259,6 +273,9 @@ def test_local_browser_fixture_releases_invitation_token_only_to_local_company(
     assert fixture.status_code == 200
     assert fixture.json()["invitation_id"] == invitation_id
     assert fixture.json()["invitation_token"]
+    assert fixture.json()["invitation_url"].startswith(
+        "http://localhost:5174/access?invitation_token="
+    )
     assert (
         client.post(
             "/v1/applicant/access/exchange",

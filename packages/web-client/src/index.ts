@@ -4,7 +4,8 @@ export type ApiAuth = "none" | "company" | "applicant";
 
 export interface ApiClientOptions {
   readonly baseUrl: string;
-  readonly getCompanyBearer?: () => string | null | undefined;
+  readonly getCompanyBearer?: () =>
+    string | null | undefined | Promise<string | null | undefined>;
   readonly fetchImplementation?: typeof fetch;
 }
 
@@ -77,7 +78,7 @@ export function createApiClient(options: ApiClientOptions): BrowserApiClient {
     headers.set("x-request-id", crypto.randomUUID());
 
     if (requestOptions.auth === "company") {
-      const bearer = options.getCompanyBearer?.();
+      const bearer = await options.getCompanyBearer?.();
       if (bearer) headers.set("authorization", `Bearer ${bearer}`);
     }
     if (method !== "GET") {

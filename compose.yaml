@@ -90,6 +90,8 @@ services:
       IEP_OBJECT_STORAGE_BUCKET: iep-local-contract-fixtures
       IEP_BROWSER_S3_ENDPOINT_URL: http://localhost:4566
       IEP_LOCAL_COMPANY_BEARER: local-company-token
+      IEP_LOCAL_COMPANY_EMAIL: local-owner@example.test
+      IEP_LOCAL_COMPANY_PASSWORD: local-development-password
       IEP_EVENT_QUEUE_URL: http://localstack:4566/000000000000/iep-local-contract-events
       IEP_EVENT_DLQ_URL: http://localstack:4566/000000000000/iep-local-contract-events-dlq
       IEP_WORKER_MAX_ATTEMPTS: "5"
@@ -173,7 +175,7 @@ services:
           "CMD",
           "python",
           "-c",
-          "from interview_evidence.main import create_worker_registry; assert len(create_worker_registry()) == 4",
+          "from interview_evidence.main import create_worker_registry; assert len(create_worker_registry()) == 5",
         ]
       interval: 10s
       timeout: 5s
@@ -184,6 +186,8 @@ services:
       context: .
       dockerfile: apps/Containerfile
       target: company-console
+      args:
+        VITE_COMPANY_IDENTITY_MODE: local
     ports:
       - "${COMPANY_CONSOLE_PORT:-5173}:80"
     depends_on:

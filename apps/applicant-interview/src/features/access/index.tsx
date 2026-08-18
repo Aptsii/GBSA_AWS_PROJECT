@@ -1,5 +1,5 @@
 import { ApiProblem } from "@interview-evidence/web-client";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 
 import { applicantAccessApi, type ApplicantAccessApi } from "./api";
 
@@ -12,10 +12,10 @@ export function ApplicantAccessJourney({
   api = applicantAccessApi,
   onComplete,
 }: ApplicantAccessJourneyProps) {
-  const [step, setStep] = useState<"token" | "identity" | "consent" | "done">(
-    "token",
-  );
-  const [invitationToken, setInvitationToken] = useState("");
+  const [step, setStep] = useState<
+    "consent" | "done" | "exchanging" | "identity" | "invalid"
+  >("exchanging");
+  const exchangeStarted = useRef(false);
   const [displayName, setDisplayName] = useState("");
   const [verificationValue, setVerificationValue] = useState("");
   const [busy, setBusy] = useState(false);
@@ -28,6 +28,23 @@ export function ApplicantAccessJourney({
   });
 
   const allPurposesAccepted = Object.values(purposes).every(Boolean);
+
+  useEffect(() => {
+    if (exchangeStarted.current) return;
+    exchangeStarted.current = true;
+    const invitationToken = consumeInvitationToken();
+    if (!invitationToken) {
+      queueMicrotask(() => setStep("invalid"));
+      return;
+    }
+    void api
+      .exchangeInvitation(invitationToken)
+      .then(() => setStep("identity"))
+      .catch((caught: unknown) => {
+        setError(problemMessage(caught));
+        setStep("invalid");
+      });
+  }, [api]);
 
   async function submit(
     event: FormEvent<HTMLFormElement>,
@@ -54,27 +71,12 @@ export function ApplicantAccessJourney({
       </p>
       {error && <p role="alert">{error}</p>}
 
-      {step === "token" && (
-        <form
-          onSubmit={(event) =>
-            void submit(event, async () => {
-              await api.exchangeInvitation(invitationToken);
-              setStep("identity");
-            })
-          }
-        >
-          <label htmlFor="invitation-token">초대 코드</label>
-          <input
-            id="invitation-token"
-            value={invitationToken}
-            onChange={(event) => setInvitationToken(event.target.value)}
-            autoComplete="one-time-code"
-            required
-          />
-          <button type="submit" disabled={!invitationToken.trim() || busy}>
-            {busy ? "확인 중" : "초대 확인"}
-          </button>
-        </form>
+      {step === "exchanging" && (
+        <p role="status">초대 링크를 확인하고 있습니다.</p>
+      )}
+
+      {step === "invalid" && (
+        <p>유효하고 만료되지 않은 초대 링크로 다시 접속해 주세요.</p>
       )}
 
       {step === "identity" && (
@@ -189,4 +191,14 @@ function problemMessage(caught: unknown): string {
       : caught.message;
   }
   return "지원자 접근 API 요청 중 오류가 발생했습니다.";
+}
+
+function consumeInvitationToken(): string | null {
+  const url = new URL(globalThis.location.href);
+  const token = url.searchParams.get("invitation_token");
+  if (!token) return null;
+  url.searchParams.delete("invitation_token");
+  const safeLocation = `${url.pathname}${url.search}${url.hash}`;
+  globalThis.history.replaceState(globalThis.history.state, "", safeLocation);
+  return token;
 }

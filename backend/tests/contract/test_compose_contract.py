@@ -24,6 +24,10 @@ def test_compose_declares_the_complete_local_production_contract() -> None:
     assert all("healthcheck" in service for service in services.values())
     assert services["api"]["build"]["target"] == "api"
     assert services["worker"]["build"]["target"] == "worker"
+    worker_healthcheck = " ".join(
+        str(part) for part in services["worker"]["healthcheck"]["test"]
+    )
+    assert "len(create_worker_registry()) == 5" in worker_healthcheck
     assert services["company-console"]["build"]["target"] == "company-console"
     assert services["applicant-interview"]["build"]["target"] == "applicant-interview"
 

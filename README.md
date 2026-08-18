@@ -44,6 +44,12 @@ make bootstrap
 make compose-up
 ```
 
+Open the company console at `http://localhost:5173` and sign in with the isolated local fixture
+account `local-owner@example.test` / `local-development-password`. The browser stores only the
+expiring identity session in `sessionStorage`; users never paste a bearer token. Applicant links
+open `http://localhost:5174/access` with a one-time invitation value that is exchanged
+automatically and removed from the address bar before identity verification.
+
 The Compose stack supplies PostgreSQL, S3/SQS emulation, DynamoDB, and OpenSearch. The API factory
 builds request-scoped SQLAlchemy transactions, configured authentication/session adapters, S3
 storage, and every versioned `/v1` router. Both image targets and all four async worker handlers are

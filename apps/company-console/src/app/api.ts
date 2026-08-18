@@ -1,21 +1,18 @@
 import { createApiClient } from "@interview-evidence/web-client";
 
-const COMPANY_BEARER_KEY = "iep.company.bearer";
+import { createCompanyIdentitySession } from "../features/company/identity";
 
-export function getCompanyBearer(): string | null {
-  return globalThis.localStorage?.getItem(COMPANY_BEARER_KEY) ?? null;
-}
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "/v1";
+const identityMode = import.meta.env.VITE_COMPANY_IDENTITY_MODE ?? "local";
 
-export function setCompanyBearer(value: string): void {
-  const bearer = value.trim();
-  if (bearer) {
-    globalThis.localStorage?.setItem(COMPANY_BEARER_KEY, bearer);
-  } else {
-    globalThis.localStorage?.removeItem(COMPANY_BEARER_KEY);
-  }
-}
+export const companyIdentitySession = createCompanyIdentitySession({
+  apiBaseUrl,
+  clientId: import.meta.env.VITE_COMPANY_IDENTITY_CLIENT_ID,
+  identityEndpoint: import.meta.env.VITE_COMPANY_IDENTITY_ENDPOINT,
+  mode: identityMode === "cognito" ? "cognito" : "local",
+});
 
 export const apiClient = createApiClient({
-  baseUrl: import.meta.env.VITE_API_BASE_URL ?? "/v1",
-  getCompanyBearer,
+  baseUrl: apiBaseUrl,
+  getCompanyBearer: () => companyIdentitySession.getBearer(),
 });

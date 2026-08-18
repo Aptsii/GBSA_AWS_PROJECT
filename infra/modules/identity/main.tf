@@ -87,6 +87,28 @@ resource "aws_cognito_user_pool" "company" {
     attributes_require_verification_before_update = ["email"]
   }
 
+  schema {
+    name                = "company_id"
+    attribute_data_type = "String"
+    mutable             = true
+
+    string_attribute_constraints {
+      min_length = 36
+      max_length = 36
+    }
+  }
+
+  schema {
+    name                = "company_user_id"
+    attribute_data_type = "String"
+    mutable             = true
+
+    string_attribute_constraints {
+      min_length = 36
+      max_length = 36
+    }
+  }
+
   deletion_protection = var.environment == "prod" ? "ACTIVE" : "INACTIVE"
   tags                = local.common_tags
 }
@@ -107,6 +129,7 @@ resource "aws_cognito_user_pool_client" "company_console" {
   callback_urls                        = ["https://localhost.invalid/auth/callback"]
   logout_urls                          = ["https://localhost.invalid/logout"]
   supported_identity_providers         = ["COGNITO"]
+  explicit_auth_flows                  = ["ALLOW_REFRESH_TOKEN_AUTH", "ALLOW_USER_PASSWORD_AUTH", "ALLOW_USER_SRP_AUTH"]
 
   token_validity_units {
     access_token  = "minutes"

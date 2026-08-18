@@ -6,6 +6,11 @@ import { ApplicantAccessJourney } from "../index";
 
 describe("지원자 접근 및 동의 여정", () => {
   it("API 쿠키 세션으로 초대 교환, 본인 확인과 동의를 완료한다", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/access?invitation_token=secure-invitation-token&campaign=preview",
+    );
     const onComplete = vi.fn();
     const api: ApplicantAccessApi = {
       exchangeInvitation: vi.fn().mockResolvedValue(undefined),
@@ -25,12 +30,12 @@ describe("지원자 접근 및 동의 여정", () => {
     };
     render(<ApplicantAccessJourney api={api} onComplete={onComplete} />);
 
-    fireEvent.change(screen.getByLabelText("초대 코드"), {
-      target: { value: "secure-invitation-token" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "초대 확인" }));
-
     expect(await screen.findByLabelText("이름")).toBeDefined();
+    expect(api.exchangeInvitation).toHaveBeenCalledWith(
+      "secure-invitation-token",
+    );
+    expect(window.location.search).toBe("?campaign=preview");
+    expect(screen.queryByLabelText("초대 코드")).toBeNull();
     fireEvent.change(screen.getByLabelText("이름"), {
       target: { value: "지원자" },
     });

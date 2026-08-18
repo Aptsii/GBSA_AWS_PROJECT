@@ -23,7 +23,7 @@ describe("browser API client", () => {
     vi.stubGlobal("fetch", fetchMock);
     const client = createApiClient({
       baseUrl: "http://localhost:8001/v1/",
-      getCompanyBearer: () => "company-token",
+      getCompanyBearer: async () => "company-token",
     });
 
     await client.post(
