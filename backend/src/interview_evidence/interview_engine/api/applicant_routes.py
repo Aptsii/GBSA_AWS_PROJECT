@@ -50,7 +50,7 @@ class ApplicantInterviewRouteService(Protocol):
 
     def get_resume_snapshot(self, **arguments: object) -> dict[str, object]: ...
 
-    def create_recording_upload_intent(self, **arguments: object) -> dict[str, object]: ...
+    async def create_recording_upload_intent(self, **arguments: object) -> dict[str, object]: ...
 
 
 @dataclass(slots=True)
@@ -167,7 +167,7 @@ def create_applicant_interview_router(
         ],
     ) -> dict[str, object]:
         context, scope = runtime.scope_provider(request)
-        result = runtime.service.create_recording_upload_intent(
+        result = await runtime.service.create_recording_upload_intent(
             context=context,
             scope=scope,
             session_id=session_id,

@@ -156,69 +156,81 @@ class SQLAlchemyInterviewRouteService:
             "degraded_modes": list(interview_session.degraded_modes),
         }
 
-    def create_recording_upload_intent(self, **arguments: object) -> dict[str, object]:
-        import asyncio
-
+    async def create_recording_upload_intent(self, **arguments: object) -> dict[str, object]:
         context, scope = self._scope(arguments)
         session_id = OpaqueId(str(arguments["session_id"]))
         self._repository.get_session(context, scope, session_id)
         idempotency_key = str(arguments["idempotency_key"])
         sequence = self._required_int(arguments, "chunk_sequence")
+        byte_size = self._required_int(arguments, "byte_size")
+        content_hash = str(arguments["sha256"])
+        session_start_ms = self._required_int(arguments, "session_start_ms")
+        session_end_ms = self._required_int(arguments, "session_end_ms")
         chunks = self._repository.list_recording_chunks(context, scope, session_id)
-        if sequence != max((chunk.sequence for chunk in chunks), default=0) + 1:
-            raise SafeApplicationError(ErrorCode.CONFLICT)
-        recording_chunk_id = self._id_generator.new()
-        chunk = RecordingChunk(
-            recording_chunk_id=recording_chunk_id,
-            company_id=scope.company_id,
-            interview_session_id=session_id,
-            sequence=sequence,
-            object_key=(
-                f"recording/{scope.company_id}/{scope.applicant_id}/"
-                f"{session_id}/{recording_chunk_id}"
-            ),
-            content_hash=str(arguments["sha256"]),
-            byte_size=self._required_int(arguments, "byte_size"),
-            session_start_ms=self._required_int(arguments, "session_start_ms"),
-            session_end_ms=self._required_int(arguments, "session_end_ms"),
-            upload_status=UploadStatus.ISSUED,
-            idempotency_key=idempotency_key,
-            created_at=self._clock.now(),
-        )
-        self._repository.add_recording_chunk(context, scope, chunk)
-        expires_at = self._clock.now() + timedelta(minutes=15)
-        signed = asyncio.run(
-            self._object_storage.authorize_upload(
-                context,
-                ObjectRef(
-                    company_id=scope.company_id,
-                    object_id=recording_chunk_id,
-                    applicant_scope=scope,
+        replay = next((chunk for chunk in chunks if chunk.idempotency_key == idempotency_key), None)
+        if replay is not None:
+            if (
+                replay.sequence != sequence
+                or replay.content_hash != content_hash
+                or replay.byte_size != byte_size
+                or replay.session_start_ms != session_start_ms
+                or replay.session_end_ms != session_end_ms
+            ):
+                raise SafeApplicationError(ErrorCode.IDEMPOTENCY_CONFLICT)
+            chunk = replay
+        else:
+            if sequence != max((chunk.sequence for chunk in chunks), default=0) + 1:
+                raise SafeApplicationError(ErrorCode.CONFLICT)
+            if chunks and session_start_ms < chunks[-1].session_end_ms:
+                raise SafeApplicationError(ErrorCode.CONFLICT)
+            recording_chunk_id = self._id_generator.new()
+            chunk = RecordingChunk(
+                recording_chunk_id=recording_chunk_id,
+                company_id=scope.company_id,
+                interview_session_id=session_id,
+                sequence=sequence,
+                object_key=(
+                    f"applicant/{scope.company_id}/{scope.applicant_id}/"
+                    f"{scope.invitation_id}/{recording_chunk_id}"
                 ),
-                media_type="application/octet-stream",
-                content_hash=chunk.content_hash,
-                byte_size=chunk.byte_size,
-                expires_at=expires_at,
+                content_hash=content_hash,
+                byte_size=byte_size,
+                session_start_ms=session_start_ms,
+                session_end_ms=session_end_ms,
+                upload_status=UploadStatus.ISSUED,
+                idempotency_key=idempotency_key,
+                created_at=self._clock.now(),
             )
+            self._repository.add_recording_chunk(context, scope, chunk)
+        expires_at = self._clock.now() + timedelta(minutes=15)
+        signed = await self._object_storage.authorize_upload(
+            context,
+            ObjectRef(
+                company_id=scope.company_id,
+                object_id=chunk.recording_chunk_id,
+                applicant_scope=scope,
+            ),
+            media_type="application/octet-stream",
+            content_hash=chunk.content_hash,
+            byte_size=chunk.byte_size,
+            expires_at=expires_at,
         )
         return {
-            "recording_chunk_id": str(recording_chunk_id),
-            "upload_id": str(recording_chunk_id),
+            "recording_chunk_id": str(chunk.recording_chunk_id),
+            "upload_id": str(chunk.recording_chunk_id),
             "method": signed.method,
             "url": signed.url,
             "required_headers": dict(signed.required_headers),
             "expires_at": signed.expires_at.isoformat().replace("+00:00", "Z"),
         }
 
-    def verify_recording_chunks(
+    async def verify_recording_chunks(
         self,
         context: TenantContext,
         scope: ApplicantScope,
         session_id: str | OpaqueId,
         through_sequence: int,
     ) -> int:
-        import asyncio
-
         chunks = self._repository.list_recording_chunks(context, scope, session_id)
         last_verified = 0
         for chunk in chunks:
@@ -227,18 +239,16 @@ class SQLAlchemyInterviewRouteService:
             if chunk.sequence != last_verified + 1:
                 raise SafeApplicationError(ErrorCode.CONFLICT)
             if chunk.upload_status is not UploadStatus.VERIFIED:
-                asyncio.run(
-                    self._object_storage.verify_upload(
-                        context,
-                        ObjectRef(
-                            company_id=scope.company_id,
-                            object_id=chunk.recording_chunk_id,
-                            applicant_scope=scope,
-                        ),
-                        media_type="application/octet-stream",
-                        content_hash=chunk.content_hash,
-                        byte_size=chunk.byte_size,
-                    )
+                await self._object_storage.verify_upload(
+                    context,
+                    ObjectRef(
+                        company_id=scope.company_id,
+                        object_id=chunk.recording_chunk_id,
+                        applicant_scope=scope,
+                    ),
+                    media_type="application/octet-stream",
+                    content_hash=chunk.content_hash,
+                    byte_size=chunk.byte_size,
                 )
                 chunk = replace(chunk, upload_status=UploadStatus.VERIFIED)
                 self._repository.save_recording_chunk(context, scope, chunk)
@@ -327,7 +337,7 @@ class SQLAlchemyInterviewStreamHandler:
         if message.message_type == "question.repeat":
             return self._repeat(message, context, scope, session)
         if message.message_type == "answer.complete":
-            return self._complete(message, context, scope, session)
+            return await self._complete(message, context, scope, session)
         if message.message_type == "session.resume":
             return self._resume_message(message, context, scope, session)
         return self._message(
@@ -427,7 +437,7 @@ class SQLAlchemyInterviewStreamHandler:
         )
         return self._question_message(message, session, question)
 
-    def _complete(
+    async def _complete(
         self,
         message: ProtocolMessage,
         context: TenantContext,
@@ -443,7 +453,7 @@ class SQLAlchemyInterviewStreamHandler:
         if not isinstance(last_recording_sequence_value, int):
             raise SafeApplicationError(ErrorCode.INVALID_REQUEST)
         last_recording_sequence = last_recording_sequence_value
-        self._route_service.verify_recording_chunks(
+        await self._route_service.verify_recording_chunks(
             context,
             scope,
             session.interview_session_id,
