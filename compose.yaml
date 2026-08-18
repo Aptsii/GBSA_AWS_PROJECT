@@ -32,6 +32,7 @@ services:
       retries: 20
     volumes:
       - localstack-community-data:/var/lib/localstack
+      - ./scripts/localstack-init.sh:/etc/localstack/init/ready.d/10-iep-resources.sh:ro
 
   dynamodb:
     image: amazon/dynamodb-local:3.3.1
@@ -87,6 +88,8 @@ services:
       IEP_SIGNED_URL_TTL_SECONDS: "900"
       IEP_DEFAULT_RETENTION_DAYS: "30"
       IEP_OBJECT_STORAGE_BUCKET: iep-local-contract-fixtures
+      IEP_BROWSER_S3_ENDPOINT_URL: http://localhost:4566
+      IEP_LOCAL_COMPANY_BEARER: local-company-token
       IEP_EVENT_QUEUE_URL: http://localstack:4566/000000000000/iep-local-contract-events
       IEP_EVENT_DLQ_URL: http://localstack:4566/000000000000/iep-local-contract-events-dlq
       IEP_WORKER_MAX_ATTEMPTS: "5"

@@ -4,6 +4,7 @@ import os
 import re
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
+from datetime import timedelta
 from types import MappingProxyType
 
 import boto3  # type: ignore[import-untyped]
@@ -50,20 +51,24 @@ from interview_evidence.reporting.api.company_routes import (
 from interview_evidence.reporting.api.runtime import create_reporting_runtime
 from interview_evidence.shared.aws_clients.ports import ObjectStoragePort
 from interview_evidence.shared.aws_clients.s3 import S3ObjectStorage
-from interview_evidence.shared.config import Settings
+from interview_evidence.shared.config import RuntimeEnvironment, Settings
 from interview_evidence.shared.errors import (
     ErrorCode,
     FieldError,
     SafeApplicationError,
 )
-from interview_evidence.shared.ids import OpaqueId, UUID7Generator
+from interview_evidence.shared.ids import OpaqueId, SystemClock, UUID7Generator
 from interview_evidence.shared.metrics import OperationalMetrics, OperationalMetricsMiddleware
 from interview_evidence.shared.observability import configure_structured_logging
 from interview_evidence.shared.runtime import (
     DatabaseTransactionMiddleware,
     RequestSessionRegistry,
 )
-from interview_evidence.shared.security.principals import CompanyAuthenticator
+from interview_evidence.shared.security.principals import (
+    CompanyAuthenticator,
+    CompanyPrincipal,
+    FakeCompanyAuthenticator,
+)
 from interview_evidence.shared.tenant import (
     ApplicantScope,
     TenantContext,
@@ -184,7 +189,42 @@ def _create_object_storage(settings: Settings) -> ObjectStoragePort:
         region_name=settings.aws_region,
         endpoint_url=os.getenv("AWS_ENDPOINT_URL"),
     )
-    return S3ObjectStorage(client, bucket=settings.object_storage_bucket)
+    browser_endpoint = os.getenv("IEP_BROWSER_S3_ENDPOINT_URL")
+    presign_client = (
+        boto3.client(
+            "s3",
+            region_name=settings.aws_region,
+            endpoint_url=browser_endpoint,
+        )
+        if browser_endpoint
+        else client
+    )
+    return S3ObjectStorage(
+        client,
+        bucket=settings.object_storage_bucket,
+        presign_client=presign_client,
+    )
+
+
+def _local_company_authenticator(settings: Settings) -> CompanyAuthenticator | None:
+    credential = os.getenv("IEP_LOCAL_COMPANY_BEARER")
+    if settings.environment is not RuntimeEnvironment.LOCAL or not credential:
+        return None
+    clock = SystemClock()
+    now = clock.now()
+    authenticator = FakeCompanyAuthenticator(clock)
+    authenticator.register(
+        credential,
+        CompanyPrincipal(
+            company_id=OpaqueId("0198a82a-0540-7000-8000-000000000001"),
+            company_user_id=OpaqueId("0198a82a-0540-7000-8000-000000000003"),
+            identity_subject="local-owner@example.test",
+            roles=frozenset({"hiring_admin", "reviewer"}),
+            issued_at=now - timedelta(minutes=1),
+            expires_at=now + timedelta(days=365),
+        ),
+    )
+    return authenticator
 
 
 def _authorization_credential(headers: Mapping[str, str]) -> str:
@@ -278,6 +318,7 @@ def create_production_runtimes(
         resources.sessions.proxy,
         http_scope_provider=applicant_scope_provider,
         websocket_scope_provider=_applicant_websocket_scope_provider(company),
+        object_storage=resources.object_storage,
     )
     return ApplicationRuntimes(
         company=company.company,
@@ -365,7 +406,9 @@ def create_app(
         routers = create_application_routers(
             create_production_runtimes(
                 resources,
-                company_authenticator=company_authenticator,
+                company_authenticator=(
+                    company_authenticator or _local_company_authenticator(active_settings)
+                ),
             )
         )
     app = FastAPI(

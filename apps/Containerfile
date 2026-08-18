@@ -10,11 +10,13 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/company-console/package.json apps/company-console/package.json
 COPY apps/applicant-interview/package.json apps/applicant-interview/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
+COPY packages/web-client/package.json packages/web-client/package.json
 
 RUN pnpm install --frozen-lockfile
 
 COPY apps apps
 COPY packages/contracts packages/contracts
+COPY packages/web-client packages/web-client
 
 FROM workspace AS company-build
 RUN pnpm --filter @iep/company-console build
