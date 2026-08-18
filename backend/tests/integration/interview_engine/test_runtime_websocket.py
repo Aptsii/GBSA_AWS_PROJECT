@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -9,10 +10,17 @@ from interview_evidence.interview_engine.api.runtime import (
     SQLAlchemyInterviewStreamHandler,
 )
 from interview_evidence.interview_engine.api.websocket import ProtocolMessage
+from interview_evidence.interview_engine.domain.turn import TurnSpeaker, TurnStatus
 from interview_evidence.interview_engine.repositories.postgres import (
     InterviewSessionRepository,
 )
-from interview_evidence.shared.aws_clients.ports import FakeObjectStorage
+from interview_evidence.shared.aws_clients.ports import (
+    FakeObjectStorage,
+    FakeSpeechClient,
+    ProtectedBytes,
+    ProtectedText,
+    TranscriptionResult,
+)
 from interview_evidence.shared.database import Base
 from interview_evidence.shared.ids import FixedClock, UUID7Generator
 from interview_evidence.shared.tenant import ApplicantScope, TenantContext
@@ -28,9 +36,12 @@ from tests.fixtures.shared.factories import (
     make_tenant_context,
 )
 
+FIRST_TRANSCRIPTION_ID = "018f2000-0000-7000-8000-000000000402"
+SECOND_TRANSCRIPTION_ID = "018f2000-0000-7000-8000-000000000403"
+
 
 @pytest.mark.asyncio
-async def test_sql_websocket_runs_start_complete_and_resume() -> None:
+async def test_sql_websocket_runs_transcript_multiple_questions_completion_and_resume() -> None:
     engine = create_engine(
         "sqlite+pysqlite:///:memory:",
         connect_args={"check_same_thread": False},
@@ -41,6 +52,23 @@ async def test_sql_websocket_runs_start_complete_and_resume() -> None:
     ids = UUID7Generator(clock, randbytes=lambda size: b"\x51" * size)
     context = TenantContext(**make_tenant_context())
     scope = ApplicantScope(COMPANY_ID, APPLICANT_ID, INVITATION_ID)
+    speech = FakeSpeechClient(
+        transcriptions={
+            FIRST_TRANSCRIPTION_ID: TranscriptionResult(
+                text=ProtectedText("첫 번째 답변에서 복구 절차와 결과를 설명했습니다."),
+                confidence=0.94,
+                review_required=False,
+            ),
+            SECOND_TRANSCRIPTION_ID: TranscriptionResult(
+                text=ProtectedText("두 번째 답변에서 본인의 판단과 측정 결과를 보완했습니다."),
+                confidence=0.88,
+                review_required=False,
+            ),
+        },
+        syntheses={},
+    )
+    first_audio = ProtectedBytes(b"first-answer-audio")
+    second_audio = ProtectedBytes(b"second-answer-audio")
     with Session(engine) as database:
         repository = InterviewSessionRepository(database)
         route_service = SQLAlchemyInterviewRouteService(
@@ -54,6 +82,8 @@ async def test_sql_websocket_runs_start_complete_and_resume() -> None:
             route_service,
             clock=clock,
             id_generator=ids,
+            transcriber=speech,
+            max_questions=2,
         )
         created = route_service.create_interview_session(
             context=context,
@@ -76,7 +106,24 @@ async def test_sql_websocket_runs_start_complete_and_resume() -> None:
             "question.ready",
         ]
 
-        completed = await handler.handle_message(
+        first_answer_turn_id = "018f2000-0000-7000-8000-000000000401"
+        first_transcript = await handler.handle_binary(
+            context,
+            scope,
+            _audio_message(
+                session_id,
+                2,
+                first_answer_turn_id,
+                first_audio,
+                correlation_id=FIRST_TRANSCRIPTION_ID,
+            ),
+            first_audio,
+        )
+        assert isinstance(first_transcript, ProtocolMessage)
+        assert first_transcript.message_type == "transcript.final"
+        assert first_transcript.payload["answer_turn_id"] == first_answer_turn_id
+
+        next_question = await handler.handle_message(
             context,
             scope,
             _message(
@@ -84,7 +131,46 @@ async def test_sql_websocket_runs_start_complete_and_resume() -> None:
                 2,
                 "answer.complete",
                 {
-                    "answer_turn_id": "018f2000-0000-7000-8000-000000000401",
+                    "answer_turn_id": first_answer_turn_id,
+                    "last_audio_chunk_sequence": 1,
+                    "last_recording_chunk_sequence": 0,
+                },
+            ),
+        )
+        assert isinstance(next_question, tuple)
+        assert [item.message_type for item in next_question] == [
+            "session.state_changed",
+            "question.preparing",
+            "question.ready",
+        ]
+        assert next_question[-1].payload["text"] != started[-1].payload["text"]
+
+        second_answer_turn_id = "018f2000-0000-7000-8000-000000000404"
+        second_transcript = await handler.handle_binary(
+            context,
+            scope,
+            _audio_message(
+                session_id,
+                4,
+                second_answer_turn_id,
+                second_audio,
+                correlation_id=SECOND_TRANSCRIPTION_ID,
+            ),
+            second_audio,
+        )
+        assert isinstance(second_transcript, ProtocolMessage)
+        assert second_transcript.message_type == "transcript.final"
+
+        completed = await handler.handle_message(
+            context,
+            scope,
+            _message(
+                session_id,
+                4,
+                "answer.complete",
+                {
+                    "answer_turn_id": second_answer_turn_id,
+                    "last_audio_chunk_sequence": 1,
                     "last_recording_chunk_sequence": 0,
                 },
             ),
@@ -92,6 +178,37 @@ async def test_sql_websocket_runs_start_complete_and_resume() -> None:
         assert isinstance(completed, tuple)
         assert completed[-1].message_type == "session.completed"
         assert repository.get_session(context, scope, session_id).state.value == "completed"
+        turns = repository.list_turns(context, scope, session_id)
+        assert len(turns) == 4
+        assert [turn.speaker for turn in turns] == [
+            TurnSpeaker.INTERVIEWER,
+            TurnSpeaker.APPLICANT,
+            TurnSpeaker.INTERVIEWER,
+            TurnSpeaker.APPLICANT,
+        ]
+        assert all(
+            turn.status is TurnStatus.FINAL
+            for turn in turns
+            if turn.speaker is TurnSpeaker.APPLICANT
+        )
+
+        stale_replay = await handler.handle_message(
+            context,
+            scope,
+            _message(
+                session_id,
+                2,
+                "answer.complete",
+                {
+                    "answer_turn_id": first_answer_turn_id,
+                    "last_audio_chunk_sequence": 1,
+                    "last_recording_chunk_sequence": 0,
+                },
+            ),
+        )
+        assert isinstance(stale_replay, ProtocolMessage)
+        assert stale_replay.message_type == "resume.snapshot"
+        assert len(repository.list_turns(context, scope, session_id)) == 4
 
         resumed = await handler.handle_message(
             context,
@@ -101,7 +218,112 @@ async def test_sql_websocket_runs_start_complete_and_resume() -> None:
         assert isinstance(resumed, ProtocolMessage)
         assert resumed.message_type == "resume.snapshot"
         assert resumed.payload["state"] == "completed"
+        assert resumed.payload["last_final_turn_id"] == second_answer_turn_id
     engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_sql_websocket_pauses_safely_when_transcription_is_unavailable_then_resumes() -> None:
+    engine = create_engine(
+        "sqlite+pysqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(engine)
+    clock = FixedClock(datetime(2026, 8, 18, tzinfo=UTC))
+    ids = UUID7Generator(clock, randbytes=lambda size: b"\x52" * size)
+    context = TenantContext(**make_tenant_context())
+    scope = ApplicantScope(COMPANY_ID, APPLICANT_ID, INVITATION_ID)
+    audio = ProtectedBytes(b"unavailable-transcription")
+
+    with Session(engine) as database:
+        repository = InterviewSessionRepository(database)
+        route_service = SQLAlchemyInterviewRouteService(
+            repository,
+            clock=clock,
+            id_generator=ids,
+            object_storage=FakeObjectStorage(),
+        )
+        handler = SQLAlchemyInterviewStreamHandler(
+            repository,
+            route_service,
+            clock=clock,
+            id_generator=ids,
+        )
+        created = route_service.create_interview_session(
+            context=context,
+            scope=scope,
+            equipment_check_id="018f2000-0000-7000-8000-000000000201",
+            strategy_id=STRATEGY_ID,
+            acknowledged_partial_analysis=False,
+            idempotency_key="runtime-pause-session-0001",
+        )
+        session_id = str(created["interview_session_id"])
+        await handler.handle_message(
+            context,
+            scope,
+            _message(session_id, 0, "session.start", {"equipment_check_id": "check-1"}),
+        )
+
+        paused = await handler.handle_binary(
+            context,
+            scope,
+            _audio_message(
+                session_id,
+                2,
+                "018f2000-0000-7000-8000-000000000405",
+                audio,
+                correlation_id=FIRST_TRANSCRIPTION_ID,
+            ),
+            audio,
+        )
+        assert isinstance(paused, ProtocolMessage)
+        assert paused.message_type == "session.paused"
+        assert paused.payload["reason_code"] == "transcription_unavailable"
+        assert repository.get_session(context, scope, session_id).state.value == "paused"
+        assert all(
+            turn.speaker is TurnSpeaker.INTERVIEWER
+            for turn in repository.list_turns(context, scope, session_id)
+        )
+
+        resumed = await handler.handle_message(
+            context,
+            scope,
+            _message(session_id, 3, "session.resume", {}),
+        )
+        assert isinstance(resumed, ProtocolMessage)
+        assert resumed.message_type == "resume.snapshot"
+        assert resumed.payload["state"] == "awaiting_answer"
+        assert "audio.chunk.begin" in resumed.payload["allowed_client_messages"]
+    engine.dispose()
+
+
+def _audio_message(
+    session_id: str,
+    sequence: int,
+    answer_turn_id: str,
+    content: ProtectedBytes,
+    *,
+    correlation_id: str,
+) -> ProtocolMessage:
+    raw = content.reveal()
+    return _message(
+        session_id,
+        sequence,
+        "audio.chunk.begin",
+        {
+            "answer_turn_id": answer_turn_id,
+            "chunk_sequence": 1,
+            "codec": "pcm_s16le",
+            "sample_rate_hz": 16_000,
+            "channel_count": 1,
+            "byte_length": len(raw),
+            "sha256": hashlib.sha256(raw).hexdigest(),
+            "session_start_ms": 0,
+            "session_end_ms": 1_000,
+        },
+        correlation_id=correlation_id,
+    )
 
 
 def _message(
@@ -109,6 +331,8 @@ def _message(
     sequence: int,
     message_type: str,
     payload: dict[str, object],
+    *,
+    correlation_id: str = FIRST_TRANSCRIPTION_ID,
 ) -> ProtocolMessage:
     return ProtocolMessage(
         protocol_version="1.0",
@@ -116,7 +340,7 @@ def _message(
         session_id=UUID(session_id),
         sequence=sequence,
         idempotency_key=f"runtime-{message_type}-0001",
-        correlation_id=UUID("018f2000-0000-7000-8000-000000000402"),
+        correlation_id=UUID(correlation_id),
         sent_at=datetime(2026, 8, 18, tzinfo=UTC),
         payload=payload,
     )

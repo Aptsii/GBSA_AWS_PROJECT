@@ -5,6 +5,7 @@ import json
 from collections.abc import Callable
 from dataclasses import replace
 from datetime import timedelta
+from typing import Protocol
 from uuid import UUID
 
 from fastapi import Request, WebSocket
@@ -36,10 +37,30 @@ from interview_evidence.shared.aws_clients.ports import (
     ObjectStoragePort,
     ProtectedBytes,
     ProtectedText,
+    TranscriptionRequest,
+    TranscriptionResult,
 )
 from interview_evidence.shared.errors import ErrorCode, SafeApplicationError
 from interview_evidence.shared.ids import Clock, OpaqueId, SystemClock, UUID7Generator
 from interview_evidence.shared.tenant import ApplicantScope, TenantContext, ensure_applicant_scope
+
+
+class AudioTranscriber(Protocol):
+    async def transcribe(
+        self,
+        context: TenantContext,
+        request: TranscriptionRequest,
+    ) -> TranscriptionResult: ...
+
+
+class UnavailableAudioTranscriber:
+    async def transcribe(
+        self,
+        context: TenantContext,
+        request: TranscriptionRequest,
+    ) -> TranscriptionResult:
+        del context, request
+        raise SafeApplicationError(ErrorCode.DEPENDENCY_UNAVAILABLE)
 
 
 class SQLAlchemyInterviewRouteService:
@@ -142,6 +163,22 @@ class SQLAlchemyInterviewRouteService:
         verified_sequences = [
             chunk.sequence for chunk in chunks if chunk.upload_status is UploadStatus.VERIFIED
         ]
+        pending_turn = None
+        if checkpoint is not None and checkpoint.pending_turn_id is not None:
+            turn = next(
+                (
+                    item
+                    for item in self._repository.list_turns(context, scope, session_id)
+                    if item.turn_id == checkpoint.pending_turn_id
+                ),
+                None,
+            )
+            if turn is not None:
+                pending_turn = {
+                    "turn_id": str(turn.turn_id),
+                    "speaker": turn.speaker.value,
+                    "status": turn.status.value,
+                }
         return {
             "interview_session_id": str(interview_session.interview_session_id),
             "state": interview_session.state.value,
@@ -151,7 +188,7 @@ class SQLAlchemyInterviewRouteService:
                 if checkpoint is not None and checkpoint.last_final_turn_id is not None
                 else None
             ),
-            "pending_turn": None,
+            "pending_turn": pending_turn,
             "last_verified_recording_chunk_sequence": max(verified_sequences, default=0),
             "degraded_modes": list(interview_session.degraded_modes),
         }
@@ -304,9 +341,11 @@ class SQLAlchemyInterviewStreamHandler:
     __slots__ = (
         "_clock",
         "_id_generator",
+        "_max_questions",
         "_repository",
         "_route_service",
         "_state_machine",
+        "_transcriber",
     )
 
     def __init__(
@@ -316,11 +355,17 @@ class SQLAlchemyInterviewStreamHandler:
         *,
         clock: Clock,
         id_generator: UUID7Generator,
+        transcriber: AudioTranscriber | None = None,
+        max_questions: int = 2,
     ) -> None:
+        if max_questions < 1:
+            raise ValueError("max_questions must be positive")
         self._repository = repository
         self._route_service = route_service
         self._clock = clock
         self._id_generator = id_generator
+        self._transcriber = transcriber or UnavailableAudioTranscriber()
+        self._max_questions = max_questions
         self._state_machine = SessionStateMachine(clock)
 
     async def handle_message(
@@ -330,6 +375,8 @@ class SQLAlchemyInterviewStreamHandler:
         message: ProtocolMessage,
     ) -> ProtocolMessage | tuple[ProtocolMessage, ...]:
         session = self._repository.get_session(context, scope, str(message.session_id))
+        if message.message_type == "session.resume":
+            return self._resume_message(message, context, scope, session)
         if message.message_type != "session.resume" and message.sequence < session.session_sequence:
             return self._resume_message(message, context, scope, session)
         if message.message_type == "session.start":
@@ -338,8 +385,6 @@ class SQLAlchemyInterviewStreamHandler:
             return self._repeat(message, context, scope, session)
         if message.message_type == "answer.complete":
             return await self._complete(message, context, scope, session)
-        if message.message_type == "session.resume":
-            return self._resume_message(message, context, scope, session)
         return self._message(
             message,
             "server.ack",
@@ -354,8 +399,66 @@ class SQLAlchemyInterviewStreamHandler:
         metadata: ProtocolMessage,
         content: ProtectedBytes,
     ) -> ProtocolMessage | tuple[ProtocolMessage, ...]:
-        del content
-        return await self.handle_message(context, scope, metadata)
+        session = self._repository.get_session(context, scope, str(metadata.session_id))
+        if metadata.sequence < session.session_sequence:
+            return self._resume_message(metadata, context, scope, session)
+        if metadata.message_type != "audio.chunk.begin":
+            raise SafeApplicationError(ErrorCode.INVALID_REQUEST)
+        if session.state is not SessionState.AWAITING_ANSWER:
+            raise SafeApplicationError(ErrorCode.CONFLICT)
+        self._validate_audio(metadata, content)
+        try:
+            transcript = await self._transcriber.transcribe(
+                context,
+                TranscriptionRequest(
+                    company_id=scope.company_id,
+                    request_id=OpaqueId(str(metadata.correlation_id)),
+                    audio=content,
+                    config_version="stt-v1",
+                ),
+            )
+        except SafeApplicationError as error:
+            if error.code is not ErrorCode.DEPENDENCY_UNAVAILABLE:
+                raise
+            return self._pause_message(
+                metadata,
+                context,
+                scope,
+                session,
+                reason_code="transcription_unavailable",
+            )
+        answer_turn_id = OpaqueId(str(metadata.payload["answer_turn_id"]))
+        turns = self._repository.list_turns(context, scope, session.interview_session_id)
+        existing = next((turn for turn in turns if turn.turn_id == answer_turn_id), None)
+        if existing is None:
+            answer_turn = Turn(
+                turn_id=answer_turn_id,
+                company_id=scope.company_id,
+                interview_session_id=session.interview_session_id,
+                sequence=len(turns) + 1,
+                speaker=TurnSpeaker.APPLICANT,
+                status=TurnStatus.RECORDING,
+                text=transcript.text,
+                idempotency_key=f"answer-turn:{answer_turn_id}",
+                created_at=self._clock.now(),
+            )
+            self._repository.add_turn(context, scope, answer_turn)
+        else:
+            if existing.speaker is not TurnSpeaker.APPLICANT or existing.status not in {
+                TurnStatus.RECORDING,
+                TurnStatus.FINAL,
+            }:
+                raise SafeApplicationError(ErrorCode.CONFLICT)
+            if existing.status is TurnStatus.FINAL:
+                return self._transcript_message(metadata, existing, transcript)
+            existing_text = existing.text.reveal() if existing.text is not None else ""
+            next_text = transcript.text.reveal()
+            combined = (
+                next_text if existing_text == next_text else f"{existing_text} {next_text}".strip()
+            )
+            answer_turn = replace(existing, text=ProtectedText(combined))
+            self._repository.save_turn(context, scope, answer_turn)
+        return self._transcript_message(metadata, answer_turn, transcript)
 
     def _start(
         self,
@@ -460,17 +563,85 @@ class SQLAlchemyInterviewStreamHandler:
             last_recording_sequence,
         )
         turns = self._repository.list_turns(context, scope, session.interview_session_id)
-        answer_turn = Turn(
-            turn_id=OpaqueId(str(message.payload["answer_turn_id"])),
-            company_id=scope.company_id,
-            interview_session_id=session.interview_session_id,
-            sequence=len(turns) + 1,
-            speaker=TurnSpeaker.APPLICANT,
-            status=TurnStatus.FAILED,
-            idempotency_key=message.idempotency_key,
-            created_at=self._clock.now(),
+        answer_turn_id = OpaqueId(str(message.payload["answer_turn_id"]))
+        answer_turn = next((turn for turn in turns if turn.turn_id == answer_turn_id), None)
+        if (
+            answer_turn is None
+            or answer_turn.speaker is not TurnSpeaker.APPLICANT
+            or answer_turn.status is not TurnStatus.RECORDING
+            or answer_turn.text is None
+        ):
+            return (
+                self._pause_message(
+                    message,
+                    context,
+                    scope,
+                    session,
+                    reason_code="final_transcript_missing",
+                ),
+            )
+        answer_turn = replace(
+            answer_turn,
+            status=TurnStatus.FINAL,
+            finalized_at=self._clock.now(),
         )
-        self._repository.add_turn(context, scope, answer_turn)
+        self._repository.save_turn(context, scope, answer_turn)
+        final_answers = [
+            turn
+            for turn in (*turns, answer_turn)
+            if turn.speaker is TurnSpeaker.APPLICANT and turn.status is TurnStatus.FINAL
+        ]
+        if len(final_answers) < self._max_questions:
+            preparing = self._state_machine.transition(
+                session,
+                expected_sequence=session.session_sequence,
+                target=SessionState.PREPARING_QUESTION,
+            )
+            awaiting = self._state_machine.transition(
+                preparing,
+                expected_sequence=preparing.session_sequence,
+                target=SessionState.AWAITING_ANSWER,
+            ).with_degraded_mode("text_only")
+            self._repository.save_session(
+                context,
+                awaiting,
+                expected_row_version=session.row_version,
+            )
+            question = self._next_question(
+                scope,
+                awaiting,
+                sequence=len(turns) + 1,
+                question_number=len(final_answers) + 1,
+            )
+            self._repository.add_turn(context, scope, question)
+            checkpoint = self._checkpoint(
+                context,
+                scope,
+                awaiting,
+                pending_turn_id=question.turn_id,
+                last_final_turn_id=answer_turn.turn_id,
+                last_media_sequence=last_recording_sequence,
+            )
+            return (
+                self._message(
+                    message,
+                    "session.state_changed",
+                    awaiting.session_sequence,
+                    {
+                        "previous_state": session.state.value,
+                        "state": awaiting.state.value,
+                        "reason_code": "answer_finalized_next_question",
+                        "checkpoint_id": str(checkpoint.checkpoint_id),
+                    },
+                ),
+                self._message(
+                    message,
+                    "question.preparing",
+                    awaiting.session_sequence,
+                    {"stage": "policy", "degraded_mode": "text_only"},
+                ),
+                self._question_message(message, awaiting, question),
+            )
         paused = self._state_machine.transition(
             session,
             expected_sequence=session.session_sequence,
@@ -491,6 +662,7 @@ class SQLAlchemyInterviewStreamHandler:
             scope,
             completed,
             pending_turn_id=None,
+            last_final_turn_id=answer_turn.turn_id,
             last_media_sequence=last_recording_sequence,
         )
         return (
@@ -501,7 +673,7 @@ class SQLAlchemyInterviewStreamHandler:
                 {
                     "previous_state": session.state.value,
                     "state": completed.state.value,
-                    "reason_code": "answer_received_without_final_transcript",
+                    "reason_code": "interview_completed",
                     "checkpoint_id": str(checkpoint.checkpoint_id),
                 },
             ),
@@ -521,6 +693,32 @@ class SQLAlchemyInterviewStreamHandler:
         chunks = self._repository.list_recording_chunks(
             context, scope, session.interview_session_id
         )
+        last_verified_sequence = max(
+            (chunk.sequence for chunk in chunks if chunk.upload_status is UploadStatus.VERIFIED),
+            default=0,
+        )
+        if session.state is SessionState.PAUSED:
+            resumed = self._state_machine.transition(
+                session,
+                expected_sequence=session.session_sequence,
+                target=SessionState.AWAITING_ANSWER,
+            )
+            self._repository.save_session(
+                context,
+                resumed,
+                expected_row_version=session.row_version,
+            )
+            checkpoint = self._checkpoint(
+                context,
+                scope,
+                resumed,
+                pending_turn_id=(checkpoint.pending_turn_id if checkpoint is not None else None),
+                last_final_turn_id=(
+                    checkpoint.last_final_turn_id if checkpoint is not None else None
+                ),
+                last_media_sequence=last_verified_sequence,
+            )
+            session = resumed
         pending_turn = None
         if checkpoint is not None and checkpoint.pending_turn_id is not None:
             pending_turn = {
@@ -541,22 +739,165 @@ class SQLAlchemyInterviewStreamHandler:
                     else None
                 ),
                 "pending_turn": pending_turn,
-                "last_verified_recording_chunk_sequence": max(
-                    (
-                        chunk.sequence
-                        for chunk in chunks
-                        if chunk.upload_status is UploadStatus.VERIFIED
-                    ),
-                    default=0,
-                ),
-                "allowed_client_messages": (
-                    ["session.resume"]
-                    if session.state is SessionState.PAUSED
-                    else ["client.ack", "answer.complete", "audio.chunk.begin"]
-                ),
+                "last_verified_recording_chunk_sequence": last_verified_sequence,
+                "allowed_client_messages": self._allowed_client_messages(session.state),
                 "degraded_modes": list(session.degraded_modes),
             },
         )
+
+    def _pause_message(
+        self,
+        request: ProtocolMessage,
+        context: TenantContext,
+        scope: ApplicantScope,
+        session: InterviewSession,
+        *,
+        reason_code: str,
+    ) -> ProtocolMessage:
+        paused = self._state_machine.transition(
+            session,
+            expected_sequence=session.session_sequence,
+            target=SessionState.PAUSED,
+        ).with_degraded_mode(reason_code)
+        self._repository.save_session(
+            context,
+            paused,
+            expected_row_version=session.row_version,
+        )
+        turns = self._repository.list_turns(context, scope, session.interview_session_id)
+        pending_question = next(
+            (turn for turn in reversed(turns) if turn.speaker is TurnSpeaker.INTERVIEWER),
+            None,
+        )
+        previous_checkpoint = self._repository.latest_checkpoint(
+            context, scope, session.interview_session_id
+        )
+        chunks = self._repository.list_recording_chunks(
+            context, scope, session.interview_session_id
+        )
+        checkpoint = self._checkpoint(
+            context,
+            scope,
+            paused,
+            pending_turn_id=(pending_question.turn_id if pending_question is not None else None),
+            last_final_turn_id=(
+                previous_checkpoint.last_final_turn_id if previous_checkpoint is not None else None
+            ),
+            last_media_sequence=max(
+                (
+                    chunk.sequence
+                    for chunk in chunks
+                    if chunk.upload_status is UploadStatus.VERIFIED
+                ),
+                default=0,
+            ),
+        )
+        return self._message(
+            request,
+            "session.paused",
+            paused.session_sequence,
+            {
+                "reason_code": reason_code,
+                "retryable": True,
+                "next_retry_at": None,
+                "message": "기술적인 문제로 잠시 멈췄습니다. 답변 평가는 영향을 받지 않습니다.",
+                "checkpoint_id": str(checkpoint.checkpoint_id),
+            },
+        )
+
+    def _transcript_message(
+        self,
+        request: ProtocolMessage,
+        answer_turn: Turn,
+        transcript: TranscriptionResult,
+    ) -> ProtocolMessage:
+        if answer_turn.text is None:
+            raise SafeApplicationError(ErrorCode.CONFLICT)
+        return self._message(
+            request,
+            "transcript.final",
+            request.sequence,
+            {
+                "answer_turn_id": str(answer_turn.turn_id),
+                "transcript_segment_id": str(self._id_generator.new()),
+                "segment_sequence": self._payload_int(request, "chunk_sequence"),
+                "text": answer_turn.text.reveal(),
+                "start_ms": self._payload_int(request, "session_start_ms"),
+                "end_ms": self._payload_int(request, "session_end_ms"),
+                "confidence": transcript.confidence,
+                "is_final": True,
+                "review_required": transcript.review_required,
+            },
+        )
+
+    def _next_question(
+        self,
+        scope: ApplicantScope,
+        session: InterviewSession,
+        *,
+        sequence: int,
+        question_number: int,
+    ) -> Turn:
+        question_text = (
+            "앞서 설명한 경험에서 본인이 내린 핵심 판단과 그 결과를 구체적인 사실로 보완해 주세요."
+        )
+        return Turn(
+            turn_id=self._id_generator.new(),
+            company_id=scope.company_id,
+            interview_session_id=session.interview_session_id,
+            sequence=sequence,
+            speaker=TurnSpeaker.INTERVIEWER,
+            status=TurnStatus.PRESENTED,
+            text=ProtectedText(question_text),
+            target_criterion_id=session.competency_model_version_id,
+            model_config_version="runtime-fallback-v1",
+            idempotency_key=(
+                f"server-question:{session.interview_session_id}:{question_number:03d}"
+            ),
+            created_at=self._clock.now(),
+        )
+
+    @staticmethod
+    def _allowed_client_messages(state: SessionState) -> list[str]:
+        if state is SessionState.COMPLETED:
+            return []
+        if state is SessionState.PAUSED:
+            return ["session.resume"]
+        if state is SessionState.AWAITING_ANSWER:
+            return [
+                "client.ack",
+                "heartbeat.ping",
+                "question.repeat",
+                "audio.chunk.begin",
+                "answer.complete",
+            ]
+        return ["client.ack", "heartbeat.ping", "session.resume"]
+
+    @classmethod
+    def _validate_audio(cls, message: ProtocolMessage, content: ProtectedBytes) -> None:
+        raw = content.reveal()
+        if cls._payload_int(message, "byte_length") != len(raw):
+            raise SafeApplicationError(ErrorCode.CONFLICT)
+        if cls._payload_int(message, "chunk_sequence") < 1:
+            raise SafeApplicationError(ErrorCode.INVALID_REQUEST)
+        if cls._payload_int(message, "session_end_ms") <= cls._payload_int(
+            message, "session_start_ms"
+        ):
+            raise SafeApplicationError(ErrorCode.INVALID_REQUEST)
+        digest = message.payload.get("sha256")
+        if not isinstance(digest, str) or digest != hashlib.sha256(raw).hexdigest():
+            raise SafeApplicationError(ErrorCode.CONFLICT)
+        try:
+            OpaqueId(str(message.payload["answer_turn_id"]))
+        except (KeyError, ValueError):
+            raise SafeApplicationError(ErrorCode.INVALID_REQUEST) from None
+
+    @staticmethod
+    def _payload_int(message: ProtocolMessage, key: str) -> int:
+        value = message.payload.get(key)
+        if not isinstance(value, int):
+            raise SafeApplicationError(ErrorCode.INVALID_REQUEST)
+        return value
 
     def _question_message(
         self,
@@ -609,12 +950,14 @@ class SQLAlchemyInterviewStreamHandler:
         *,
         pending_turn_id: OpaqueId | None,
         last_media_sequence: int,
+        last_final_turn_id: OpaqueId | None = None,
     ) -> SessionCheckpoint:
         checkpoint = SessionCheckpoint(
             checkpoint_id=self._id_generator.new(),
             company_id=scope.company_id,
             interview_session_id=session.interview_session_id,
             session_sequence=session.session_sequence,
+            last_final_turn_id=last_final_turn_id,
             last_media_chunk_sequence=last_media_sequence,
             pending_turn_id=pending_turn_id,
             hot_view_sync_status=HotViewSyncStatus.PENDING,
@@ -647,6 +990,8 @@ def create_interview_runtimes(
     http_scope_provider: Callable[[Request], tuple[TenantContext, ApplicantScope]],
     websocket_scope_provider: Callable[[WebSocket], tuple[TenantContext, ApplicantScope]],
     object_storage: ObjectStoragePort | None = None,
+    transcriber: AudioTranscriber | None = None,
+    max_questions: int = 2,
     clock: Clock | None = None,
 ) -> tuple[ApplicantInterviewRouteRuntime, WebSocketRuntime]:
     active_clock = clock or SystemClock()
@@ -674,6 +1019,8 @@ def create_interview_runtimes(
                 route_service,
                 clock=active_clock,
                 id_generator=id_generator,
+                transcriber=transcriber,
+                max_questions=max_questions,
             ),
             scope_provider=websocket_scope_provider,
         ),

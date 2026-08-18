@@ -276,6 +276,33 @@ class InterviewSessionRepository:
         )
         return tuple(self._turn(row) for row in rows)
 
+    def save_turn(
+        self,
+        context: TenantContext,
+        scope: ApplicantScope,
+        turn: Turn,
+    ) -> Turn:
+        self._authorize_child(context, scope, turn.company_id, turn.interview_session_id)
+        row = self.session.scalar(
+            select(TurnRow).where(
+                TurnRow.turn_id == str(turn.turn_id),
+                TurnRow.company_id == str(scope.company_id),
+                TurnRow.interview_session_id == str(turn.interview_session_id),
+            )
+        )
+        if row is None:
+            raise SafeApplicationError(ErrorCode.RESOURCE_NOT_FOUND)
+        row.status = turn.status.value
+        row.text = turn.text.reveal() if turn.text is not None else None
+        row.target_criterion_id = (
+            str(turn.target_criterion_id) if turn.target_criterion_id is not None else None
+        )
+        row.idempotency_key = turn.idempotency_key
+        row.model_config_version = turn.model_config_version
+        row.finalized_at = turn.finalized_at
+        self.session.flush()
+        return turn
+
     def add_checkpoint(
         self,
         context: TenantContext,

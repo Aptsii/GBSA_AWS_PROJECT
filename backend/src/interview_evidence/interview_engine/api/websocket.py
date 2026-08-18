@@ -18,7 +18,7 @@ class ProtocolMessage(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     protocol_version: Literal["1.0"]
-    message_type: str = Field(pattern=r"^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$")
+    message_type: str = Field(pattern=r"^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+$")
     session_id: UUID7
     sequence: int = Field(ge=0)
     idempotency_key: str = Field(min_length=1, max_length=128)
@@ -62,7 +62,6 @@ def create_websocket_router(runtime: WebSocketRuntime) -> APIRouter:
 
     @router.websocket("/applicant/interview-sessions/{session_id}/stream")
     async def interview_stream(websocket: WebSocket, session_id: str) -> None:
-        del session_id
         try:
             context, scope = runtime.scope_provider(websocket)
         except Exception:
@@ -94,6 +93,9 @@ def create_websocket_router(runtime: WebSocketRuntime) -> APIRouter:
                     message = ProtocolMessage.model_validate_json(text)
                 except ValueError:
                     await websocket.close(code=4009)
+                    return
+                if str(message.session_id) != session_id:
+                    await websocket.close(code=4003)
                     return
                 if message.message_type == "audio.chunk.begin":
                     pending_audio = message
