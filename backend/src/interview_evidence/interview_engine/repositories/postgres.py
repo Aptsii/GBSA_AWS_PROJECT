@@ -314,6 +314,26 @@ class InterviewSessionRepository:
         self.session.flush()
         return chunk
 
+    def save_recording_chunk(
+        self,
+        context: TenantContext,
+        scope: ApplicantScope,
+        chunk: RecordingChunk,
+    ) -> RecordingChunk:
+        self._authorize_child(context, scope, chunk.company_id, chunk.interview_session_id)
+        row = self.session.scalar(
+            select(RecordingChunkRow).where(
+                RecordingChunkRow.recording_chunk_id == str(chunk.recording_chunk_id),
+                RecordingChunkRow.company_id == str(scope.company_id),
+                RecordingChunkRow.interview_session_id == str(chunk.interview_session_id),
+            )
+        )
+        if row is None:
+            raise SafeApplicationError(ErrorCode.RESOURCE_NOT_FOUND)
+        row.upload_status = chunk.upload_status.value
+        self.session.flush()
+        return chunk
+
     def list_recording_chunks(
         self, context: TenantContext, scope: ApplicantScope, session_id: str | OpaqueId
     ) -> tuple[RecordingChunk, ...]:
