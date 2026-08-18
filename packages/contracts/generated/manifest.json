@@ -18,10 +18,10 @@
     "packages/contracts/events/compatibility/v1/submission.analysis_requested.json": "0600ff8820b999edb644d7c2fa942fb039a45aec30435fb4b563ca13933ac39c",
     "packages/contracts/generated/README.md": "a81fa2dc6d02ff776eaa702b75e618577ed406d5de5eb319777d493d279afe1b",
     "packages/contracts/generated/python/interview_evidence_contracts/__init__.py": "db56aa8606988223e5cc97ab82b870f24222063bceb33c9e5060cf20e80605cf",
-    "packages/contracts/generated/python/interview_evidence_contracts/models.py": "8237578476ce6d5c2a506be65db2e5448cc0af9ab0249d3c709508fcd4c0fe3c",
+    "packages/contracts/generated/python/interview_evidence_contracts/models.py": "8ca723c3b65d0a1638f1d59cddf517d378f6fe214129fc3a80363dd1f73414a2",
     "packages/contracts/generated/python/interview_evidence_contracts/py.typed": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "packages/contracts/generated/schema-bundle.json": "dd8b92435b814c86770fad8f370a423413e38132cb477f52fcbcc7ba49d595c4",
-    "packages/contracts/generated/typescript/index.ts": "58b966ee991d857a837325d23f1c8ea5dacfbf7326b6425cde1131c5e5732db3"
+    "packages/contracts/generated/schema-bundle.json": "f1a72445b407b0cd2f4f4cc2ed5ab48a136c593c48d9c47e63ab464eb916af27",
+    "packages/contracts/generated/typescript/index.ts": "8425e39c13d3cfba448d18b25a5afcb7b4f1a0f23e97cff3493c35abfa6dc3aa"
   },
   "schema_version": 1,
   "sources": {
@@ -46,10 +46,11 @@
     "packages/contracts/events/submission/v1/examples/strategy.ready.json": "8546b33b40d871fe5da0a639ed6f280723c6886ab82b3cf49c2cdbaa872c5f85",
     "packages/contracts/events/submission/v1/examples/submission.analysis_completed.json": "2f656613b6af409ab81c7a83be1bea3b26106bd8d0d528ca8bca2985facb409c",
     "packages/contracts/events/submission/v1/examples/submission.analysis_requested.json": "bb44eedc6997731a2af12ae853a87f9141481b6d3f809b2d65f4803e8ec2c7da",
-    "packages/contracts/events/websocket/v1/catalog.json": "a1368396582f84104559e7d4ac379279bb9d14e5f48e1294a7acfc21449ce0c9",
-    "packages/contracts/events/websocket/v1/client-messages.json": "a27faa92acc0b27566e42e78871a30d40c7ae1293764027a0c9df2a0bf855c96",
+    "packages/contracts/events/websocket/v1/catalog.json": "03c2ed7f05fd5dc06fcf23c4e9c207020def5ec0e6a31a61356fe2c093090537",
+    "packages/contracts/events/websocket/v1/client-messages.json": "d274840372b41930f699965520ce14b64edd93c0b3f7e34bd634110042ae8603",
     "packages/contracts/events/websocket/v1/envelope.json": "8b9e20fba67d2e083c8b06e33a0f4cb41751e19617074fae53c1c115d964f814",
     "packages/contracts/events/websocket/v1/examples/answer.complete.json": "86b67a340b437718c0f728070bd489062eb10706fd793aa4b92acdec827b3eb9",
+    "packages/contracts/events/websocket/v1/examples/answer.text.submit.json": "bf8d6067ba10167c589ea66d8df673a51a630a7def3bdb21c961ddb27f7215dc",
     "packages/contracts/events/websocket/v1/examples/audio.chunk.begin.json": "b15f84c9375803a41b0a56d6bc0180ef0d56bef9b1745a663de7c343118c7559",
     "packages/contracts/events/websocket/v1/examples/client.ack.json": "c30cd00e168cce50f8ef1ccd696c9436565d7dbf6af98c20c039aef5f9c0d1ee",
     "packages/contracts/events/websocket/v1/examples/error.json": "f880d12e67b87558912d4ffd97be099de021fe98126b79490342291a3e820d76",

@@ -31,6 +31,7 @@ from sqlalchemy.pool import StaticPool
 from tests.fixtures.shared.factories import (
     APPLICANT_ID,
     COMPANY_ID,
+    CRITERION_ID,
     INVITATION_ID,
     STRATEGY_ID,
     make_tenant_context,
@@ -38,6 +39,135 @@ from tests.fixtures.shared.factories import (
 
 FIRST_TRANSCRIPTION_ID = "018f2000-0000-7000-8000-000000000402"
 SECOND_TRANSCRIPTION_ID = "018f2000-0000-7000-8000-000000000403"
+
+
+@pytest.mark.asyncio
+async def test_text_answer_uses_persisted_strategy_question_and_criterion_axis() -> None:
+    engine = create_engine(
+        "sqlite+pysqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(engine)
+    clock = FixedClock(datetime(2026, 8, 18, tzinfo=UTC))
+    ids = UUID7Generator(clock, randbytes=lambda size: b"\x53" * size)
+    context = TenantContext(**make_tenant_context())
+    scope = ApplicantScope(COMPANY_ID, APPLICANT_ID, INVITATION_ID)
+    strategy = {
+        "company_id": str(COMPANY_ID),
+        "invitation_id": str(INVITATION_ID),
+        "interview_strategy_id": str(STRATEGY_ID),
+        "strategy_version": 1,
+        "competency_model_version_id": "018f2000-0000-7000-8000-000000000202",
+        "status": "ready",
+        "common_topics": [
+            {
+                "criterion_id": str(CRITERION_ID),
+                "common_questions": ["장애 복구 전략을 어떻게 검증했나요?"],
+            }
+        ],
+        "verification_points": [
+            {
+                "criterion_id": str(CRITERION_ID),
+                "prompt": "제출 자료의 장애 복구 설계에서 본인이 내린 판단을 설명해 주세요.",
+                "source_reference_ids": ["018f2000-0000-7000-8000-000000000222"],
+            }
+        ],
+        "follow_up_directions": {"max_per_topic": 2},
+        "time_budget": {"minutes": 30},
+        "required_evidence_plan": {"required_criteria": 1},
+        "source_reference_candidates": [],
+        "model_config_version": "strategy-model-v1",
+    }
+
+    def strategy_provider(
+        _context: TenantContext,
+        *,
+        strategy_id: str,
+    ) -> dict[str, object]:
+        assert strategy_id == str(STRATEGY_ID)
+        return strategy
+
+    with Session(engine) as database:
+        repository = InterviewSessionRepository(database)
+        route_service = SQLAlchemyInterviewRouteService(
+            repository,
+            clock=clock,
+            id_generator=ids,
+            object_storage=FakeObjectStorage(),
+            strategy_provider=strategy_provider,
+        )
+        handler = SQLAlchemyInterviewStreamHandler(
+            repository,
+            route_service,
+            clock=clock,
+            id_generator=ids,
+            max_questions=1,
+        )
+        created = route_service.create_interview_session(
+            context=context,
+            scope=scope,
+            equipment_check_id="018f2000-0000-7000-8000-000000000201",
+            strategy_id=STRATEGY_ID,
+            acknowledged_partial_analysis=False,
+            idempotency_key="runtime-text-session-0001",
+        )
+        session_id = str(created["interview_session_id"])
+
+        started = await handler.handle_message(
+            context,
+            scope,
+            _message(session_id, 0, "session.start", {"equipment_check_id": "check-1"}),
+        )
+        assert isinstance(started, tuple)
+        question = started[-1]
+        assert question.message_type == "question.ready"
+        assert question.payload["text"] == strategy["verification_points"][0]["prompt"]
+        assert question.payload["target_criterion_id"] == str(CRITERION_ID)
+        assert question.payload["source_reference_count"] == 1
+
+        answer_turn_id = "018f2000-0000-7000-8000-000000000406"
+        transcript = await handler.handle_message(
+            context,
+            scope,
+            _message(
+                session_id,
+                2,
+                "answer.text.submit",
+                {
+                    "answer_turn_id": answer_turn_id,
+                    "text": "복구 목표를 수치로 정의하고 장애 주입으로 검증했습니다.",
+                },
+            ),
+        )
+        assert isinstance(transcript, ProtocolMessage)
+        assert transcript.message_type == "transcript.final"
+        assert transcript.payload["text"] == (
+            "복구 목표를 수치로 정의하고 장애 주입으로 검증했습니다."
+        )
+
+        completed = await handler.handle_message(
+            context,
+            scope,
+            _message(
+                session_id,
+                2,
+                "answer.complete",
+                {
+                    "answer_turn_id": answer_turn_id,
+                    "last_audio_chunk_sequence": 0,
+                    "last_recording_chunk_sequence": 0,
+                },
+            ),
+        )
+        assert isinstance(completed, tuple)
+        assert completed[-1].message_type == "session.completed"
+        final_answer = repository.list_turns(context, scope, session_id)[-1]
+        assert final_answer.speaker is TurnSpeaker.APPLICANT
+        assert final_answer.status is TurnStatus.FINAL
+        assert final_answer.text is not None
+        assert final_answer.text.reveal().startswith("복구 목표")
+    engine.dispose()
 
 
 @pytest.mark.asyncio
@@ -144,6 +274,18 @@ async def test_sql_websocket_runs_transcript_multiple_questions_completion_and_r
             "question.ready",
         ]
         assert next_question[-1].payload["text"] != started[-1].payload["text"]
+
+        resumed = await handler.handle_message(
+            context,
+            scope,
+            _message(session_id, 4, "session.resume", {}),
+        )
+        assert isinstance(resumed, tuple)
+        assert [item.message_type for item in resumed] == [
+            "resume.snapshot",
+            "question.ready",
+        ]
+        assert resumed[-1].payload == next_question[-1].payload
 
         second_answer_turn_id = "018f2000-0000-7000-8000-000000000404"
         second_transcript = await handler.handle_binary(
@@ -291,10 +433,13 @@ async def test_sql_websocket_pauses_safely_when_transcription_is_unavailable_the
             scope,
             _message(session_id, 3, "session.resume", {}),
         )
-        assert isinstance(resumed, ProtocolMessage)
-        assert resumed.message_type == "resume.snapshot"
-        assert resumed.payload["state"] == "awaiting_answer"
-        assert "audio.chunk.begin" in resumed.payload["allowed_client_messages"]
+        assert isinstance(resumed, tuple)
+        assert [item.message_type for item in resumed] == [
+            "resume.snapshot",
+            "question.ready",
+        ]
+        assert resumed[0].payload["state"] == "awaiting_answer"
+        assert "audio.chunk.begin" in resumed[0].payload["allowed_client_messages"]
     engine.dispose()
 
 

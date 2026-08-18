@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pytest
-from interview_evidence.shared.config import RuntimeEnvironment, Settings
+from interview_evidence.shared.config import RuntimeEnvironment, Settings, TranscriberMode
 from pydantic import ValidationError
 
 
@@ -53,6 +53,17 @@ def test_invalid_region_and_short_session_secret_are_rejected() -> None:
         _settings(aws_region="not a region")
     with pytest.raises(ValidationError):
         _settings(applicant_session_secret="too-short")
+
+
+def test_utf8_text_transcriber_is_restricted_to_local_and_test() -> None:
+    local = _settings(transcriber_mode=TranscriberMode.UTF8_TEXT)
+    assert local.transcriber_mode is TranscriberMode.UTF8_TEXT
+
+    with pytest.raises(ValidationError, match="restricted"):
+        _settings(
+            environment=RuntimeEnvironment.PROD,
+            transcriber_mode=TranscriberMode.UTF8_TEXT,
+        )
 
 
 def test_lane_runtime_inputs_use_the_documented_iep_environment_names(

@@ -4,6 +4,7 @@
   "oneOf": [
     {"$ref": "#/$defs/SessionStartMessage"},
     {"$ref": "#/$defs/AudioChunkBeginMessage"},
+    {"$ref": "#/$defs/AnswerTextSubmitMessage"},
     {"$ref": "#/$defs/AnswerCompleteMessage"},
     {"$ref": "#/$defs/QuestionRepeatMessage"},
     {"$ref": "#/$defs/SessionResumeMessage"},
@@ -83,6 +84,29 @@
         }
       ],
       "unevaluatedProperties": false
+    },
+    "AnswerTextSubmitMessage": {
+      "title": "AnswerTextSubmitMessage",
+      "allOf": [
+        {"$ref": "./envelope.json"},
+        {
+          "type": "object",
+          "properties": {
+            "message_type": {"const": "answer.text.submit"},
+            "payload": {"$ref": "#/$defs/AnswerTextSubmitPayload"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "AnswerTextSubmitPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["answer_turn_id", "text"],
+      "properties": {
+        "answer_turn_id": {"type": "string", "format": "uuid"},
+        "text": {"type": "string", "minLength": 1, "maxLength": 20000}
+      }
     },
     "AnswerCompletePayload": {
       "type": "object",

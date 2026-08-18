@@ -21,6 +21,11 @@ class RuntimeEnvironment(StrEnum):
     PROD = "prod"
 
 
+class TranscriberMode(StrEnum):
+    UNAVAILABLE = "unavailable"
+    UTF8_TEXT = "utf8_text"
+
+
 class Settings(BaseSettings):
     """Application settings whose secrets cannot leak through normal rendering."""
 
@@ -51,6 +56,7 @@ class Settings(BaseSettings):
     worker_max_attempts: int = Field(default=5, ge=1, le=20)
     worker_wait_time_seconds: int = Field(default=20, ge=0, le=20)
     worker_visibility_timeout_seconds: int = Field(default=60, ge=1, le=43_200)
+    transcriber_mode: TranscriberMode = TranscriberMode.UNAVAILABLE
     object_storage_bucket: str = Field(
         default="iep-local-contract-fixtures",
         pattern=r"^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$",
@@ -64,6 +70,11 @@ class Settings(BaseSettings):
             raise ValueError("bedrock_region must be a valid AWS region code")
         if self.bedrock_region != self.aws_region and not self.cross_region_model_approved:
             raise ValueError("cross-region model use requires explicit privacy approval")
+        if (
+            self.transcriber_mode is TranscriberMode.UTF8_TEXT
+            and self.environment not in {RuntimeEnvironment.LOCAL, RuntimeEnvironment.TEST}
+        ):
+            raise ValueError("UTF-8 text transcription is restricted to local and test runtimes")
         for url in (
             self.company_jwt_issuer,
             self.company_jwks_url,

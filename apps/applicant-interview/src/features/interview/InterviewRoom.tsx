@@ -295,6 +295,15 @@ export function InterviewRoom({
 
   function completeAnswer() {
     if (!answerTurnId) return;
+    if (textOnly) {
+      const text = answerDraft.trim();
+      if (!text) {
+        setErrorMessage("답변 내용을 입력해 주세요.");
+        return;
+      }
+      socketRef.current?.submitTextAnswer(answerTurnId, text);
+      setTranscript(text);
+    }
     socketRef.current?.completeAnswer(answerTurnId, {
       lastAudioChunkSequence: 0,
       lastRecordingChunkSequence: lastRecordingChunkSequenceRef.current,
@@ -370,7 +379,11 @@ export function InterviewRoom({
           />
         )}
         {transcript && <p aria-label="실시간 자막">{transcript}</p>}
-        <button type="button" onClick={completeAnswer} disabled={!canAnswer}>
+        <button
+          type="button"
+          onClick={completeAnswer}
+          disabled={!canAnswer || (textOnly && !answerDraft.trim())}
+        >
           답변 완료
         </button>
       </section>

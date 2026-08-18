@@ -63,6 +63,7 @@ export interface ProtocolMessage {
 export interface InterviewSocket {
   start(equipmentCheckId: string): void;
   repeatQuestion(questionTurnId: string): void;
+  submitTextAnswer(answerTurnId: string, text: string): void;
   completeAnswer(
     answerTurnId: string,
     progress: {
@@ -217,6 +218,12 @@ export function createInterviewSocket(
       send("question.repeat", {
         mode: "repeat_or_clarify",
         question_turn_id: questionTurnId,
+      });
+    },
+    submitTextAnswer(answerTurnId, text) {
+      send("answer.text.submit", {
+        answer_turn_id: answerTurnId,
+        text,
       });
     },
     completeAnswer(answerTurnId, progress) {

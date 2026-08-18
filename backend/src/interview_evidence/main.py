@@ -40,6 +40,7 @@ from interview_evidence.company_management.events import (
 from interview_evidence.company_management.repositories.postgres import (
     CompanyManagementRepository,
 )
+from interview_evidence.interview_engine.adapters.transcribe import Utf8TextTranscriber
 from interview_evidence.interview_engine.api.applicant_routes import (
     ApplicantInterviewRouteRuntime,
     create_applicant_interview_router,
@@ -56,7 +57,7 @@ from interview_evidence.reporting.api.company_routes import (
 from interview_evidence.reporting.api.runtime import create_reporting_runtime
 from interview_evidence.shared.aws_clients.ports import ObjectStoragePort
 from interview_evidence.shared.aws_clients.s3 import S3ObjectStorage
-from interview_evidence.shared.config import RuntimeEnvironment, Settings
+from interview_evidence.shared.config import RuntimeEnvironment, Settings, TranscriberMode
 from interview_evidence.shared.errors import (
     ErrorCode,
     FieldError,
@@ -85,7 +86,7 @@ from interview_evidence.submission_analysis.api.applicant_routes import (
 from interview_evidence.submission_analysis.api.applicant_routes import (
     create_applicant_router as create_submission_router,
 )
-from interview_evidence.submission_analysis.api.runtime import create_submission_runtime
+from interview_evidence.submission_analysis.api.runtime import create_submission_runtimes
 from interview_evidence.submission_analysis.application.analysis_pipeline import (
     CompanyCriterionSnapshotProvider,
 )
@@ -383,21 +384,39 @@ def create_production_runtimes(
         authenticator=company_authenticator,
     )
     applicant_scope_provider = _applicant_scope_provider(company)
+    submission = create_submission_runtimes(
+        resources.sessions.proxy,
+        authorization_contracts=company.authorization,
+        object_storage=resources.object_storage,
+        scope_provider=applicant_scope_provider,
+    )
+
+    def strategy_provider(
+        context: TenantContext,
+        *,
+        strategy_id: str,
+    ) -> Mapping[str, object]:
+        return submission.public.get_strategy_snapshot(
+            context,
+            strategy_id=strategy_id,
+        )
+
     interview, interview_websocket = create_interview_runtimes(
         resources.sessions.proxy,
         http_scope_provider=applicant_scope_provider,
         websocket_scope_provider=_applicant_websocket_scope_provider(company),
         object_storage=resources.object_storage,
+        transcriber=(
+            Utf8TextTranscriber()
+            if resources.settings.transcriber_mode is TranscriberMode.UTF8_TEXT
+            else None
+        ),
+        strategy_provider=strategy_provider,
     )
     return ApplicationRuntimes(
         company=company.company,
         company_applicant=company.applicant,
-        submission=create_submission_runtime(
-            resources.sessions.proxy,
-            authorization_contracts=company.authorization,
-            object_storage=resources.object_storage,
-            scope_provider=applicant_scope_provider,
-        ),
+        submission=submission.applicant,
         interview=interview,
         interview_websocket=interview_websocket,
         reporting=create_reporting_runtime(

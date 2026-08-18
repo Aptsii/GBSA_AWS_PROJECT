@@ -483,6 +483,20 @@ class AudioChunkBeginMessage(TypedDict, total=False):
     sent_at: Required[str]
     payload: Required[AudioChunkBeginMessagePayload]
 
+class AnswerTextSubmitMessagePayload(TypedDict, total=False):
+    answer_turn_id: Required[str]
+    text: Required[str]
+
+class AnswerTextSubmitMessage(TypedDict, total=False):
+    protocol_version: Required[Literal['1.0']]
+    message_type: Required[Literal['answer.text.submit']]
+    session_id: Required[str]
+    sequence: Required[int]
+    idempotency_key: Required[str]
+    correlation_id: Required[str]
+    sent_at: Required[str]
+    payload: Required[AnswerTextSubmitMessagePayload]
+
 class AnswerCompleteMessagePayload(TypedDict, total=False):
     answer_turn_id: Required[str]
     last_audio_chunk_sequence: Required[int]
@@ -1493,6 +1507,7 @@ __all__ = [
     "ProcessingStatus",
     "SessionStartMessage",
     "AudioChunkBeginMessage",
+    "AnswerTextSubmitMessage",
     "AnswerCompleteMessage",
     "QuestionRepeatMessage",
     "SessionResumeMessage",

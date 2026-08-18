@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
 
 from fastapi import Request
 from sqlalchemy.orm import Session
@@ -10,6 +11,7 @@ from interview_evidence.shared.ids import Clock, SystemClock, UUID7Generator
 from interview_evidence.shared.persistence import SQLAlchemyOutbox
 from interview_evidence.shared.tenant import ApplicantScope, TenantContext
 from interview_evidence.submission_analysis.adapters.object_storage import SubmissionObjectStorage
+from interview_evidence.submission_analysis.adapters.search import InMemorySubmissionSearch
 from interview_evidence.submission_analysis.api.applicant_routes import ApplicantRouteRuntime
 from interview_evidence.submission_analysis.application.analysis_pipeline import (
     CompanyCriterionSnapshotProvider,
@@ -19,15 +21,26 @@ from interview_evidence.submission_analysis.application.authorization import (
     CompanyAuthorizationContracts,
     SubmissionAuthorizationGate,
 )
+from interview_evidence.submission_analysis.application.deletion_targets import (
+    SubmissionDeletionService,
+)
+from interview_evidence.submission_analysis.application.retrieval import HybridRetriever
 from interview_evidence.submission_analysis.application.submission_service import (
     SubmissionApplicationService,
 )
 from interview_evidence.submission_analysis.application.submission_validator import (
     SubmissionValidator,
 )
+from interview_evidence.submission_analysis.contracts import SubmissionAnalysisPublicService
 from interview_evidence.submission_analysis.repositories.postgres import (
     SubmissionAnalysisRepository,
 )
+
+
+@dataclass(frozen=True, slots=True)
+class SubmissionRuntimeBundle:
+    applicant: ApplicantRouteRuntime
+    public: SubmissionAnalysisPublicService
 
 
 def create_submission_runtime(
@@ -38,6 +51,23 @@ def create_submission_runtime(
     scope_provider: Callable[[Request], tuple[TenantContext, ApplicantScope]],
     clock: Clock | None = None,
 ) -> ApplicantRouteRuntime:
+    return create_submission_runtimes(
+        session,
+        authorization_contracts=authorization_contracts,
+        object_storage=object_storage,
+        scope_provider=scope_provider,
+        clock=clock,
+    ).applicant
+
+
+def create_submission_runtimes(
+    session: Session,
+    *,
+    authorization_contracts: CompanyAuthorizationContracts,
+    object_storage: ObjectStoragePort,
+    scope_provider: Callable[[Request], tuple[TenantContext, ApplicantScope]],
+    clock: Clock | None = None,
+) -> SubmissionRuntimeBundle:
     active_clock = clock or SystemClock()
     id_generator = UUID7Generator(active_clock)
     repository = SubmissionAnalysisRepository(session)
@@ -46,6 +76,7 @@ def create_submission_runtime(
         clock=active_clock,
         id_generator=id_generator,
     )
+    search = InMemorySubmissionSearch()
     coordinator = SubmissionAnalysisCoordinator(
         repository=repository,
         object_storage=submission_storage,
@@ -65,4 +96,11 @@ def create_submission_runtime(
         id_generator=id_generator,
         analysis_dispatcher=coordinator,
     )
-    return ApplicantRouteRuntime(service=service, scope_provider=scope_provider)
+    return SubmissionRuntimeBundle(
+        applicant=ApplicantRouteRuntime(service=service, scope_provider=scope_provider),
+        public=SubmissionAnalysisPublicService(
+            repository=repository,
+            retriever=HybridRetriever(search),
+            deletion=SubmissionDeletionService(repository, submission_storage, search),
+        ),
+    )

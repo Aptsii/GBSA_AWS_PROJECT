@@ -23,6 +23,7 @@ GENERATOR = CONTRACTS_ROOT / "scripts" / "generate_contracts.py"
 
 EXPECTED_WEBSOCKET_MESSAGES = {
     "answer.complete",
+    "answer.text.submit",
     "audio.chunk.begin",
     "client.ack",
     "error",

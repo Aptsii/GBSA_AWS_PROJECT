@@ -500,6 +500,20 @@ export type AudioChunkBeginMessage = {
   };
 };
 
+export type AnswerTextSubmitMessage = {
+  protocol_version: "1.0";
+  message_type: "answer.text.submit";
+  session_id: string;
+  sequence: number;
+  idempotency_key: string;
+  correlation_id: string;
+  sent_at: string;
+  payload: {
+    answer_turn_id: string;
+    text: string;
+  };
+};
+
 export type AnswerCompleteMessage = {
   protocol_version: "1.0";
   message_type: "answer.complete";

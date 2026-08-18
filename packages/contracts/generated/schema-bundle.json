@@ -167,6 +167,72 @@
       "type": "object",
       "unevaluatedProperties": false
     },
+    "AnswerTextSubmitMessage": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "correlation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "idempotency_key": {
+          "maxLength": 128,
+          "minLength": 16,
+          "type": "string"
+        },
+        "message_type": {
+          "const": "answer.text.submit",
+          "minLength": 1,
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": false,
+          "properties": {
+            "answer_turn_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "text": {
+              "maxLength": 20000,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "answer_turn_id",
+            "text"
+          ],
+          "type": "object"
+        },
+        "protocol_version": {
+          "const": "1.0"
+        },
+        "sent_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "sequence": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "session_id": {
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "protocol_version",
+        "message_type",
+        "session_id",
+        "sequence",
+        "idempotency_key",
+        "correlation_id",
+        "sent_at",
+        "payload"
+      ],
+      "title": "AnswerTextSubmitMessage",
+      "type": "object",
+      "unevaluatedProperties": false
+    },
     "ApplicantAccessState": {
       "additionalProperties": false,
       "properties": {

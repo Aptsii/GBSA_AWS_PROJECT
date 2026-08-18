@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import replace
 from datetime import timedelta
 from typing import Protocol
@@ -53,6 +53,15 @@ class AudioTranscriber(Protocol):
     ) -> TranscriptionResult: ...
 
 
+class StrategySnapshotProvider(Protocol):
+    def __call__(
+        self,
+        context: TenantContext,
+        *,
+        strategy_id: str,
+    ) -> Mapping[str, object]: ...
+
+
 class UnavailableAudioTranscriber:
     async def transcribe(
         self,
@@ -71,6 +80,7 @@ class SQLAlchemyInterviewRouteService:
         "_object_storage",
         "_replays",
         "_repository",
+        "_strategy_provider",
     )
 
     def __init__(
@@ -80,11 +90,13 @@ class SQLAlchemyInterviewRouteService:
         clock: Clock,
         id_generator: UUID7Generator,
         object_storage: ObjectStoragePort,
+        strategy_provider: StrategySnapshotProvider | None = None,
     ) -> None:
         self._repository = repository
         self._clock = clock
         self._id_generator = id_generator
         self._object_storage = object_storage
+        self._strategy_provider = strategy_provider
         self._equipment: dict[tuple[OpaqueId, str], dict[str, object]] = {}
         self._replays: dict[tuple[OpaqueId, str], tuple[str, dict[str, object]]] = {}
 
@@ -131,11 +143,18 @@ class SQLAlchemyInterviewRouteService:
         if replay is not None:
             return replay
         strategy_id = OpaqueId(str(arguments["strategy_id"]))
+        strategy = self.strategy_snapshot(context, scope, strategy_id)
+        status = strategy.get("status")
+        if status == "partial" and arguments["acknowledged_partial_analysis"] is not True:
+            raise SafeApplicationError(ErrorCode.CONFLICT)
+        competency_model_version_id = OpaqueId(
+            str(strategy["competency_model_version_id"])
+        )
         interview_session = InterviewSession(
             interview_session_id=self._id_generator.new(),
             scope=scope,
             interview_strategy_id=strategy_id,
-            competency_model_version_id=strategy_id,
+            competency_model_version_id=competency_model_version_id,
             state=SessionState.PREPARING,
             session_sequence=0,
             row_version=1,
@@ -153,6 +172,38 @@ class SQLAlchemyInterviewRouteService:
         }
         self._record(replay_key, digest, response)
         return response
+
+    def strategy_snapshot(
+        self,
+        context: TenantContext,
+        scope: ApplicantScope,
+        strategy_id: str | OpaqueId,
+    ) -> Mapping[str, object]:
+        ensure_applicant_scope(context, scope)
+        checked_id = OpaqueId(strategy_id)
+        if self._strategy_provider is None:
+            return {
+                "company_id": str(scope.company_id),
+                "invitation_id": str(scope.invitation_id),
+                "interview_strategy_id": str(checked_id),
+                "competency_model_version_id": str(checked_id),
+                "status": "ready",
+                "verification_points": (),
+                "common_topics": (),
+                "model_config_version": "runtime-fallback-v1",
+            }
+        snapshot = self._strategy_provider(
+            context,
+            strategy_id=str(checked_id),
+        )
+        if (
+            snapshot.get("company_id") != str(scope.company_id)
+            or snapshot.get("invitation_id") != str(scope.invitation_id)
+            or snapshot.get("interview_strategy_id") != str(checked_id)
+            or snapshot.get("status") not in {"ready", "partial"}
+        ):
+            raise SafeApplicationError(ErrorCode.FORBIDDEN)
+        return snapshot
 
     def get_resume_snapshot(self, **arguments: object) -> dict[str, object]:
         context, scope = self._scope(arguments)
@@ -376,13 +427,15 @@ class SQLAlchemyInterviewStreamHandler:
     ) -> ProtocolMessage | tuple[ProtocolMessage, ...]:
         session = self._repository.get_session(context, scope, str(message.session_id))
         if message.message_type == "session.resume":
-            return self._resume_message(message, context, scope, session)
+            return self._resume(message, context, scope, session)
         if message.message_type != "session.resume" and message.sequence < session.session_sequence:
             return self._resume_message(message, context, scope, session)
         if message.message_type == "session.start":
             return self._start(message, context, scope, session)
         if message.message_type == "question.repeat":
             return self._repeat(message, context, scope, session)
+        if message.message_type == "answer.text.submit":
+            return self._submit_text(message, context, scope, session)
         if message.message_type == "answer.complete":
             return await self._complete(message, context, scope, session)
         return self._message(
@@ -485,20 +538,13 @@ class SQLAlchemyInterviewStreamHandler:
                 awaiting,
                 expected_row_version=session.row_version,
             )
-            question = Turn(
-                turn_id=self._id_generator.new(),
-                company_id=scope.company_id,
-                interview_session_id=session.interview_session_id,
+            question = self._next_question(
+                context,
+                scope,
+                awaiting,
                 sequence=1,
-                speaker=TurnSpeaker.INTERVIEWER,
-                status=TurnStatus.PRESENTED,
-                text=ProtectedText(
-                    "제출한 경험 중 가장 어려웠던 문제와 해결 과정을 구체적으로 설명해 주세요."
-                ),
-                target_criterion_id=session.competency_model_version_id,
-                model_config_version="runtime-fallback-v1",
+                question_number=1,
                 idempotency_key=message.idempotency_key,
-                created_at=self._clock.now(),
             )
             self._repository.add_turn(context, scope, question)
             checkpoint = self._checkpoint(
@@ -520,10 +566,10 @@ class SQLAlchemyInterviewStreamHandler:
                         "checkpoint_id": str(checkpoint.checkpoint_id),
                     },
                 ),
-                self._question_message(message, awaiting, question),
+                self._question_message(message, context, scope, awaiting, question),
             )
         question = next(turn for turn in reversed(turns) if turn.speaker is TurnSpeaker.INTERVIEWER)
-        return (self._question_message(message, session, question),)
+        return (self._question_message(message, context, scope, session, question),)
 
     def _repeat(
         self,
@@ -538,7 +584,64 @@ class SQLAlchemyInterviewStreamHandler:
             for turn in self._repository.list_turns(context, scope, session.interview_session_id)
             if turn.turn_id == question_id and turn.speaker is TurnSpeaker.INTERVIEWER
         )
-        return self._question_message(message, session, question)
+        return self._question_message(message, context, scope, session, question)
+
+    def _submit_text(
+        self,
+        message: ProtocolMessage,
+        context: TenantContext,
+        scope: ApplicantScope,
+        session: InterviewSession,
+    ) -> ProtocolMessage:
+        if session.state is not SessionState.AWAITING_ANSWER:
+            raise SafeApplicationError(ErrorCode.CONFLICT)
+        text_value = message.payload.get("text")
+        if not isinstance(text_value, str):
+            raise SafeApplicationError(ErrorCode.INVALID_REQUEST)
+        text = text_value.strip()
+        if not 1 <= len(text) <= 20_000:
+            raise SafeApplicationError(ErrorCode.INVALID_REQUEST)
+        try:
+            answer_turn_id = OpaqueId(str(message.payload["answer_turn_id"]))
+        except (KeyError, ValueError):
+            raise SafeApplicationError(ErrorCode.INVALID_REQUEST) from None
+        turns = self._repository.list_turns(context, scope, session.interview_session_id)
+        existing = next((turn for turn in turns if turn.turn_id == answer_turn_id), None)
+        if existing is None:
+            answer_turn = Turn(
+                turn_id=answer_turn_id,
+                company_id=scope.company_id,
+                interview_session_id=session.interview_session_id,
+                sequence=len(turns) + 1,
+                speaker=TurnSpeaker.APPLICANT,
+                status=TurnStatus.RECORDING,
+                text=ProtectedText(text),
+                idempotency_key=f"answer-turn:{answer_turn_id}",
+                created_at=self._clock.now(),
+            )
+            self._repository.add_turn(context, scope, answer_turn)
+        else:
+            if existing.speaker is not TurnSpeaker.APPLICANT:
+                raise SafeApplicationError(ErrorCode.CONFLICT)
+            if existing.status is TurnStatus.FINAL:
+                answer_turn = existing
+            elif existing.status is TurnStatus.RECORDING:
+                answer_turn = replace(existing, text=ProtectedText(text))
+                self._repository.save_turn(context, scope, answer_turn)
+            else:
+                raise SafeApplicationError(ErrorCode.CONFLICT)
+        return self._transcript_message(
+            message,
+            answer_turn,
+            TranscriptionResult(
+                text=ProtectedText(text),
+                confidence=1.0,
+                review_required=False,
+            ),
+            segment_sequence=0,
+            start_ms=0,
+            end_ms=0,
+        )
 
     async def _complete(
         self,
@@ -608,6 +711,7 @@ class SQLAlchemyInterviewStreamHandler:
                 expected_row_version=session.row_version,
             )
             question = self._next_question(
+                context,
                 scope,
                 awaiting,
                 sequence=len(turns) + 1,
@@ -640,7 +744,7 @@ class SQLAlchemyInterviewStreamHandler:
                     awaiting.session_sequence,
                     {"stage": "policy", "degraded_mode": "text_only"},
                 ),
-                self._question_message(message, awaiting, question),
+                self._question_message(message, context, scope, awaiting, question),
             )
         paused = self._state_machine.transition(
             session,
@@ -678,6 +782,44 @@ class SQLAlchemyInterviewStreamHandler:
                 },
             ),
             self._completed_message(message, completed, answer_turn.turn_id),
+        )
+
+    def _resume(
+        self,
+        message: ProtocolMessage,
+        context: TenantContext,
+        scope: ApplicantScope,
+        session: InterviewSession,
+    ) -> ProtocolMessage | tuple[ProtocolMessage, ...]:
+        snapshot = self._resume_message(message, context, scope, session)
+        pending_turn = snapshot.payload.get("pending_turn")
+        if (
+            snapshot.payload.get("state") != SessionState.AWAITING_ANSWER.value
+            or not isinstance(pending_turn, Mapping)
+        ):
+            return snapshot
+        pending_turn_id = pending_turn.get("turn_id")
+        if not isinstance(pending_turn_id, str):
+            return snapshot
+        resumed_session = self._repository.get_session(
+            context, scope, session.interview_session_id
+        )
+        question = next(
+            (
+                turn
+                for turn in self._repository.list_turns(
+                    context, scope, session.interview_session_id
+                )
+                if str(turn.turn_id) == pending_turn_id
+                and turn.speaker is TurnSpeaker.INTERVIEWER
+            ),
+            None,
+        )
+        if question is None:
+            return snapshot
+        return (
+            snapshot,
+            self._question_message(message, context, scope, resumed_session, question),
         )
 
     def _resume_message(
@@ -810,6 +952,10 @@ class SQLAlchemyInterviewStreamHandler:
         request: ProtocolMessage,
         answer_turn: Turn,
         transcript: TranscriptionResult,
+        *,
+        segment_sequence: int | None = None,
+        start_ms: int | None = None,
+        end_ms: int | None = None,
     ) -> ProtocolMessage:
         if answer_turn.text is None:
             raise SafeApplicationError(ErrorCode.CONFLICT)
@@ -820,10 +966,22 @@ class SQLAlchemyInterviewStreamHandler:
             {
                 "answer_turn_id": str(answer_turn.turn_id),
                 "transcript_segment_id": str(self._id_generator.new()),
-                "segment_sequence": self._payload_int(request, "chunk_sequence"),
+                "segment_sequence": (
+                    segment_sequence
+                    if segment_sequence is not None
+                    else self._payload_int(request, "chunk_sequence")
+                ),
                 "text": answer_turn.text.reveal(),
-                "start_ms": self._payload_int(request, "session_start_ms"),
-                "end_ms": self._payload_int(request, "session_end_ms"),
+                "start_ms": (
+                    start_ms
+                    if start_ms is not None
+                    else self._payload_int(request, "session_start_ms")
+                ),
+                "end_ms": (
+                    end_ms
+                    if end_ms is not None
+                    else self._payload_int(request, "session_end_ms")
+                ),
                 "confidence": transcript.confidence,
                 "is_final": True,
                 "review_required": transcript.review_required,
@@ -832,14 +990,19 @@ class SQLAlchemyInterviewStreamHandler:
 
     def _next_question(
         self,
+        context: TenantContext,
         scope: ApplicantScope,
         session: InterviewSession,
         *,
         sequence: int,
         question_number: int,
+        idempotency_key: str | None = None,
     ) -> Turn:
-        question_text = (
-            "앞서 설명한 경험에서 본인이 내린 핵심 판단과 그 결과를 구체적인 사실로 보완해 주세요."
+        question_text, criterion_id, model_config_version, _ = self._strategy_question(
+            context,
+            scope,
+            session,
+            question_number=question_number,
         )
         return Turn(
             turn_id=self._id_generator.new(),
@@ -849,12 +1012,76 @@ class SQLAlchemyInterviewStreamHandler:
             speaker=TurnSpeaker.INTERVIEWER,
             status=TurnStatus.PRESENTED,
             text=ProtectedText(question_text),
-            target_criterion_id=session.competency_model_version_id,
-            model_config_version="runtime-fallback-v1",
+            target_criterion_id=criterion_id,
+            model_config_version=model_config_version,
             idempotency_key=(
-                f"server-question:{session.interview_session_id}:{question_number:03d}"
+                idempotency_key
+                or f"server-question:{session.interview_session_id}:{question_number:03d}"
             ),
             created_at=self._clock.now(),
+        )
+
+    def _strategy_question(
+        self,
+        context: TenantContext,
+        scope: ApplicantScope,
+        session: InterviewSession,
+        *,
+        question_number: int,
+    ) -> tuple[str, OpaqueId, str, int]:
+        snapshot = self._route_service.strategy_snapshot(
+            context,
+            scope,
+            session.interview_strategy_id,
+        )
+        model_config_version = str(
+            snapshot.get("model_config_version", "runtime-fallback-v1")
+        )
+        points = snapshot.get("verification_points")
+        if isinstance(points, (list, tuple)) and points:
+            point = points[min(question_number - 1, len(points) - 1)]
+            if isinstance(point, Mapping):
+                criterion_value = point.get("criterion_id")
+                prompt = point.get("prompt")
+                source_ids = point.get("source_reference_ids")
+                if isinstance(criterion_value, str) and isinstance(prompt, str) and prompt.strip():
+                    return (
+                        prompt.strip(),
+                        OpaqueId(criterion_value),
+                        model_config_version,
+                        len(source_ids) if isinstance(source_ids, list) else 0,
+                    )
+        topics = snapshot.get("common_topics")
+        if isinstance(topics, (list, tuple)) and topics:
+            topic = topics[min(question_number - 1, len(topics) - 1)]
+            if isinstance(topic, Mapping):
+                criterion_value = topic.get("criterion_id")
+                questions = topic.get("common_questions")
+                if (
+                    isinstance(criterion_value, str)
+                    and isinstance(questions, list)
+                    and questions
+                    and isinstance(questions[0], str)
+                ):
+                    return (
+                        questions[0],
+                        OpaqueId(criterion_value),
+                        model_config_version,
+                        0,
+                    )
+        fallback_question = (
+            "제출한 경험 중 가장 어려웠던 문제와 해결 과정을 구체적으로 설명해 주세요."
+            if question_number == 1
+            else (
+                "앞서 설명한 경험에서 본인이 내린 핵심 판단과 그 결과를 "
+                "구체적인 사실로 보완해 주세요."
+            )
+        )
+        return (
+            fallback_question,
+            session.competency_model_version_id,
+            model_config_version,
+            0,
         )
 
     @staticmethod
@@ -869,6 +1096,7 @@ class SQLAlchemyInterviewStreamHandler:
                 "heartbeat.ping",
                 "question.repeat",
                 "audio.chunk.begin",
+                "answer.text.submit",
                 "answer.complete",
             ]
         return ["client.ack", "heartbeat.ping", "session.resume"]
@@ -902,11 +1130,19 @@ class SQLAlchemyInterviewStreamHandler:
     def _question_message(
         self,
         request: ProtocolMessage,
+        context: TenantContext,
+        scope: ApplicantScope,
         session: InterviewSession,
         question: Turn,
     ) -> ProtocolMessage:
         if question.text is None or question.target_criterion_id is None:
             raise SafeApplicationError(ErrorCode.CONFLICT)
+        _, _, _, source_reference_count = self._strategy_question(
+            context,
+            scope,
+            session,
+            question_number=max(1, (question.sequence + 1) // 2),
+        )
         return self._message(
             request,
             "question.ready",
@@ -918,7 +1154,7 @@ class SQLAlchemyInterviewStreamHandler:
                 "audio_url": None,
                 "audio_expires_at": None,
                 "speech_marks_url": None,
-                "source_reference_count": 0,
+                "source_reference_count": source_reference_count,
                 "text_only": True,
             },
         )
@@ -991,6 +1227,7 @@ def create_interview_runtimes(
     websocket_scope_provider: Callable[[WebSocket], tuple[TenantContext, ApplicantScope]],
     object_storage: ObjectStoragePort | None = None,
     transcriber: AudioTranscriber | None = None,
+    strategy_provider: StrategySnapshotProvider | None = None,
     max_questions: int = 2,
     clock: Clock | None = None,
 ) -> tuple[ApplicantInterviewRouteRuntime, WebSocketRuntime]:
@@ -1003,6 +1240,7 @@ def create_interview_runtimes(
         clock=active_clock,
         id_generator=id_generator,
         object_storage=active_storage,
+        strategy_provider=strategy_provider,
     )
     return (
         ApplicantInterviewRouteRuntime(

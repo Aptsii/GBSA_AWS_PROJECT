@@ -41,6 +41,7 @@ describe("복구 가능한 면접 여정", () => {
       repeatQuestion: vi.fn(),
       resume: vi.fn(),
       start: vi.fn(),
+      submitTextAnswer: vi.fn(),
     };
     const socketFactory = vi.fn(
       (options: { onMessage: (message: ProtocolMessage) => void }) => {
@@ -96,6 +97,10 @@ describe("복구 가능한 면접 여정", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "답변 완료" }));
 
+    expect(socket.submitTextAnswer).toHaveBeenCalledWith(
+      expect.any(String),
+      "장애 격리를 위해 비동기 경계를 선택했습니다.",
+    );
     expect(socket.completeAnswer).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({ lastRecordingChunkSequence: 0 }),
