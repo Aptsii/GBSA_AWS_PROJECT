@@ -1,5 +1,8 @@
 import { useState } from "react";
 
+import { updateApplicantProgress } from "../../app/progress";
+import { interviewApi, type InterviewApi } from "./api";
+
 export type ReadinessStatus = "ready" | "warning" | "failed";
 
 export interface EquipmentReadiness {
@@ -8,8 +11,13 @@ export interface EquipmentReadiness {
   readonly network: ReadinessStatus;
 }
 
+export interface SavedEquipmentReadiness extends EquipmentReadiness {
+  readonly equipment_check_id: string;
+}
+
 interface EquipmentCheckProps {
-  readonly onReady?: (readiness: EquipmentReadiness) => void;
+  readonly api?: InterviewApi;
+  readonly onReady?: (readiness: SavedEquipmentReadiness) => void;
 }
 
 const statusLabels: Record<ReadinessStatus, string> = {
@@ -18,13 +26,19 @@ const statusLabels: Record<ReadinessStatus, string> = {
   failed: "사용 불가",
 };
 
-export function EquipmentCheck({ onReady }: EquipmentCheckProps) {
+export function EquipmentCheck({
+  api = interviewApi,
+  onReady,
+}: EquipmentCheckProps) {
   const [readiness, setReadiness] = useState<EquipmentReadiness>({
     camera: "warning",
     microphone: "warning",
-    network: navigator.onLine ? "ready" : "failed",
+    network: isOnline() ? "ready" : "failed",
   });
   const [checking, setChecking] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
   async function runCheck() {
     setChecking(true);
@@ -47,9 +61,30 @@ export function EquipmentCheck({ onReady }: EquipmentCheckProps) {
     setReadiness({
       camera,
       microphone,
-      network: navigator.onLine ? "ready" : "failed",
+      network: isOnline() ? "ready" : "failed",
     });
     setChecking(false);
+  }
+
+  async function completeCheck() {
+    setSaving(true);
+    setStatusMessage("");
+    setErrorMessage("");
+    try {
+      const saved = await api.recordEquipmentCheck(readiness);
+      updateApplicantProgress({ equipmentCheckId: saved.equipment_check_id });
+      setStatusMessage("장비 점검 결과가 API에 저장되었습니다.");
+      onReady?.({
+        ...readiness,
+        equipment_check_id: saved.equipment_check_id,
+      });
+    } catch {
+      setErrorMessage(
+        "장비 점검 결과를 저장하지 못했습니다. 연결 상태를 확인한 뒤 다시 시도해 주세요.",
+      );
+    } finally {
+      setSaving(false);
+    }
   }
 
   const canContinue = Object.values(readiness).every(
@@ -85,11 +120,17 @@ export function EquipmentCheck({ onReady }: EquipmentCheckProps) {
       </button>
       <button
         type="button"
-        onClick={() => onReady?.(readiness)}
-        disabled={!canContinue}
+        onClick={() => void completeCheck()}
+        disabled={!canContinue || saving}
       >
-        장비 점검 완료
+        {saving ? "결과 저장 중" : "장비 점검 완료"}
       </button>
+      {statusMessage && <p role="status">{statusMessage}</p>}
+      {errorMessage && <p role="alert">{errorMessage}</p>}
     </section>
   );
+}
+
+function isOnline(): boolean {
+  return typeof navigator === "undefined" || navigator.onLine;
 }
