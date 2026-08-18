@@ -155,6 +155,34 @@ def create_application_routers(runtimes: ApplicationRuntimes) -> tuple[APIRouter
     )
 
 
+def create_local_browser_fixture_router(runtime: CompanyRouteRuntime) -> APIRouter:
+    router = APIRouter()
+
+    @router.get(
+        "/local/browser-fixtures/campaigns/{campaign_id}/invitations/{invitation_id}",
+        include_in_schema=False,
+    )
+    def resolve_invitation_fixture(
+        campaign_id: str,
+        invitation_id: str,
+        request: Request,
+    ) -> dict[str, str]:
+        principal = runtime.authenticator.authenticate(_authorization_credential(request.headers))
+        context = principal.to_tenant_context(
+            request_id=str(_request_identifier(request.headers)),
+            trace_id=_trace_identifier(request.headers, "local-browser-fixture"),
+        )
+        invitations = runtime.hiring_service.list_invitations(context, campaign_id)
+        if not any(str(item.invitation_id) == invitation_id for item in invitations):
+            raise SafeApplicationError(ErrorCode.RESOURCE_NOT_FOUND)
+        return {
+            "invitation_id": invitation_id,
+            "invitation_token": runtime.hiring_service.get_test_delivery_token(invitation_id),
+        }
+
+    return router
+
+
 def create_worker_registry() -> Mapping[str, object]:
     return MappingProxyType(
         {
@@ -403,14 +431,14 @@ def create_app(
             sessions=RequestSessionRegistry(active_engine),
             object_storage=object_storage or _create_object_storage(active_settings),
         )
-        routers = create_application_routers(
-            create_production_runtimes(
-                resources,
-                company_authenticator=(
-                    company_authenticator or _local_company_authenticator(active_settings)
-                ),
-            )
+        local_company_authenticator = _local_company_authenticator(active_settings)
+        runtimes = create_production_runtimes(
+            resources,
+            company_authenticator=(company_authenticator or local_company_authenticator),
         )
+        routers = create_application_routers(runtimes)
+        if company_authenticator is None and local_company_authenticator is not None:
+            routers = (*routers, create_local_browser_fixture_router(runtimes.company))
     app = FastAPI(
         title="Interview Evidence Platform API",
         version="1.0.0",

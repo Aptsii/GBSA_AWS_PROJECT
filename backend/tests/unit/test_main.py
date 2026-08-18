@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 import structlog
@@ -112,6 +112,7 @@ def test_production_factory_mounts_every_contract_route_and_fails_closed() -> No
         "/v1/privacy/deletion-requests/{deletion_request_id}",
     }
     assert expected_paths <= set(paths)
+    assert not any(path.startswith("/v1/local/") for path in paths)
 
     client = TestClient(app)
     assert client.get("/v1/me").status_code == 401
@@ -136,6 +137,134 @@ def test_production_factory_mounts_every_contract_route_and_fails_closed() -> No
     )
     assert listed.status_code == 200
     assert listed.json()["items"][0]["position_id"] == created.json()["position_id"]
+    metadata.drop_all(engine)
+    engine.dispose()
+
+
+def test_local_browser_fixture_releases_invitation_token_only_to_local_company(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    credential = "local-browser-fixture-token"
+    monkeypatch.setenv("IEP_LOCAL_COMPANY_BEARER", credential)
+    settings = Settings(
+        environment=RuntimeEnvironment.LOCAL,
+        database_url="sqlite+pysqlite:///:memory:",
+        applicant_session_secret="local-browser-applicant-session-secret",
+        company_jwt_issuer="https://identity.local.invalid/",
+        company_jwt_audience="interview-evidence-api",
+        company_jwks_url="https://identity.local.invalid/.well-known/jwks.json",
+        applicant_session_ttl_seconds=3_600,
+        invitation_public_base_url="http://localhost:5174/",
+        invitation_email_template="invitation-v1",
+        default_retention_days=30,
+        signed_url_ttl_seconds=900,
+    )
+    engine = create_engine(
+        settings.database_url.get_secret_value(),
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    metadata.create_all(engine)
+    client = TestClient(
+        create_app(
+            settings=settings,
+            engine=engine,
+            object_storage=FakeObjectStorage(),
+        )
+    )
+    headers = {
+        "Authorization": f"Bearer {credential}",
+        "Idempotency-Key": "local-browser-position-0001",
+    }
+    position = client.post(
+        "/v1/positions",
+        headers=headers,
+        json={"title": "브라우저 검증 직무", "description": "로컬 E2E 전용 직무입니다."},
+    ).json()
+    position_id = position["position_id"]
+    criterion = client.post(
+        f"/v1/positions/{position_id}/competency-model-versions",
+        headers={**headers, "Idempotency-Key": "local-browser-criterion-0001"},
+        json={
+            "criteria": [
+                {
+                    "code": "DELIVERY",
+                    "name": "실행력",
+                    "description": "실제 경험과 결과를 설명합니다.",
+                    "weight": 1,
+                    "good_evidence": {"guidance": "역할과 결과가 구체적임"},
+                    "weak_evidence": {"guidance": "설명이 추상적임"},
+                    "abstain_guidance": "근거가 부족하면 판단을 유보합니다.",
+                    "common_questions": ["최근 결과를 만든 경험을 설명해 주세요."],
+                    "required": True,
+                }
+            ],
+            "prohibited_topics": [],
+            "interview_duration_minutes": 30,
+            "persona_definition": {"name": "하루", "tone": "professional"},
+        },
+    ).json()
+    criterion_id = criterion["competency_model_version_id"]
+    published = client.post(
+        f"/v1/competency-model-versions/{criterion_id}/publish",
+        headers={
+            **headers,
+            "Idempotency-Key": "local-browser-criterion-publish-0001",
+            "If-Match-Version": "1",
+        },
+    )
+    assert published.status_code == 200
+    campaign = client.post(
+        "/v1/campaigns",
+        headers={**headers, "Idempotency-Key": "local-browser-campaign-0001"},
+        json={
+            "position_id": position_id,
+            "competency_model_version_id": criterion_id,
+            "name": "로컬 브라우저 캠페인",
+            "candidate_instructions": "동의 후 면접을 진행합니다.",
+        },
+    ).json()
+    campaign_id = campaign["campaign_id"]
+    published_campaign = client.post(
+        f"/v1/campaigns/{campaign_id}/publish",
+        headers={
+            **headers,
+            "Idempotency-Key": "local-browser-campaign-publish-0001",
+            "If-Match-Version": "1",
+        },
+    )
+    assert published_campaign.status_code == 200
+    invitation_response = client.post(
+        f"/v1/campaigns/{campaign_id}/invitations",
+        headers={**headers, "Idempotency-Key": "local-browser-invitation-0001"},
+        json={
+            "applicants": [
+                {
+                    "email": "local-browser-applicant@example.test",
+                    "display_name": "브라우저 지원자",
+                }
+            ],
+            "expires_at": (datetime.now(UTC) + timedelta(days=1)).isoformat(),
+        },
+    )
+    assert invitation_response.status_code == 202
+    invitation_id = invitation_response.json()["invitations"][0]["invitation_id"]
+    fixture_path = f"/v1/local/browser-fixtures/campaigns/{campaign_id}/invitations/{invitation_id}"
+
+    assert client.get(fixture_path).status_code == 401
+    fixture = client.get(fixture_path, headers={"Authorization": f"Bearer {credential}"})
+    assert fixture.status_code == 200
+    assert fixture.json()["invitation_id"] == invitation_id
+    assert fixture.json()["invitation_token"]
+    assert (
+        client.post(
+            "/v1/applicant/access/exchange",
+            headers={"Idempotency-Key": "local-browser-exchange-0001"},
+            json={"invitation_token": fixture.json()["invitation_token"]},
+        ).status_code
+        == 204
+    )
+
     metadata.drop_all(engine)
     engine.dispose()
 

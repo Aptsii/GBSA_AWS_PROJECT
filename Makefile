@@ -37,6 +37,7 @@ DEV_TERRAFORM_ROOTS := \
 	test-lane-a demo-lane-a test-lane-b demo-lane-b \
 	test-lane-c demo-lane-c test-lane-d demo-lane-d \
 	test-integration test-e2e-thin test-recovery test-tenant-isolation \
+	test-e2e-browser browser-install \
 	test-deletion-residue test-ai-regression test-load-pilot test-prior-lanes \
 	infra-format-check infra-validate infra-security-check infra-plan-dev
 
@@ -58,6 +59,8 @@ help:
 		'test                 Run the baseline unit and contract suites' \
 		'test-foundation      Run all shared foundation checks' \
 		'verify-foundation    Verify the clean pre-tag foundation gate' \
+		'browser-install      Install Chromium for Compose browser E2E' \
+		'test-e2e-browser     Run the Compose company-to-decision browser journey' \
 		'image-api           Build the API container target' \
 		'image-worker        Build the worker container target'
 
@@ -181,6 +184,12 @@ test-integration:
 
 test-e2e-thin:
 	$(UV) run pytest tests/e2e/test_thin_journey.py
+
+browser-install:
+	$(PNPM) exec playwright install chromium
+
+test-e2e-browser:
+	$(PNPM) exec playwright test --config tests/e2e/playwright.config.ts
 
 test-recovery:
 	$(UV) run pytest \

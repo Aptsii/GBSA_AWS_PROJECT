@@ -14,3 +14,14 @@ or frontend module; only the Integration owner changes shared fixtures and end-t
 
 Fixtures must use synthetic data and opaque identifiers. Do not store applicant source text,
 answers, credentials, tokens, signed URLs, or real personal data here.
+
+## Compose browser journey
+
+```bash
+make compose-up
+make browser-install
+make test-e2e-browser
+```
+
+The journey uses the local-only company principal and authenticated fixture route. The fixture
+route is not mounted outside the `local` runtime environment.

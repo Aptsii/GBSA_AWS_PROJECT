@@ -20,6 +20,7 @@
     "typecheck": "pnpm -r --if-present typecheck"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "prettier": "3.9.6"
   }
 }

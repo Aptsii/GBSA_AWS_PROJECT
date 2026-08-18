@@ -140,6 +140,16 @@ make test-integration
 make test-e2e-thin
 ```
 
+Run the real browser journey against the Compose API and both SPA origins:
+
+```bash
+make browser-install
+make test-e2e-browser
+```
+
+This browser test uses the local-only company principal and authenticated invitation fixture
+resolver. Neither is mounted when the API runtime environment is stage, production or test.
+
 Expected:
 
 ```text
