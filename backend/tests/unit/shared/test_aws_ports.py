@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
+
 import pytest
 from interview_evidence.shared.aws_clients.ports import (
     AIRequest,
@@ -90,6 +92,47 @@ async def test_object_storage_is_tenant_scoped_and_secret_safe() -> None:
     with pytest.raises(TenantScopeViolation):
         await storage.get(_context(OTHER_COMPANY_ID), reference)
     assert (await storage.delete(_context(), reference)).verified_absent is True
+
+
+@pytest.mark.asyncio
+async def test_object_storage_authorizes_and_verifies_direct_upload() -> None:
+    storage = FakeObjectStorage()
+    reference = ObjectRef(
+        company_id=COMPANY_ID,
+        object_id=OBJECT_ID,
+        applicant_scope=_scope(),
+    )
+    content = ProtectedBytes(b"signed browser upload")
+    import hashlib
+
+    digest = hashlib.sha256(content.reveal()).hexdigest()
+    expires_at = datetime.now(UTC) + timedelta(minutes=15)
+
+    intent = await storage.authorize_upload(
+        _applicant_context(),
+        reference,
+        media_type="application/pdf",
+        content_hash=digest,
+        byte_size=len(content.reveal()),
+        expires_at=expires_at,
+    )
+    await storage.put(
+        _applicant_context(),
+        reference,
+        content,
+        media_type="application/pdf",
+    )
+    receipt = await storage.verify_upload(
+        _applicant_context(),
+        reference,
+        media_type="application/pdf",
+        content_hash=digest,
+        byte_size=len(content.reveal()),
+    )
+
+    assert intent.method == "PUT"
+    assert intent.expires_at == expires_at
+    assert receipt.content_hash == digest
     assert (await storage.delete(_context(), reference)).verified_absent is True
 
 

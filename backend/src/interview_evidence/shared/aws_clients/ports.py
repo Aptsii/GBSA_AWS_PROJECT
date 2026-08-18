@@ -8,6 +8,7 @@ import math
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Protocol, runtime_checkable
 
 from interview_evidence.shared._validation import (
@@ -85,6 +86,21 @@ class ObjectReceipt:
     media_type: str
 
 
+@dataclass(frozen=True, slots=True, repr=False)
+class SignedUploadIntent:
+    method: str
+    url: str = field(repr=False)
+    required_headers: Mapping[str, str]
+    expires_at: datetime
+
+    def __repr__(self) -> str:
+        return (
+            "SignedUploadIntent(method='PUT', url=[REDACTED], "
+            f"required_header_names={tuple(sorted(self.required_headers))!r}, "
+            f"expires_at={self.expires_at!r})"
+        )
+
+
 @dataclass(frozen=True, slots=True)
 class DeletionReceipt:
     target_id: OpaqueId
@@ -101,6 +117,27 @@ def _ensure_object_access(context: TenantContext, reference: ObjectRef) -> None:
 
 @runtime_checkable
 class ObjectStoragePort(Protocol):
+    async def authorize_upload(
+        self,
+        context: TenantContext,
+        reference: ObjectRef,
+        *,
+        media_type: str,
+        content_hash: str,
+        byte_size: int,
+        expires_at: datetime,
+    ) -> SignedUploadIntent: ...
+
+    async def verify_upload(
+        self,
+        context: TenantContext,
+        reference: ObjectRef,
+        *,
+        media_type: str,
+        content_hash: str,
+        byte_size: int,
+    ) -> ObjectReceipt: ...
+
     async def put(
         self,
         context: TenantContext,
@@ -116,11 +153,60 @@ class ObjectStoragePort(Protocol):
 
 
 class FakeObjectStorage:
-    __slots__ = ("_objects", "_receipts")
+    __slots__ = ("_objects", "_receipts", "_upload_expectations")
 
     def __init__(self) -> None:
         self._objects: dict[tuple[OpaqueId, OpaqueId], ProtectedBytes] = {}
         self._receipts: dict[tuple[OpaqueId, OpaqueId], ObjectReceipt] = {}
+        self._upload_expectations: dict[tuple[OpaqueId, OpaqueId], tuple[str, str, int]] = {}
+
+    async def authorize_upload(
+        self,
+        context: TenantContext,
+        reference: ObjectRef,
+        *,
+        media_type: str,
+        content_hash: str,
+        byte_size: int,
+        expires_at: datetime,
+    ) -> SignedUploadIntent:
+        _ensure_object_access(context, reference)
+        _validate_media_type(media_type)
+        _validate_upload_metadata(content_hash, byte_size)
+        key = (reference.company_id, reference.object_id)
+        self._upload_expectations[key] = (media_type, content_hash, byte_size)
+        return SignedUploadIntent(
+            method="PUT",
+            url=f"memory://upload/{reference.object_id}",
+            required_headers={
+                "content-type": media_type,
+                "x-content-sha256": content_hash,
+            },
+            expires_at=expires_at,
+        )
+
+    async def verify_upload(
+        self,
+        context: TenantContext,
+        reference: ObjectRef,
+        *,
+        media_type: str,
+        content_hash: str,
+        byte_size: int,
+    ) -> ObjectReceipt:
+        _ensure_object_access(context, reference)
+        key = (reference.company_id, reference.object_id)
+        receipt = self._receipts.get(key)
+        expected = self._upload_expectations.get(key)
+        if receipt is None:
+            raise SafeApplicationError(ErrorCode.RESOURCE_NOT_FOUND)
+        if expected != (media_type, content_hash, byte_size) or (
+            receipt.media_type,
+            receipt.content_hash,
+            receipt.byte_size,
+        ) != (media_type, content_hash, byte_size):
+            raise SafeApplicationError(ErrorCode.CONFLICT)
+        return receipt
 
     async def put(
         self,
@@ -600,3 +686,12 @@ def _validate_media_type(value: str) -> str:
     if not _MEDIA_TYPE.fullmatch(value):
         raise ValueError("media_type must be a valid lower-case media type")
     return value
+
+
+def _validate_upload_metadata(content_hash: str, byte_size: int) -> None:
+    if byte_size < 1:
+        raise ValueError("object byte size must be positive")
+    if len(content_hash) != 64 or any(
+        character not in "0123456789abcdef" for character in content_hash
+    ):
+        raise ValueError("object content hash is invalid")
