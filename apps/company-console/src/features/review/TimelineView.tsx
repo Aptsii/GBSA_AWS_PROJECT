@@ -1,5 +1,7 @@
 import { useRef, useState } from "react";
 
+import { reviewApi, type ReviewApi } from "./api";
+
 export const MAXIMUM_PLAYBACK_START_MS = 2000;
 
 export interface TimelineEntryView {
@@ -22,7 +24,9 @@ export interface PlaybackStartMeasurement {
 }
 
 interface TimelineViewProps {
-  readonly entries: readonly TimelineEntryView[];
+  readonly api?: ReviewApi;
+  readonly entries?: readonly TimelineEntryView[];
+  readonly initialSessionId?: string;
   readonly onSeek?: (startMs: number) => void;
   readonly onPlaybackStart?: (measurement: PlaybackStartMeasurement) => void;
   readonly requestPlayback?: (
@@ -38,27 +42,75 @@ interface ActivePlayback {
 }
 
 export function TimelineView({
-  entries,
+  api = reviewApi,
+  entries: providedEntries,
+  initialSessionId = "",
   onSeek,
   onPlaybackStart,
   requestPlayback,
   now = () => performance.now(),
   wallClockNow = () => new Date().getTime(),
 }: TimelineViewProps) {
+  const [sessionId, setSessionId] = useState(initialSessionId);
+  const [query, setQuery] = useState("");
+  const [loadedEntries, setLoadedEntries] = useState<
+    readonly TimelineEntryView[]
+  >([]);
+  const [loadedPlayback, setLoadedPlayback] =
+    useState<PlaybackReferenceView | null>(null);
+  const [loading, setLoading] = useState(false);
+  const entries = providedEntries ?? loadedEntries;
   const [activePlayback, setActivePlayback] = useState<ActivePlayback | null>(
     null,
   );
   const [playbackStatus, setPlaybackStatus] = useState<string | null>(null);
   const playbackStartedAt = useRef<number | null>(null);
 
+  async function loadTimeline() {
+    if (!sessionId.trim()) return;
+    setLoading(true);
+    setPlaybackStatus(null);
+    try {
+      const timeline = await api.getTimeline(sessionId.trim(), query);
+      setLoadedEntries(
+        timeline.entries.map((entry) => ({
+          evidence: entry.entry_type === "evidence",
+          id: entry.entry_id,
+          startMs: entry.start_ms,
+          text: entry.text ?? `${entry.entry_type} · ${entry.start_ms}ms`,
+        })),
+      );
+      setLoadedPlayback(
+        timeline.playback.url && timeline.playback.expires_at
+          ? {
+              expiresAt: timeline.playback.expires_at,
+              url: timeline.playback.url,
+            }
+          : null,
+      );
+      setPlaybackStatus(
+        `타임라인 ${timeline.entries.length}건을 불러왔습니다.`,
+      );
+    } catch {
+      setLoadedEntries([]);
+      setLoadedPlayback(null);
+      setPlaybackStatus("타임라인을 불러오지 못했습니다.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function selectEntry(entry: TimelineEntryView) {
     onSeek?.(entry.startMs);
-    if (!entry.evidence || requestPlayback === undefined) return;
+    const playbackProvider =
+      requestPlayback ??
+      (loadedPlayback ? async () => loadedPlayback : undefined);
+    if (!entry.evidence || playbackProvider === undefined) return;
 
     playbackStartedAt.current = now();
     setPlaybackStatus("서명 재생 URL 확인 중");
     try {
-      const reference = await requestPlayback(entry);
+      const reference = await playbackProvider(entry);
       const expiresAt = Date.parse(reference.expiresAt);
       if (
         !reference.url ||
@@ -121,7 +173,25 @@ export function TimelineView({
   return (
     <section aria-labelledby="timeline-title">
       <h2 id="timeline-title">동기화된 면접 타임라인</h2>
-      <input aria-label="타임라인 검색" type="search" />
+      <label htmlFor="timeline-session-id">면접 세션 ID</label>
+      <input
+        id="timeline-session-id"
+        value={sessionId}
+        onChange={(event) => setSessionId(event.target.value)}
+      />
+      <input
+        aria-label="타임라인 검색"
+        type="search"
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+      />
+      <button
+        type="button"
+        onClick={() => void loadTimeline()}
+        disabled={loading || !sessionId.trim()}
+      >
+        {loading ? "타임라인 검색 중" : "타임라인 불러오기"}
+      </button>
       <ul>
         {entries.map((entry) => (
           <li key={entry.id}>
