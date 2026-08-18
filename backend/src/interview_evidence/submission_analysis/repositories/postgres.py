@@ -33,8 +33,10 @@ from interview_evidence.submission_analysis.domain.strategy import (
     StrategyStatus,
 )
 from interview_evidence.submission_analysis.domain.submission import (
+    AnalysisStatus,
     SourceType,
     Submission,
+    SubmissionAnalysis,
     SubmissionStatus,
 )
 
@@ -234,14 +236,100 @@ class SubmissionAnalysisRepository:
     def mark_submission_ready(
         self, context: TenantContext, submission_id: str | OpaqueId
     ) -> Submission:
+        submission = self.mark_submission_analyzing(context, submission_id)
+        return self.complete_submission(
+            context,
+            submission.submission_id,
+            status=SubmissionStatus.READY,
+        )
+
+    def mark_submission_analyzing(
+        self, context: TenantContext, submission_id: str | OpaqueId
+    ) -> Submission:
         submission = self.get_submission(context, submission_id)
         if submission.status is SubmissionStatus.RECEIVED:
             submission = submission.transition(SubmissionStatus.VALIDATING)
         if submission.status is SubmissionStatus.VALIDATING:
             submission = submission.transition(SubmissionStatus.ANALYZING)
-        if submission.status is SubmissionStatus.ANALYZING:
-            submission = submission.transition(SubmissionStatus.READY)
         return self.add_submission(context, submission)
+
+    def complete_submission(
+        self,
+        context: TenantContext,
+        submission_id: str | OpaqueId,
+        *,
+        status: SubmissionStatus,
+        failure_code: str | None = None,
+        impact_summary: str | None = None,
+    ) -> Submission:
+        submission = self.get_submission(context, submission_id)
+        if submission.status in {SubmissionStatus.PARTIAL, SubmissionStatus.FAILED}:
+            submission = submission.transition(SubmissionStatus.ANALYZING)
+        if submission.status is not SubmissionStatus.ANALYZING:
+            raise ValueError("submission must be analyzing before completion")
+        return self.add_submission(
+            context,
+            submission.transition(
+                status,
+                failure_code=failure_code,
+                impact_summary=impact_summary,
+            ),
+        )
+
+    def add_analysis(
+        self,
+        context: TenantContext,
+        analysis: SubmissionAnalysis,
+    ) -> SubmissionAnalysis:
+        if analysis.company_id != context.company_id:
+            raise TenantScopeViolation
+        self.session.merge(
+            SubmissionAnalysisRow(
+                analysis_id=str(analysis.analysis_id),
+                company_id=str(analysis.company_id),
+                submission_id=str(analysis.submission_id),
+                analysis_version=analysis.analysis_version,
+                extractor_version=analysis.extractor_version,
+                chunk_config_version=analysis.chunk_config_version,
+                claims=list(analysis.claims),
+                conflicts=list(analysis.conflicts),
+                verification_points=list(analysis.verification_points),
+                status=analysis.status.value,
+                created_at=analysis.created_at,
+            )
+        )
+        self.session.flush()
+        return analysis
+
+    def latest_analysis(
+        self,
+        context: TenantContext,
+        submission_id: str | OpaqueId,
+    ) -> SubmissionAnalysis | None:
+        submission = self.get_submission(context, submission_id)
+        row = self.session.scalars(
+            select(SubmissionAnalysisRow)
+            .where(
+                SubmissionAnalysisRow.company_id == str(context.company_id),
+                SubmissionAnalysisRow.submission_id == str(submission.submission_id),
+            )
+            .order_by(SubmissionAnalysisRow.analysis_version.desc())
+        ).first()
+        if row is None:
+            return None
+        return SubmissionAnalysis(
+            analysis_id=OpaqueId(row.analysis_id),
+            company_id=OpaqueId(row.company_id),
+            submission_id=OpaqueId(row.submission_id),
+            analysis_version=row.analysis_version,
+            extractor_version=row.extractor_version,
+            chunk_config_version=row.chunk_config_version,
+            claims=tuple(row.claims),
+            conflicts=tuple(row.conflicts),
+            verification_points=tuple(row.verification_points),
+            status=AnalysisStatus(row.status),
+            created_at=_instant(row.created_at),
+        )
 
     def record_source_reference(
         self,

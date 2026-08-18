@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
 
 import pytest
 import structlog
@@ -9,6 +10,7 @@ from fastapi import APIRouter
 from fastapi.testclient import TestClient
 from interview_evidence.main import (
     ApplicationRuntimes,
+    RegisteredWorkerHandler,
     create_app,
     create_application_routers,
     create_worker_registry,
@@ -25,6 +27,7 @@ from interview_evidence.shared.metrics import (
 )
 from interview_evidence.shared.observability import inject_trace_context
 from interview_evidence.shared.security.principals import CompanyPrincipal, FakeCompanyAuthenticator
+from interview_evidence.shared.tenant import ActorType, TenantContext
 from pydantic import BaseModel, Field
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
@@ -329,6 +332,31 @@ def test_worker_registry_contains_every_async_pipeline_handler() -> None:
         "report.generation_requested",
     }
     assert all(callable(getattr(handler, "handle_event", None)) for handler in registry.values())
+
+
+def test_registered_worker_handler_executes_event_aware_implementation() -> None:
+    class EventAwareImplementation:
+        def handle_event(self, _context: TenantContext, event: object) -> dict[str, object]:
+            return {"event_id": str(event.event_id), "status": "ready"}
+
+    context = TenantContext(
+        company_id=OpaqueId("018f2000-0000-7000-8000-000000000100"),
+        actor_type=ActorType.SYSTEM,
+        actor_id=OpaqueId("018f2000-0000-7000-8000-000000000101"),
+        request_id=OpaqueId("018f2000-0000-7000-8000-000000000102"),
+        trace_id="worker-test",
+    )
+    event = SimpleNamespace(
+        company_id=context.company_id,
+        event_id=OpaqueId("018f2000-0000-7000-8000-000000000901"),
+        payload={"submission_id": "submission"},
+    )
+    handler = RegisteredWorkerHandler(
+        EventAwareImplementation(),
+        ("submission_id",),
+    )
+
+    assert handler.handle_event(context, event)["status"] == "ready"
 
 
 def test_inbound_trace_context_reaches_outbound_carriers() -> None:

@@ -468,7 +468,7 @@ additional degraded modes or richer review UI.
 
 ## Phase 12: Convergence
 
-- [ ] T218 CRITICAL Lane B + Integration — Publish tenant- and invitation-scoped analysis jobs when submissions are registered, execute the real analysis handler instead of returning `queued`, persist submission outcomes and an interview strategy, and prove partial/failure readiness in Compose per US2/AC3-AC5 and FR-017-FR-022 (missing)
+- [X] T218 CRITICAL Lane B + Integration — Publish tenant- and invitation-scoped analysis jobs when submissions are registered, execute the real analysis handler instead of returning `queued`, persist submission outcomes and an interview strategy, and prove partial/failure readiness in Compose per US2/AC3-AC5 and FR-017-FR-022 (missing)
 - [ ] T219 CRITICAL Lane C + Integration — Stream browser audio or explicit text-only applicant answers through the versioned WebSocket, wire a configured transcription adapter into the production runtime, consume the persisted strategy and criterion axis for questions, and complete/reconnect without fabricated Evidence per US3/AC1-AC6 and FR-024-FR-036 (partial)
 - [ ] T220 CRITICAL Lane D + Integration — Emit media post-processing and report-generation events when an interview completes, execute the registered workers, persist transcript/media/report/Evidence projections, and make report and timeline APIs load the completed session per US4/AC1-AC2/AC5 and FR-037-FR-042 (missing)
 - [ ] T221 HIGH Lane A + Integration — Replace production-facing raw bearer and invitation-token entry with company identity login/session handling and automatic expiring invitation deep-link exchange while retaining isolated local fixtures per US1/AC2, US2/AC1 and FR-006/FR-011/FR-013 (partial)

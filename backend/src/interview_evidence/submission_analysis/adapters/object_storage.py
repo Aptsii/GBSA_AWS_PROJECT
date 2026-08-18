@@ -178,6 +178,26 @@ class SubmissionObjectStorage:
             raise SafeApplicationError(ErrorCode.CONFLICT)
         return asyncio.run(self._get(context, record))
 
+    def read_object(
+        self,
+        context: TenantContext,
+        scope: ApplicantScope,
+        object_id: str | OpaqueId,
+    ) -> ProtectedBytes:
+        import asyncio
+
+        ensure_applicant_scope(context, scope)
+        return asyncio.run(
+            self._storage.get(
+                context,
+                ObjectRef(
+                    company_id=scope.company_id,
+                    object_id=OpaqueId(object_id),
+                    applicant_scope=scope,
+                ),
+            )
+        )
+
     def upload_ids(self, context: TenantContext, scope: ApplicantScope) -> tuple[OpaqueId, ...]:
         ensure_applicant_scope(context, scope)
         return tuple(

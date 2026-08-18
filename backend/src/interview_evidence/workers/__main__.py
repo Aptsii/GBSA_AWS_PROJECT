@@ -18,7 +18,7 @@ import boto3  # type: ignore[import-untyped]
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from interview_evidence.main import create_worker_registry
+from interview_evidence.main import _create_object_storage, create_worker_registry
 from interview_evidence.shared.config import Settings
 from interview_evidence.shared.errors import ErrorCode, SafeApplicationError
 from interview_evidence.shared.ids import Clock, OpaqueId, SystemClock
@@ -439,16 +439,19 @@ def _elapsed_ms(started_at: datetime, completed_at: datetime) -> float:
 
 
 def main() -> int:
-    registry = create_worker_registry()
-    if not registry:
-        sys.stderr.write("No worker handlers are registered.\n")
-        return 2
     settings = Settings()  # type: ignore[call-arg]
     if settings.event_queue_url is None or settings.event_dlq_url is None:
         sys.stderr.write("Worker queue and DLQ URLs are required.\n")
         return 2
     engine = create_engine(settings.database_url.get_secret_value(), pool_pre_ping=True)
     factory = sessionmaker(engine, expire_on_commit=False)
+    registry = create_worker_registry(
+        session_factory=factory,
+        object_storage=_create_object_storage(settings),
+    )
+    if not registry:
+        sys.stderr.write("No worker handlers are registered.\n")
+        return 2
     sqs = boto3.client(
         "sqs",
         region_name=settings.aws_region,

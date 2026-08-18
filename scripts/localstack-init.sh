@@ -2,6 +2,8 @@
 set -eu
 
 bucket="iep-local-contract-fixtures"
+queue="iep-local-contract-events"
+dlq="iep-local-contract-events-dlq"
 awslocal s3api head-bucket --bucket "$bucket" >/dev/null 2>&1 || awslocal s3api create-bucket \
   --bucket "$bucket" \
   --create-bucket-configuration LocationConstraint="${AWS_DEFAULT_REGION:-ap-northeast-2}"
@@ -14,3 +16,6 @@ awslocal s3api put-bucket-cors --bucket "$bucket" --cors-configuration '{
     "MaxAgeSeconds": 3600
   }]
 }'
+
+awslocal sqs create-queue --queue-name "$dlq" >/dev/null
+awslocal sqs create-queue --queue-name "$queue" >/dev/null

@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
+from typing import Protocol
 
 from interview_evidence.shared.errors import ErrorCode, SafeApplicationError
 from interview_evidence.shared.ids import Clock, OpaqueId, UUID7Generator
@@ -32,8 +33,20 @@ class SafeAuditProjection:
     resource_id: OpaqueId
 
 
+class AnalysisRequestDispatcher(Protocol):
+    def dispatch(
+        self,
+        context: TenantContext,
+        *,
+        submission: Submission,
+        upload_id: str | None,
+        idempotency_key: str,
+    ) -> Submission: ...
+
+
 class SubmissionApplicationService:
     __slots__ = (
+        "_analysis_dispatcher",
         "_audit_events",
         "_authorization",
         "_clock",
@@ -54,6 +67,7 @@ class SubmissionApplicationService:
         validator: SubmissionValidator,
         clock: Clock,
         id_generator: UUID7Generator,
+        analysis_dispatcher: AnalysisRequestDispatcher | None = None,
     ) -> None:
         self._repository = repository
         self._authorization = authorization
@@ -61,6 +75,7 @@ class SubmissionApplicationService:
         self._validator = validator
         self._clock = clock
         self._id_generator = id_generator
+        self._analysis_dispatcher = analysis_dispatcher
         self._digests: dict[tuple[OpaqueId, str], str] = {}
         self._responses: dict[tuple[OpaqueId, str], dict[str, object]] = {}
         self._audit_events: list[SafeAuditProjection] = []
@@ -139,7 +154,7 @@ class SubmissionApplicationService:
         if source_type in {SourceType.COVER_LETTER, SourceType.RESUME, SourceType.PDF}:
             upload_id = str(arguments["upload_id"])
             intent = self._object_storage.verify_upload(context, scope, upload_id)
-            source_uri = f"upload:{upload_id}"
+            source_uri = f"object:{intent.object_ref.object_id}"
             original_filename = intent.filename
             content_hash = intent.expected_sha256
             byte_size = intent.expected_byte_size
@@ -167,6 +182,16 @@ class SubmissionApplicationService:
             created_at=self._clock.now(),
         )
         self._repository.add_submission(context, submission)
+        if self._analysis_dispatcher is not None:
+            submission = self._analysis_dispatcher.dispatch(
+                context,
+                submission=submission,
+                upload_id=(str(arguments["upload_id"]) if arguments.get("upload_id") else None),
+                idempotency_key=(
+                    "submission-analysis:"
+                    f"{hashlib.sha256(idempotency_key.encode()).hexdigest()}"
+                ),
+            )
         response = submission.view()
         self._record(scope, idempotency_key, digest, response)
         self._audit_events.append(

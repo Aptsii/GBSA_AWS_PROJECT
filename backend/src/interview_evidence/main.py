@@ -15,6 +15,7 @@ from opentelemetry import context as otel_context
 from opentelemetry import propagate
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from sqlalchemy import Engine, create_engine
+from sqlalchemy.orm import Session, sessionmaker
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import Response
 
@@ -29,11 +30,15 @@ from interview_evidence.company_management.api.company_routes import (
     create_company_router,
 )
 from interview_evidence.company_management.api.runtime import (
+    CompanyAuthorizationFacade,
     CompanyRuntimeBundle,
     create_company_runtime_bundle,
 )
 from interview_evidence.company_management.events import (
     create_invitation_email_handler,
+)
+from interview_evidence.company_management.repositories.postgres import (
+    CompanyManagementRepository,
 )
 from interview_evidence.interview_engine.api.applicant_routes import (
     ApplicantInterviewRouteRuntime,
@@ -81,7 +86,13 @@ from interview_evidence.submission_analysis.api.applicant_routes import (
     create_applicant_router as create_submission_router,
 )
 from interview_evidence.submission_analysis.api.runtime import create_submission_runtime
-from interview_evidence.workers.analysis.handlers import AnalysisJobHandler
+from interview_evidence.submission_analysis.application.analysis_pipeline import (
+    CompanyCriterionSnapshotProvider,
+)
+from interview_evidence.workers.analysis.runtime import (
+    SubmissionAnalysisQueueHandler,
+    UnavailableAnalysisQueueHandler,
+)
 from interview_evidence.workers.reporting.media import MediaProcessor
 from interview_evidence.workers.reporting.report import ReportGenerator
 
@@ -111,6 +122,12 @@ class RegisteredWorkerHandler:
         for field in self.required_payload_fields:
             if field not in payload:
                 raise SafeApplicationError(ErrorCode.INVALID_REQUEST)
+        event_handler = getattr(self.implementation, "handle_event", None)
+        if callable(event_handler):
+            result = event_handler(context, event)
+            if not isinstance(result, Mapping):
+                raise SafeApplicationError(ErrorCode.INTERNAL_ERROR)
+            return result
         if self.direct_handle:
             handler = getattr(self.implementation, "handle", None)
             as_mapping = getattr(event, "as_mapping", None)
@@ -183,7 +200,31 @@ def create_local_browser_fixture_router(runtime: CompanyRouteRuntime) -> APIRout
     return router
 
 
-def create_worker_registry() -> Mapping[str, object]:
+def create_worker_registry(
+    *,
+    session_factory: sessionmaker[Session] | None = None,
+    object_storage: ObjectStoragePort | None = None,
+) -> Mapping[str, object]:
+    if (session_factory is None) != (object_storage is None):
+        raise ValueError("analysis worker requires both session factory and object storage")
+    analysis_handler: object = UnavailableAnalysisQueueHandler()
+    if session_factory is not None and object_storage is not None:
+        analysis_clock = SystemClock()
+
+        def criterion_provider_factory(session: Session) -> CompanyCriterionSnapshotProvider:
+            return CompanyCriterionSnapshotProvider(
+                CompanyAuthorizationFacade(
+                    CompanyManagementRepository(session),
+                    clock=analysis_clock,
+                )
+            )
+
+        analysis_handler = SubmissionAnalysisQueueHandler(
+            session_factory=session_factory,
+            object_storage=object_storage,
+            criterion_provider_factory=criterion_provider_factory,
+            clock=analysis_clock,
+        )
     return MappingProxyType(
         {
             "invitation.email_requested": RegisteredWorkerHandler(
@@ -192,7 +233,7 @@ def create_worker_registry() -> Mapping[str, object]:
                 direct_handle=True,
             ),
             "submission.analysis_requested": RegisteredWorkerHandler(
-                AnalysisJobHandler(),
+                analysis_handler,
                 ("submission_id", "analysis_version", "source_type"),
             ),
             "media.postprocess_requested": RegisteredWorkerHandler(

@@ -15,8 +15,14 @@ from interview_evidence.company_management.application.applicant_access_service 
     consent_authorization_snapshot,
 )
 from interview_evidence.company_management.application.company_service import CompanyService
-from interview_evidence.company_management.application.criteria_service import CriteriaService
-from interview_evidence.company_management.application.hiring_service import HiringService
+from interview_evidence.company_management.application.criteria_service import (
+    CriteriaService,
+    criterion_version_snapshot,
+)
+from interview_evidence.company_management.application.hiring_service import (
+    HiringService,
+    campaign_snapshot,
+)
 from interview_evidence.company_management.repositories.postgres import CompanyManagementRepository
 from interview_evidence.shared.config import RuntimeEnvironment, Settings
 from interview_evidence.shared.ids import Clock, SystemClock, UUID7Generator
@@ -72,6 +78,34 @@ class CompanyAuthorizationFacade:
             and required <= set(purposes)
         )
         return snapshot
+
+    def get_campaign_snapshot(
+        self,
+        context: TenantContext,
+        **arguments: object,
+    ) -> dict[str, object]:
+        campaign = self._repository.get_campaign(context, str(arguments["campaign_id"]))
+        version = self._repository.get_competency_model_version(
+            context,
+            campaign.competency_model_version_id,
+        )
+        return campaign_snapshot(
+            campaign,
+            prohibited_topics=version.prohibited_topics,
+            interview_duration_minutes=version.interview_duration_minutes,
+            persona_definition=version.persona_definition,
+        )
+
+    def get_criterion_version(
+        self,
+        context: TenantContext,
+        **arguments: object,
+    ) -> dict[str, object]:
+        version = self._repository.get_competency_model_version(
+            context,
+            str(arguments["version_id"]),
+        )
+        return criterion_version_snapshot(version)
 
 
 @dataclass(frozen=True, slots=True)

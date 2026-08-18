@@ -17,6 +17,14 @@ class CompanyAuthorizationContracts(Protocol):
         self, context: TenantContext, **arguments: object
     ) -> dict[str, object]: ...
 
+    def get_campaign_snapshot(
+        self, context: TenantContext, **arguments: object
+    ) -> dict[str, object]: ...
+
+    def get_criterion_version(
+        self, context: TenantContext, **arguments: object
+    ) -> dict[str, object]: ...
+
 
 @dataclass(frozen=True, slots=True)
 class SubmissionAuthorization:
