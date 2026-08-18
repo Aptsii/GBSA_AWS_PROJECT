@@ -17,6 +17,9 @@ importers:
       '@interview-evidence/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@interview-evidence/web-client':
+        specifier: workspace:*
+        version: link:../../packages/web-client
       '@tanstack/react-query':
         specifier: 5.101.4
         version: 5.101.4(react@19.2.8)
@@ -84,6 +87,9 @@ importers:
       '@interview-evidence/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@interview-evidence/web-client':
+        specifier: workspace:*
+        version: link:../../packages/web-client
       '@tanstack/react-query':
         specifier: 5.101.4
         version: 5.101.4(react@19.2.8)
@@ -151,6 +157,19 @@ importers:
       typescript:
         specifier: 6.0.3
         version: 6.0.3
+
+  packages/web-client:
+    dependencies:
+      '@interview-evidence/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+    devDependencies:
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 4.1.10
+        version: 4.1.10(jsdom@30.0.1)(vite@8.2.1)
 
 packages:
 
