@@ -31,7 +31,12 @@ from interview_evidence.shared.aws_clients.ports import ProtectedText
 from interview_evidence.shared.database import Base
 from interview_evidence.shared.errors import ErrorCode, SafeApplicationError
 from interview_evidence.shared.ids import OpaqueId
-from interview_evidence.shared.tenant import ApplicantScope, TenantContext, ensure_applicant_scope
+from interview_evidence.shared.tenant import (
+    ApplicantScope,
+    TenantContext,
+    ensure_applicant_scope,
+    ensure_company_scope,
+)
 
 
 class InterviewSessionRow(Base):
@@ -216,6 +221,22 @@ class InterviewSessionRepository:
             raise SafeApplicationError(ErrorCode.RESOURCE_NOT_FOUND)
         return self._session(row)
 
+    def get_session_for_company(
+        self,
+        context: TenantContext,
+        session_id: str | OpaqueId,
+    ) -> InterviewSession:
+        ensure_company_scope(context, context.company_id)
+        row = self.session.scalar(
+            select(InterviewSessionRow).where(
+                InterviewSessionRow.interview_session_id == str(OpaqueId(session_id)),
+                InterviewSessionRow.company_id == str(context.company_id),
+            )
+        )
+        if row is None:
+            raise SafeApplicationError(ErrorCode.RESOURCE_NOT_FOUND)
+        return self._session(row)
+
     def save_session(
         self,
         context: TenantContext,
@@ -329,6 +350,26 @@ class InterviewSessionRepository:
             .order_by(SessionCheckpointRow.session_sequence.desc())
         ).first()
         return self._checkpoint(row) if row is not None else None
+
+    def list_checkpoints(
+        self,
+        context: TenantContext,
+        scope: ApplicantScope,
+        session_id: str | OpaqueId,
+    ) -> tuple[SessionCheckpoint, ...]:
+        self.get_session(context, scope, session_id)
+        rows = self.session.scalars(
+            select(SessionCheckpointRow)
+            .where(
+                SessionCheckpointRow.company_id == str(scope.company_id),
+                SessionCheckpointRow.interview_session_id == str(OpaqueId(session_id)),
+            )
+            .order_by(
+                SessionCheckpointRow.session_sequence,
+                SessionCheckpointRow.checkpoint_id,
+            )
+        ).all()
+        return tuple(self._checkpoint(row) for row in rows)
 
     def add_recording_chunk(
         self,

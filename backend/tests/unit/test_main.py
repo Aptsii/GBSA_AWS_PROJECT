@@ -328,6 +328,7 @@ def test_worker_registry_contains_every_async_pipeline_handler() -> None:
     assert set(registry) == {
         "invitation.email_requested",
         "submission.analysis_requested",
+        "interview.completed",
         "media.postprocess_requested",
         "report.generation_requested",
     }

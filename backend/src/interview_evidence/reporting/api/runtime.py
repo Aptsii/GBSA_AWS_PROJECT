@@ -119,13 +119,16 @@ class SQLAlchemyReportingRouteService:
             )
         entries.sort(key=self._timeline_sort_key)
         assets = self._repository.recording_asset_rows(context, session_id)
-        ready = next((asset for asset in assets if asset.status == "ready"), None)
+        playable = next(
+            (asset for asset in assets if asset.status in {"ready", "partial"}),
+            None,
+        )
         return {
             "entries": entries,
             "playback": {
                 "url": None,
                 "expires_at": None,
-                "status": "ready" if ready is not None else "unavailable",
+                "status": playable.status if playable is not None else "unavailable",
             },
         }
 

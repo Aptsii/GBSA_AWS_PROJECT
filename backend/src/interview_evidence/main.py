@@ -50,6 +50,8 @@ from interview_evidence.interview_engine.api.websocket import (
     WebSocketRuntime,
     create_websocket_router,
 )
+from interview_evidence.interview_engine.contracts import InterviewEvidencePublicService
+from interview_evidence.interview_engine.repositories.postgres import InterviewSessionRepository
 from interview_evidence.reporting.api.company_routes import (
     ReportingRouteRuntime,
     create_reporting_router,
@@ -94,8 +96,10 @@ from interview_evidence.workers.analysis.runtime import (
     SubmissionAnalysisQueueHandler,
     UnavailableAnalysisQueueHandler,
 )
-from interview_evidence.workers.reporting.media import MediaProcessor
-from interview_evidence.workers.reporting.report import ReportGenerator
+from interview_evidence.workers.reporting.runtime import (
+    SQLAlchemyReportingCompletionHandler,
+    SQLAlchemyReportingQueueHandler,
+)
 
 _REQUEST_IDS = UUID7Generator()
 _SAFE_TRACE_ID = re.compile(r"^[A-Za-z0-9_.:-]{1,128}$")
@@ -207,8 +211,11 @@ def create_worker_registry(
     object_storage: ObjectStoragePort | None = None,
 ) -> Mapping[str, object]:
     if (session_factory is None) != (object_storage is None):
-        raise ValueError("analysis worker requires both session factory and object storage")
+        raise ValueError("worker runtime requires both session factory and object storage")
     analysis_handler: object = UnavailableAnalysisQueueHandler()
+    completed_handler: object = object()
+    media_handler: object = object()
+    report_handler: object = object()
     if session_factory is not None and object_storage is not None:
         analysis_clock = SystemClock()
 
@@ -226,6 +233,18 @@ def create_worker_registry(
             criterion_provider_factory=criterion_provider_factory,
             clock=analysis_clock,
         )
+        completed_handler = SQLAlchemyReportingQueueHandler(
+            session_factory,
+            event_type="interview.completed",
+        )
+        media_handler = SQLAlchemyReportingQueueHandler(
+            session_factory,
+            event_type="media.postprocess_requested",
+        )
+        report_handler = SQLAlchemyReportingQueueHandler(
+            session_factory,
+            event_type="report.generation_requested",
+        )
     return MappingProxyType(
         {
             "invitation.email_requested": RegisteredWorkerHandler(
@@ -237,13 +256,31 @@ def create_worker_registry(
                 analysis_handler,
                 ("submission_id", "analysis_version", "source_type"),
             ),
+            "interview.completed": RegisteredWorkerHandler(
+                completed_handler,
+                (
+                    "interview_session_id",
+                    "invitation_id",
+                    "last_turn_id",
+                    "completed_at",
+                    "media_status",
+                ),
+            ),
             "media.postprocess_requested": RegisteredWorkerHandler(
-                MediaProcessor(),
-                ("session_id", "ordered_chunk_set_id", "output_profile_version"),
+                media_handler,
+                (
+                    "interview_session_id",
+                    "ordered_chunk_set_id",
+                    "output_profile_version",
+                ),
             ),
             "report.generation_requested": RegisteredWorkerHandler(
-                ReportGenerator(),
-                ("session_id", "report_version", "criterion_version_id"),
+                report_handler,
+                (
+                    "interview_session_id",
+                    "report_version",
+                    "competency_model_version_id",
+                ),
             ),
         }
     )
@@ -412,6 +449,12 @@ def create_production_runtimes(
             else None
         ),
         strategy_provider=strategy_provider,
+        completion_handler=SQLAlchemyReportingCompletionHandler(
+            resources.sessions.proxy,
+            interview_public=InterviewEvidencePublicService(
+                InterviewSessionRepository(resources.sessions.proxy)
+            ),
+        ),
     )
     return ApplicationRuntimes(
         company=company.company,

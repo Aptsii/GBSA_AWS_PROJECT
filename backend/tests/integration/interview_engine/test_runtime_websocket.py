@@ -23,6 +23,7 @@ from interview_evidence.shared.aws_clients.ports import (
 )
 from interview_evidence.shared.database import Base
 from interview_evidence.shared.ids import FixedClock, UUID7Generator
+from interview_evidence.shared.messaging.outbox import OutboxEvent
 from interview_evidence.shared.tenant import ApplicantScope, TenantContext
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
@@ -39,6 +40,19 @@ from tests.fixtures.shared.factories import (
 
 FIRST_TRANSCRIPTION_ID = "018f2000-0000-7000-8000-000000000402"
 SECOND_TRANSCRIPTION_ID = "018f2000-0000-7000-8000-000000000403"
+
+
+class _CompletionHandler:
+    def __init__(self) -> None:
+        self.events: list[OutboxEvent] = []
+
+    def handle_event(
+        self,
+        context: TenantContext,
+        event: OutboxEvent,
+    ) -> dict[str, object]:
+        self.events.append(event)
+        return {"status": "processed", "company_id": str(context.company_id)}
 
 
 @pytest.mark.asyncio
@@ -201,6 +215,7 @@ async def test_sql_websocket_runs_transcript_multiple_questions_completion_and_r
     second_audio = ProtectedBytes(b"second-answer-audio")
     with Session(engine) as database:
         repository = InterviewSessionRepository(database)
+        completion_handler = _CompletionHandler()
         route_service = SQLAlchemyInterviewRouteService(
             repository,
             clock=clock,
@@ -214,6 +229,7 @@ async def test_sql_websocket_runs_transcript_multiple_questions_completion_and_r
             id_generator=ids,
             transcriber=speech,
             max_questions=2,
+            completion_handler=completion_handler,
         )
         created = route_service.create_interview_session(
             context=context,
@@ -319,6 +335,17 @@ async def test_sql_websocket_runs_transcript_multiple_questions_completion_and_r
         )
         assert isinstance(completed, tuple)
         assert completed[-1].message_type == "session.completed"
+        assert len(completion_handler.events) == 1
+        completion_event = completion_handler.events[0]
+        assert completion_event.event_type == "interview.completed"
+        completion_payload = completion_event.payload
+        assert completion_payload == {
+            "interview_session_id": session_id,
+            "invitation_id": str(INVITATION_ID),
+            "last_turn_id": second_answer_turn_id,
+            "completed_at": "2026-08-18T00:00:00Z",
+            "media_status": "pending",
+        }
         assert repository.get_session(context, scope, session_id).state.value == "completed"
         turns = repository.list_turns(context, scope, session_id)
         assert len(turns) == 4

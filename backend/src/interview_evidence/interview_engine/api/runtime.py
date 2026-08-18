@@ -42,6 +42,8 @@ from interview_evidence.shared.aws_clients.ports import (
 )
 from interview_evidence.shared.errors import ErrorCode, SafeApplicationError
 from interview_evidence.shared.ids import Clock, OpaqueId, SystemClock, UUID7Generator
+from interview_evidence.shared.messaging.outbox import AggregateRef, OutboxEvent
+from interview_evidence.shared.persistence import SQLAlchemyOutbox
 from interview_evidence.shared.tenant import ApplicantScope, TenantContext, ensure_applicant_scope
 
 
@@ -59,6 +61,14 @@ class StrategySnapshotProvider(Protocol):
         context: TenantContext,
         *,
         strategy_id: str,
+    ) -> Mapping[str, object]: ...
+
+
+class InterviewCompletionHandler(Protocol):
+    def handle_event(
+        self,
+        context: TenantContext,
+        event: OutboxEvent,
     ) -> Mapping[str, object]: ...
 
 
@@ -147,9 +157,7 @@ class SQLAlchemyInterviewRouteService:
         status = strategy.get("status")
         if status == "partial" and arguments["acknowledged_partial_analysis"] is not True:
             raise SafeApplicationError(ErrorCode.CONFLICT)
-        competency_model_version_id = OpaqueId(
-            str(strategy["competency_model_version_id"])
-        )
+        competency_model_version_id = OpaqueId(str(strategy["competency_model_version_id"]))
         interview_session = InterviewSession(
             interview_session_id=self._id_generator.new(),
             scope=scope,
@@ -391,6 +399,7 @@ class SQLAlchemyInterviewRouteService:
 class SQLAlchemyInterviewStreamHandler:
     __slots__ = (
         "_clock",
+        "_completion_handler",
         "_id_generator",
         "_max_questions",
         "_repository",
@@ -408,6 +417,7 @@ class SQLAlchemyInterviewStreamHandler:
         id_generator: UUID7Generator,
         transcriber: AudioTranscriber | None = None,
         max_questions: int = 2,
+        completion_handler: InterviewCompletionHandler | None = None,
     ) -> None:
         if max_questions < 1:
             raise ValueError("max_questions must be positive")
@@ -417,6 +427,7 @@ class SQLAlchemyInterviewStreamHandler:
         self._id_generator = id_generator
         self._transcriber = transcriber or UnavailableAudioTranscriber()
         self._max_questions = max_questions
+        self._completion_handler = completion_handler
         self._state_machine = SessionStateMachine(clock)
 
     async def handle_message(
@@ -769,6 +780,12 @@ class SQLAlchemyInterviewStreamHandler:
             last_final_turn_id=answer_turn.turn_id,
             last_media_sequence=last_recording_sequence,
         )
+        self._publish_completion(
+            context,
+            scope,
+            completed,
+            last_turn_id=answer_turn.turn_id,
+        )
         return (
             self._message(
                 message,
@@ -784,6 +801,59 @@ class SQLAlchemyInterviewStreamHandler:
             self._completed_message(message, completed, answer_turn.turn_id),
         )
 
+    def _publish_completion(
+        self,
+        context: TenantContext,
+        scope: ApplicantScope,
+        session: InterviewSession,
+        *,
+        last_turn_id: OpaqueId,
+    ) -> None:
+        if session.completed_at is None:
+            raise SafeApplicationError(ErrorCode.CONFLICT)
+        chunks = self._repository.list_recording_chunks(
+            context, scope, session.interview_session_id
+        )
+        verified_count = sum(chunk.upload_status is UploadStatus.VERIFIED for chunk in chunks)
+        media_status = (
+            "ready"
+            if chunks and verified_count == len(chunks)
+            else "partial"
+            if verified_count
+            else "pending"
+        )
+        outbox = SQLAlchemyOutbox(self._repository.session)
+        event = outbox.add(
+            context,
+            OutboxEvent(
+                event_id=self._id_generator.new(),
+                company_id=scope.company_id,
+                event_type="interview.completed",
+                event_version=1,
+                aggregate=AggregateRef(
+                    aggregate_type="interview_session",
+                    aggregate_id=session.interview_session_id,
+                    version=session.session_sequence,
+                ),
+                idempotency_key=f"interview-completed:{session.interview_session_id}",
+                occurred_at=session.completed_at,
+                trace_id=context.trace_id,
+                correlation_id=context.request_id,
+                causation_id=None,
+                payload={
+                    "interview_session_id": str(session.interview_session_id),
+                    "invitation_id": str(scope.invitation_id),
+                    "last_turn_id": str(last_turn_id),
+                    "completed_at": session.completed_at.isoformat().replace("+00:00", "Z"),
+                    "media_status": media_status,
+                },
+            ),
+        )
+        if self._completion_handler is None:
+            return
+        self._completion_handler.handle_event(context, event)
+        outbox.mark_published(context, event.event_id, published_at=self._clock.now())
+
     def _resume(
         self,
         message: ProtocolMessage,
@@ -793,25 +863,21 @@ class SQLAlchemyInterviewStreamHandler:
     ) -> ProtocolMessage | tuple[ProtocolMessage, ...]:
         snapshot = self._resume_message(message, context, scope, session)
         pending_turn = snapshot.payload.get("pending_turn")
-        if (
-            snapshot.payload.get("state") != SessionState.AWAITING_ANSWER.value
-            or not isinstance(pending_turn, Mapping)
+        if snapshot.payload.get("state") != SessionState.AWAITING_ANSWER.value or not isinstance(
+            pending_turn, Mapping
         ):
             return snapshot
         pending_turn_id = pending_turn.get("turn_id")
         if not isinstance(pending_turn_id, str):
             return snapshot
-        resumed_session = self._repository.get_session(
-            context, scope, session.interview_session_id
-        )
+        resumed_session = self._repository.get_session(context, scope, session.interview_session_id)
         question = next(
             (
                 turn
                 for turn in self._repository.list_turns(
                     context, scope, session.interview_session_id
                 )
-                if str(turn.turn_id) == pending_turn_id
-                and turn.speaker is TurnSpeaker.INTERVIEWER
+                if str(turn.turn_id) == pending_turn_id and turn.speaker is TurnSpeaker.INTERVIEWER
             ),
             None,
         )
@@ -978,9 +1044,7 @@ class SQLAlchemyInterviewStreamHandler:
                     else self._payload_int(request, "session_start_ms")
                 ),
                 "end_ms": (
-                    end_ms
-                    if end_ms is not None
-                    else self._payload_int(request, "session_end_ms")
+                    end_ms if end_ms is not None else self._payload_int(request, "session_end_ms")
                 ),
                 "confidence": transcript.confidence,
                 "is_final": True,
@@ -1034,9 +1098,7 @@ class SQLAlchemyInterviewStreamHandler:
             scope,
             session.interview_strategy_id,
         )
-        model_config_version = str(
-            snapshot.get("model_config_version", "runtime-fallback-v1")
-        )
+        model_config_version = str(snapshot.get("model_config_version", "runtime-fallback-v1"))
         points = snapshot.get("verification_points")
         if isinstance(points, (list, tuple)) and points:
             point = points[min(question_number - 1, len(points) - 1)]
@@ -1228,6 +1290,7 @@ def create_interview_runtimes(
     object_storage: ObjectStoragePort | None = None,
     transcriber: AudioTranscriber | None = None,
     strategy_provider: StrategySnapshotProvider | None = None,
+    completion_handler: InterviewCompletionHandler | None = None,
     max_questions: int = 2,
     clock: Clock | None = None,
 ) -> tuple[ApplicantInterviewRouteRuntime, WebSocketRuntime]:
@@ -1259,6 +1322,7 @@ def create_interview_runtimes(
                 id_generator=id_generator,
                 transcriber=transcriber,
                 max_questions=max_questions,
+                completion_handler=completion_handler,
             ),
             scope_provider=websocket_scope_provider,
         ),
